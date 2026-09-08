@@ -5,7 +5,7 @@
 ## Run:  Rscript spike/montecarlo_sweep.R   (writes spike/montecarlo_sweep_results.csv)
 ###############################################################################
 options(spike_no_run = TRUE)
-source("/home/user/Mikku/spike/conformal_plssem_spike.R")
+source("conformal_plssem_spike.R")     # run from the spike/ directory
 set.seed(20260908)
 
 regimes <- list(
@@ -43,6 +43,6 @@ for (rg in names(regimes)) for (n in grid_n) {
 res <- do.call(rbind, rows)
 cat("\n================ SUMMARY (nominal coverage = 0.90) ================\n")
 print(res, row.names=FALSE)
-write.csv(res, "/home/user/Mikku/spike/montecarlo_sweep_results.csv", row.names=FALSE)
-cat(sprintf("\nWrote spike/montecarlo_sweep_results.csv | elapsed %.1f min\n",
+write.csv(res, "montecarlo_sweep_results.csv", row.names=FALSE)
+cat(sprintf("\nWrote montecarlo_sweep_results.csv | elapsed %.1f min\n",
             as.numeric(difftime(Sys.time(), t0, units="mins"))))
