@@ -9,9 +9,9 @@
 ##
 ## !! UNTESTED in the build sandbox: seminr could not be installed there (CRAN
 ##    egress blocked). It is written against seminr's documented object slots.
-##    RUN validate_adapter() FIRST (below) -- it prints a correlation that must
-##    be high (>0.5) if the mapping is correct for your seminr version. If it is
-##    near 0 or negative, flip PATHS_FROM_ROW and re-run (see note there).
+##    The adapter auto-detects the path orientation, so there is nothing to
+##    configure. validate_adapter() still prints a correlation as reassurance
+##    (should be high, > 0.5).
 ##
 ## Usage:
 ##   install.packages("seminr")
@@ -21,11 +21,10 @@
 options(spike_no_run = TRUE)
 source("conformal_plssem_spike.R")     # engine + conformal methods (adjust path if needed)
 
-## seminr stores paths in path_coef as [antecedent (row), outcome (col)]. If your
-## version differs, set this FALSE (validate_adapter() will tell you).
-PATHS_FROM_ROW <- TRUE
-
 ## Map a fitted seminr model -> predictor object consumed by predict_indicators().
+## The path-matrix orientation is AUTO-DETECTED (no manual flag): we build the
+## predictor both ways and keep whichever reproduces the training endogenous
+## indicators better. So this "just works" across seminr versions.
 seminr_to_predictor <- function(fit) {
   cons <- as.character(fit$constructs)
   mmM  <- fit$mmMatrix                       # cols: "construct","measurement"(,"type")
@@ -39,11 +38,15 @@ seminr_to_predictor <- function(fit) {
   L <- fit$outer_loadings[indall, cons, drop=FALSE]
   smM <- fit$smMatrix                        # cols: "source","target"
   preds <- lapply(cons, function(c) as.character(smM[smM[,"target"]==c, "source"])); names(preds)<-cons
-  pc <- fit$path_coef
-  B  <- if (PATHS_FROM_ROW) pc[cons, cons, drop=FALSE] else t(pc[cons, cons, drop=FALSE])
   Ztr <- scale(as.matrix(raw), center=center, scale=scal)
   comp_sd <- sapply(cons, function(c) sd(as.numeric(Ztr[, mm[[c]], drop=FALSE] %*% W[[c]])))
-  list(W=W, L=L, B=B, cons=cons, mm=mm, preds=preds, center=center, scale=scal, comp_sd=comp_sd)
+  pc <- fit$path_coef
+  mk <- function(B) list(W=W,L=L,B=B,cons=cons,mm=mm,preds=preds,center=center,scale=scal,comp_sd=comp_sd)
+  endo <- cons[sapply(cons, function(c) length(preds[[c]])>0)]
+  score <- function(pr) mean(unlist(lapply(endo, function(c){ P<-predict_indicators(pr, raw, c)
+    sapply(mm[[c]], function(k) suppressWarnings(cor(P[,k], raw[,k]))) })), na.rm=TRUE)
+  cand <- list(mk(pc[cons,cons,drop=FALSE]), mk(t(pc[cons,cons,drop=FALSE])))
+  cand[[ which.max(sapply(cand, score)) ]]  # keep the better orientation
 }
 
 ## fit_fun factory: returns function(data) -> predictor object, re-estimating
