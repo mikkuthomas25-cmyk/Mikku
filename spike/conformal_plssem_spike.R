@@ -36,7 +36,8 @@ sm <- rbind(c("X1","M"), c("X2","M"), c("X1","Y"), c("M","Y"))
 ## which is exactly the regime where normal-theory intervals should fail.
 simulate_data <- function(n, loadings = 0.75, y_noise = c("normal","skew_hetero"),
                           gamma = c(X1=0.40, X2=0.35), beta = c(M=0.50, X1=0.25),
-                          rho_x = 0.30, het_a = 0.30, het_b = 1.6) {
+                          rho_x = 0.30, het_a = 0.30, het_b = 1.6,
+                          segment = FALSE, seg_scale = c(0.5, 2.0)) {
   y_noise <- match.arg(y_noise)
   L1 <- rnorm(n); L2 <- rho_x*L1 + sqrt(1-rho_x^2)*rnorm(n)
   vM <- gamma["X1"]^2 + gamma["X2"]^2 + 2*gamma["X1"]*gamma["X2"]*rho_x
@@ -56,7 +57,13 @@ simulate_data <- function(n, loadings = 0.75, y_noise = c("normal","skew_hetero"
     }
   })
   dat <- data.frame(refl_normal(L1,3), refl_normal(L2,3), refl_normal(M,3), refl_Y(Y,3))
-  names(dat) <- unlist(mm); dat
+  names(dat) <- unlist(mm)
+  if (segment) {                              # known segments with different Y-error spread
+    grp <- sample(seq_along(seg_scale), n, replace=TRUE); s <- seg_scale[grp]
+    for (j in 1:3) dat[[mm$Y[j]]] <- loadings*Y + sqrt(1-loadings^2)*s*rnorm(n)
+    dat$grp <- grp
+  }
+  dat
 }
 
 ## ---------------------------------------------------------------------------
@@ -103,6 +110,7 @@ predict_indicators <- function(model, newdata, target) {
     else            Sn[,c] <- as.numeric(Sn[,P,drop=FALSE] %*% model$B[P,c]) }
   ind <- model$mm[[target]]
   out <- sapply(ind, function(k) Sn[,target]*model$L[k,target]*model$scale[k] + model$center[k])
+  out <- matrix(out, nrow = nrow(Xnew), ncol = length(ind))   # keep matrix even for 1-row newdata
   colnames(out) <- ind; out
 }
 
@@ -178,6 +186,7 @@ naive_cv <- function(data, mm, sm, target, alpha=0.10, p_tr=0.75, K=5) {
 cvplus <- function(data, mm, sm, target, alpha=0.10, p_tr=0.75, K=10) {
   n<-nrow(data); idx<-sample(n); ntr<-floor(p_tr*n); tr<-idx[1:ntr]; te<-idx[(ntr+1):n]
   dtr<-data[tr,]; ntrn<-nrow(dtr); nt<-length(te); ind<-mm[[target]]
+  K<-min(K, ntrn)                                   # K==ntrn gives leave-one-out (jackknife+)
   folds<-sample(rep(1:K, length.out=ntrn))
   R<-setNames(lapply(ind, function(.) numeric(ntrn)), ind)
   fp<-setNames(lapply(ind, function(.) matrix(NA_real_, nt, K)), ind)
@@ -192,6 +201,31 @@ cvplus <- function(data, mm, sm, target, alpha=0.10, p_tr=0.75, K=10) {
     c(coverage=mean(yy>=lo & yy<=up), width=mean(up-lo), cond=cond_cov(yy,pbar,lo,up))
   })
 }
+## jackknife+ (Barber et al. 2021) == leave-one-out CV+ (every point its own fold).
+jackknife_plus <- function(data, mm, sm, target, alpha=0.10, p_tr=0.75)
+  cvplus(data, mm, sm, target, alpha, p_tr, K=.Machine$integer.max)
+
+## Mondrian (per-segment) conformal: when respondents fall in known segments with
+## different error spread, pooled conformal is valid ONLY on average -- it over-
+## covers the low-noise segment and under-covers the high-noise one. Mondrian
+## conformal calibrates a SEPARATE quantile within each segment, restoring per-
+## segment coverage. Returns per-segment coverage for pooled vs Mondrian (one fit).
+mondrian_compare <- function(data, mm, sm, target, alpha=0.10, p_tr=0.5, p_cal=0.25) {
+  n<-nrow(data); idx<-sample(n); ntr<-floor(p_tr*n); ncal<-floor(p_cal*n)
+  tr<-idx[1:ntr]; cal<-idx[(ntr+1):(ntr+ncal)]; te<-idx[(ntr+ncal+1):n]
+  m<-estimate_pls(data[tr,],mm,sm); pc<-predict_indicators(m,data[cal,],target); pt<-predict_indicators(m,data[te,],target)
+  gcal<-data$grp[cal]; gte<-data$grp[te]; ind<-mm[[target]]; grps<-sort(unique(data$grp))
+  P<-M<-matrix(NA_real_, length(ind), length(grps))
+  for (ii in seq_along(ind)) { k<-ind[ii]
+    rc<-abs(data[cal,k]-pc[,k]); rt<-abs(data[te,k]-pt[,k])
+    qp<-as.numeric(quantile(rc, qlevel(ncal,alpha), type=1))       # pooled quantile
+    for (gi in seq_along(grps)) { g<-grps[gi]; st<-gte==g; sc<-gcal==g
+      P[ii,gi]<-mean(rt[st]<=qp)
+      qm<-as.numeric(quantile(rc[sc], qlevel(sum(sc),alpha), type=1))  # per-segment quantile
+      M[ii,gi]<-mean(rt[st]<=qm) }
+  }
+  rbind(pooled=colMeans(P), mondrian=colMeans(M))
+}
 
 ## ---------------------------------------------------------------------------
 ## 4. Monte Carlo over a scenario
@@ -201,7 +235,7 @@ run_scenario <- function(reps, n, y_noise, alpha=0.10, target="Y",
                          method_names=c("naive_cv","split","cvplus"), ...) {
   ind<-mm[[target]]
   pool<-list(naive_insample=naive_normal, naive_cv=naive_cv, split=split_conformal,
-             normalized=norm_conformal, cvplus=cvplus)
+             normalized=norm_conformal, cvplus=cvplus, jackknife=jackknife_plus)
   methods<-pool[method_names]
   A<-lapply(methods, function(.) array(0, c(3,length(ind),reps), dimnames=list(c("coverage","width","cond"),ind,NULL)))
   for (r in 1:reps) { d<-simulate_data(n, y_noise=y_noise, ...)
@@ -214,17 +248,30 @@ run_scenario <- function(reps, n, y_noise, alpha=0.10, target="Y",
 }
 
 cat(sprintf("PLS-SEM conformal spike v2 | R %s | alpha=0.10 (nominal 0.90)\n\n", getRversion()))
+run_mondrian <- function(reps, n, alpha=0.10, target="Y", seg_scale=c(0.5,2.0)) {
+  acc <- array(0, c(2, length(seg_scale)),
+               dimnames=list(c("pooled_conformal","mondrian_conformal"),
+                             paste0("seg", seq_along(seg_scale), "_cov")))
+  for (r in 1:reps) acc <- acc + mondrian_compare(simulate_data(n, segment=TRUE, seg_scale=seg_scale),
+                                                   mm, sm, target, alpha)
+  round(acc/reps, 3)
+}
+
 stress <- list(y_noise="skew_hetero", loadings=0.85, gamma=c(X1=0.50,X2=0.45),
                beta=c(M=0.60,X1=0.40), het_a=0.25, het_b=1.8)
-ms <- c("naive_cv","split","cvplus")
-cat("Does CV+ fix split conformal's small-n width blowup while staying valid?\n")
-cat("(naive_cv = honest normal baseline; split = split conformal; cvplus = CV+)\n\n")
-cat("=== n=60,  skew+heteroskedastic (small-sample service regime) ===\n")
-print(do.call(run_scenario, c(list(reps=300, n=60, method_names=ms), stress)), row.names=FALSE)
-cat("\n=== n=120, skew+heteroskedastic ===\n")
-print(do.call(run_scenario, c(list(reps=250, n=120, method_names=ms), stress)), row.names=FALSE)
+
+cat("PART 1 -- Which conformal variant works at service-research sample sizes?\n")
+cat("(naive_cv = honest normal baseline; split; cvplus = CV+; jackknife = jackknife+)\n\n")
+cat("=== n=60, skew+heteroskedastic (small-sample regime) ===\n")
+print(do.call(run_scenario, c(list(reps=200, n=60,
+      method_names=c("naive_cv","split","cvplus","jackknife")), stress)), row.names=FALSE)
 cat("\n=== n=400, skew+heteroskedastic (efficiency under non-normality) ===\n")
-print(do.call(run_scenario, c(list(reps=150, n=400, method_names=ms), stress)), row.names=FALSE)
-cat("\nWedge is real if: cvplus holds ~0.90 at n=60 with width close to naive_cv\n",
-    "(fixing split's blowup), AND conformal is TIGHTER than naive_cv at n=400\n",
-    "(exploiting non-normality the normal interval cannot).\n", sep="")
+print(do.call(run_scenario, c(list(reps=120, n=400,
+      method_names=c("naive_cv","split","cvplus")), stress)), row.names=FALSE)
+
+cat("\nPART 2 -- Mondrian: per-segment coverage when two known segments differ in\n")
+cat("error spread (seg1 low-noise, seg2 high-noise). Nominal per-segment = 0.90.\n\n")
+print(run_mondrian(reps=250, n=300, seg_scale=c(0.5, 2.0)))
+cat("\nRead: pooled conformal is valid ON AVERAGE but mis-covers each segment\n",
+    "(over-covers seg1, under-covers seg2); Mondrian conformal restores ~0.90 in BOTH.\n",
+    "That is the heterogeneity contribution the special section explicitly asks for.\n", sep="")
