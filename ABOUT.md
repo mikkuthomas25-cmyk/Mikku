@@ -51,6 +51,16 @@ We built a working version and stress-tested it:
    advantage over the old shortcut — the gains show up exactly in the messy, small,
    uneven conditions real service data lives in.
 
+## Does it work on a real example?
+
+Yes. On a worked loyalty example (1–7 survey scale), the method gives each
+respondent an honest range — e.g. *"predicted loyalty 4.75, with a 90% range of
+3.2 to 6.3"* — and when checked on held-out respondents the ranges contained the
+true answer about 92% of the time (target: 90%). It also works when the model
+uses the trickier building blocks common in this field (**formative** constructs,
+where the survey items *cause* the concept, and **higher-order** constructs, a
+concept built from sub-concepts).
+
 ## Who this helps
 
 - **Researchers** who use PLS-SEM and want defensible predictions, not just guesses.

@@ -80,14 +80,40 @@ intervals for PLS-SEM where none exist today, with **CV+/jackknife+** as the
 variant that works at realistic service-research sample sizes, plus efficiency
 gains under the non-normal errors typical of service data.
 
+## Extensions (`spike/extensions_formative_hoc.R`)
+
+The pluggable `fit_fun`/`pred_fun` interface lets the SAME conformal code wrap
+other measurement structures. Confirmed at nominal 0.90:
+
+| model | naive_cv | CV+ | jackknife+ |
+|---|---|---|---|
+| **Formative** (mode B), n=150 | 0.912 | 0.904 | 0.904 |
+| **Higher-order** (disjoint two-stage), n=250 | 0.917 | 0.903 | — |
+
+Conformal stays valid (and slightly tighter than the normal baseline) with a
+formative construct and with a second-order construct estimated by the disjoint
+two-stage approach (Sarstedt et al., 2019).
+
+**Worked example** (same file): actual per-respondent 90% loyalty-item intervals
+on a 1–7 scale, e.g. `predicted 4.75, interval [3.15, 6.31], actual 5.17`;
+held-out coverage 0.92 over 50 respondents, mean width 3.16 points.
+
+## seminr backend (`spike/seminr_adapter.R`)
+
+`seminr_to_predictor()` maps a fitted `seminr` model into the predictor object the
+conformal functions expect, so `cvplus()`/`split_conformal()`/`jackknife_plus()`
+run on canonical seminr estimation (illustrative example: corp_rep "simple model").
+Its plumbing is verified against the native engine to machine precision
+(`spike/test_adapter_plumbing.R`); the seminr-specific numeric conventions are
+checked at runtime by `validate_adapter()`. **Untested against a live seminr**
+(CRAN blocked in the build sandbox) — run it in your R environment.
+
 ## Caveats / next steps
 
-- The base-R estimator is for the simulation engine. The paper's **illustrative
-  empirical example must be reproduced with `seminr`/`cSEM`** to match canonical
-  PLSpredict and satisfy the editorial panel. (`seminr` unavailable in the build
-  sandbox — CRAN egress blocked — hence the from-scratch engine.)
-- Sims so far cover a single reflective model. The paper needs formative/composite
-  constructs, higher-order models, and more conditions.
+- The base-R estimator is the simulation engine; the paper's empirical example
+  should be reproduced with `seminr` via the adapter above.
+- HOC uses disjoint two-stage; extending to unobserved heterogeneity
+  (FIMIX/POS segments) beyond the observed-segment Mondrian case is a further step.
 - A plain-language overview for non-methodologists is in `ABOUT.md`.
 
 Run: `Rscript spike/conformal_plssem_spike.R`

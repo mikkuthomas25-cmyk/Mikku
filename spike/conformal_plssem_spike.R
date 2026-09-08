@@ -69,8 +69,11 @@ simulate_data <- function(n, loadings = 0.75, y_noise = c("normal","skew_hetero"
 ## ---------------------------------------------------------------------------
 ## 2. PLS-SEM estimator (Lohmoller, mode A, path weighting) + PLS prediction
 ## ---------------------------------------------------------------------------
-estimate_pls <- function(data, mm, sm, tol=1e-7, maxit=300) {
+## modes: named character vector, e.g. c(F="B"), giving formative (mode B)
+## constructs; any construct not listed defaults to reflective (mode A).
+estimate_pls <- function(data, mm, sm, tol=1e-7, maxit=300, modes=NULL) {
   cons <- names(mm)
+  is_B <- function(c) isTRUE(unname(modes[c])=="B")
   Xall <- scale(as.matrix(data[, unlist(mm), drop=FALSE]))
   center <- attr(Xall,"scaled:center"); scal <- attr(Xall,"scaled:scale")
   preds <- lapply(cons, function(c) sm[sm[,2]==c,1]); names(preds) <- cons
@@ -88,7 +91,10 @@ estimate_pls <- function(data, mm, sm, tol=1e-7, maxit=300) {
       Z[,c] <- z
     }
     Z <- scale(Z)
-    for (c in cons) W[[c]] <- setNames(as.numeric(cor(Xall[,mm[[c]],drop=FALSE],Z[,c])), mm[[c]])
+    for (c in cons) { Xi <- Xall[,mm[[c]],drop=FALSE]
+      w <- if (is_B(c)) lm.fit(Xi, Z[,c])$coefficients    # mode B: regression (formative) weights
+           else         as.numeric(cor(Xi, Z[,c]))         # mode A: correlation (reflective) weights
+      W[[c]] <- setNames(as.numeric(w), mm[[c]]) }
     S <- scores(W); if (max(abs(unlist(W)-Wold)) < tol) break
   }
   L <- matrix(0,length(unlist(mm)),length(cons),dimnames=list(unlist(mm),cons))
@@ -101,16 +107,21 @@ estimate_pls <- function(data, mm, sm, tol=1e-7, maxit=300) {
 topo_order <- function(cons, preds) { ord<-character(0); rem<-cons
   while (length(rem)) { rdy <- rem[sapply(rem, function(c) all(preds[[c]] %in% ord))]
     if (!length(rdy)) stop("cycle"); ord<-c(ord,rdy); rem<-setdiff(rem,rdy) }; ord }
-predict_indicators <- function(model, newdata, target) {
+## Out-of-sample construct scores for new data (PLSpredict propagation): exogenous
+## from indicators (via weights), endogenous from the structural model only.
+lv_scores_newdata <- function(model, newdata) {
   Xnew <- as.matrix(newdata[, names(model$center), drop=FALSE])
   Znew <- scale(Xnew, center=model$center, scale=model$scale)
-  cons <- model$cons; Sn <- matrix(NA_real_,nrow(Xnew),length(cons),dimnames=list(NULL,cons))
+  cons <- model$cons; Sn <- matrix(NA_real_, nrow(Xnew), length(cons), dimnames=list(NULL,cons))
   for (c in topo_order(cons, model$preds)) { P <- model$preds[[c]]
     if (!length(P)) Sn[,c] <- as.numeric(Znew[,model$mm[[c]],drop=FALSE] %*% model$W[[c]]) / model$comp_sd[c]
     else            Sn[,c] <- as.numeric(Sn[,P,drop=FALSE] %*% model$B[P,c]) }
-  ind <- model$mm[[target]]
+  Sn
+}
+predict_indicators <- function(model, newdata, target) {
+  Sn <- lv_scores_newdata(model, newdata); ind <- model$mm[[target]]
   out <- sapply(ind, function(k) Sn[,target]*model$L[k,target]*model$scale[k] + model$center[k])
-  out <- matrix(out, nrow = nrow(Xnew), ncol = length(ind))   # keep matrix even for 1-row newdata
+  out <- matrix(out, nrow = nrow(Sn), ncol = length(ind))    # keep matrix even for 1-row newdata
   colnames(out) <- ind; out
 }
 
@@ -125,10 +136,14 @@ cond_cov <- function(y, pred, lo, hi) {                # coverage in TOP predict
 }
 qlevel <- function(nc, alpha) min(1, ceiling((nc+1)*(1-alpha))/nc)
 
-split_conformal <- function(data, mm, sm, target, alpha=0.10, p_tr=0.5, p_cal=0.25) {
+## fit_fun(data)->model and pred_fun(model,newdata,target)->matrix let the SAME
+## conformal code wrap any estimator: base PLS (default), two-stage HOC, or seminr.
+split_conformal <- function(data, mm, sm, target, alpha=0.10, p_tr=0.5, p_cal=0.25,
+                            fit_fun=NULL, pred_fun=predict_indicators) {
+  if (is.null(fit_fun)) fit_fun <- function(d) estimate_pls(d, mm, sm)
   n<-nrow(data); idx<-sample(n); ntr<-floor(p_tr*n); ncal<-floor(p_cal*n)
   tr<-idx[1:ntr]; cal<-idx[(ntr+1):(ntr+ncal)]; te<-idx[(ntr+ncal+1):n]
-  m<-estimate_pls(data[tr,],mm,sm); pc<-predict_indicators(m,data[cal,],target); pt<-predict_indicators(m,data[te,],target)
+  m<-fit_fun(data[tr,]); pc<-pred_fun(m,data[cal,],target); pt<-pred_fun(m,data[te,],target)
   sapply(mm[[target]], function(k){
     qh<-as.numeric(quantile(abs(data[cal,k]-pc[,k]), qlevel(ncal,alpha), type=1))
     lo<-pt[,k]-qh; hi<-pt[,k]+qh
@@ -166,14 +181,16 @@ naive_normal <- function(data, mm, sm, target, alpha=0.10, p_tr=0.5, p_cal=0.25)
 }
 ## HONEST strong baseline: normal interval from k-fold OUT-OF-SAMPLE RMSE
 ## (this is what a careful PLSpredict user would build). pred +/- z * sd(oos resid).
-naive_cv <- function(data, mm, sm, target, alpha=0.10, p_tr=0.75, K=5) {
+naive_cv <- function(data, mm, sm, target, alpha=0.10, p_tr=0.75, K=5,
+                     fit_fun=NULL, pred_fun=predict_indicators) {
+  if (is.null(fit_fun)) fit_fun <- function(d) estimate_pls(d, mm, sm)
   n<-nrow(data); idx<-sample(n); ntr<-floor(p_tr*n); tr<-idx[1:ntr]; te<-idx[(ntr+1):n]
   dtr<-data[tr,]; folds<-sample(rep(1:K, length.out=nrow(dtr))); z<-qnorm(1-alpha/2)
   res<-setNames(lapply(mm[[target]], function(.) numeric(0)), mm[[target]])
   for (f in 1:K) { trn<-which(folds!=f); val<-which(folds==f)
-    mf<-estimate_pls(dtr[trn,],mm,sm); pv<-predict_indicators(mf,dtr[val,],target)
+    mf<-fit_fun(dtr[trn,]); pv<-pred_fun(mf,dtr[val,],target)
     for (k in mm[[target]]) res[[k]]<-c(res[[k]], dtr[val,k]-pv[,k]) }
-  mfull<-estimate_pls(dtr,mm,sm); pt<-predict_indicators(mfull,data[te,],target)
+  mfull<-fit_fun(dtr); pt<-pred_fun(mfull,data[te,],target)
   sapply(mm[[target]], function(k){
     s<-sd(res[[k]]); lo<-pt[,k]-z*s; hi<-pt[,k]+z*s
     c(coverage=mean(data[te,k]>=lo & data[te,k]<=hi), width=2*z*s,
@@ -183,7 +200,9 @@ naive_cv <- function(data, mm, sm, target, alpha=0.10, p_tr=0.75, K=5) {
 
 ## CV+ (Barber et al. 2021): every training point yields an out-of-sample residual
 ## (all data calibrates -> fixes split conformal's tiny-calibration-set blowup).
-cvplus <- function(data, mm, sm, target, alpha=0.10, p_tr=0.75, K=10) {
+cvplus <- function(data, mm, sm, target, alpha=0.10, p_tr=0.75, K=10,
+                   fit_fun=NULL, pred_fun=predict_indicators) {
+  if (is.null(fit_fun)) fit_fun <- function(d) estimate_pls(d, mm, sm)
   n<-nrow(data); idx<-sample(n); ntr<-floor(p_tr*n); tr<-idx[1:ntr]; te<-idx[(ntr+1):n]
   dtr<-data[tr,]; ntrn<-nrow(dtr); nt<-length(te); ind<-mm[[target]]
   K<-min(K, ntrn)                                   # K==ntrn gives leave-one-out (jackknife+)
@@ -191,7 +210,7 @@ cvplus <- function(data, mm, sm, target, alpha=0.10, p_tr=0.75, K=10) {
   R<-setNames(lapply(ind, function(.) numeric(ntrn)), ind)
   fp<-setNames(lapply(ind, function(.) matrix(NA_real_, nt, K)), ind)
   for (f in 1:K) { trn<-which(folds!=f); val<-which(folds==f)
-    mf<-estimate_pls(dtr[trn,],mm,sm); pv<-predict_indicators(mf,dtr[val,],target); pT<-predict_indicators(mf,data[te,],target)
+    mf<-fit_fun(dtr[trn,]); pv<-pred_fun(mf,dtr[val,],target); pT<-pred_fun(mf,data[te,],target)
     for (k in ind) { R[[k]][val]<-abs(dtr[val,k]-pv[,k]); fp[[k]][,f]<-pT[,k] } }
   li<-max(1,min(ntrn,floor(alpha*(ntrn+1)))); hi<-max(1,min(ntrn,ceiling((1-alpha)*(ntrn+1))))
   sapply(ind, function(k){
@@ -202,8 +221,8 @@ cvplus <- function(data, mm, sm, target, alpha=0.10, p_tr=0.75, K=10) {
   })
 }
 ## jackknife+ (Barber et al. 2021) == leave-one-out CV+ (every point its own fold).
-jackknife_plus <- function(data, mm, sm, target, alpha=0.10, p_tr=0.75)
-  cvplus(data, mm, sm, target, alpha, p_tr, K=.Machine$integer.max)
+jackknife_plus <- function(data, mm, sm, target, alpha=0.10, p_tr=0.75, ...)
+  cvplus(data, mm, sm, target, alpha, p_tr, K=.Machine$integer.max, ...)
 
 ## Mondrian (per-segment) conformal: when respondents fall in known segments with
 ## different error spread, pooled conformal is valid ONLY on average -- it over-
@@ -247,7 +266,6 @@ run_scenario <- function(reps, n, y_noise, alpha=0.10, target="Y",
     mean_width=round(mean(apply(A[[nm]]["width",,],1,mean)),3), row.names=NULL)))
 }
 
-cat(sprintf("PLS-SEM conformal spike v2 | R %s | alpha=0.10 (nominal 0.90)\n\n", getRversion()))
 run_mondrian <- function(reps, n, alpha=0.10, target="Y", seg_scale=c(0.5,2.0)) {
   acc <- array(0, c(2, length(seg_scale)),
                dimnames=list(c("pooled_conformal","mondrian_conformal"),
@@ -257,6 +275,9 @@ run_mondrian <- function(reps, n, alpha=0.10, target="Y", seg_scale=c(0.5,2.0)) 
   round(acc/reps, 3)
 }
 
+## Guard so `options(spike_no_run=TRUE); source(...)` reuses the engine without running.
+if (!isTRUE(getOption("spike_no_run"))) {
+cat(sprintf("PLS-SEM conformal spike v2 | R %s | alpha=0.10 (nominal 0.90)\n\n", getRversion()))
 stress <- list(y_noise="skew_hetero", loadings=0.85, gamma=c(X1=0.50,X2=0.45),
                beta=c(M=0.60,X1=0.40), het_a=0.25, het_b=1.8)
 
@@ -275,3 +296,4 @@ print(run_mondrian(reps=250, n=300, seg_scale=c(0.5, 2.0)))
 cat("\nRead: pooled conformal is valid ON AVERAGE but mis-covers each segment\n",
     "(over-covers seg1, under-covers seg2); Mondrian conformal restores ~0.90 in BOTH.\n",
     "That is the heterogeneity contribution the special section explicitly asks for.\n", sep="")
+}
