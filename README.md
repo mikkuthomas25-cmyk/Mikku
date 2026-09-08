@@ -80,6 +80,30 @@ intervals for PLS-SEM where none exist today, with **CV+/jackknife+** as the
 variant that works at realistic service-research sample sizes, plus efficiency
 gains under the non-normal errors typical of service data.
 
+## Expanded Monte Carlo (`spike/montecarlo_sweep.R`)
+
+Sample-size sweep, skewed+heteroskedastic regime, coverage (mean interval width);
+Monte Carlo standard errors ≤ 0.004 throughout. Nominal coverage = 0.90.
+Full grid incl. the clean-Gaussian regime in `spike/montecarlo_sweep_results.csv`.
+
+| n | naive_cv | split | CV+ |
+|---|---|---|---|
+| 50 | 0.909 (3.97) | 0.917 (5.33) | 0.921 (4.30) |
+| 100 | 0.912 (3.88) | 0.926 (4.61) | 0.907 (3.77) |
+| 200 | 0.922 (3.91) | 0.904 (3.70) | 0.902 (3.51) |
+| 400 | 0.924 (3.92) | 0.898 (3.52) | 0.901 (3.44) |
+| 800 | 0.924 (3.88) | 0.899 (3.43) | 0.902 (3.44) |
+| 1500 | 0.924 (3.89) | 0.901 (3.44) | 0.901 (3.41) |
+
+Reading:
+- **CV+ is the all-rounder**: near-nominal at every n and tightest-or-near-tightest.
+- **split** needs n ≳ 200; at n ≤ 100 its small calibration set over-covers and
+  runs 20–50% wider.
+- **naive normal persistently over-covers (~0.92) under skew and never tightens
+  below ~3.9** — so at adequate n, CV+ gives ~12% narrower intervals at correct
+  coverage. In the clean-Gaussian regime all methods hit 0.90 and CV+ ≈ naive on
+  width (no free lunch — the gains are specific to non-normal service data).
+
 ## Extensions (`spike/extensions_formative_hoc.R`)
 
 The pluggable `fit_fun`/`pred_fun` interface lets the SAME conformal code wrap
