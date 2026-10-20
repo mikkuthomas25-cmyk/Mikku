@@ -22,7 +22,7 @@ session went badly — failed attempts are useful history.
 
 | Week | Focus | Status |
 |------|-------|--------|
-| 1 | Toolchain: WSL2, Python, Rust, WareMax build, Ollama | in progress |
+| 1 | Toolchain (Windows): Python, Git, Build Tools, Rust, WareMax build, Ollama | in progress |
 | 2 | WareMax baselines | not started |
 | 3 | Edge latency · Gate 1 | not started |
 | 4 | Disruptions + metrics | not started |
@@ -39,28 +39,29 @@ session went badly — failed attempts are useful history.
 
 ---
 
-## 2026-10-20 (Tue) — Week 1, Session 1 · Linux environment on Windows
+## 2026-10-20 (Tue) — Week 1, Session 1 · Windows toolchain
 **Who:** You (setup), Claude (plan)   **Time spent:** — (fill in)
-**Goal:** WSL2 + Ubuntu 24.04 that sees the GPU; Python, git, Rust installed.
-**Steps:** see Claude's Session 1 instructions (Steps 1–8).
+**Goal:** native Windows toolchain: NVIDIA driver, Python, Git, C++ build tools,
+Rust, a working Python virtual environment.
+**Steps:** see Claude's Windows Session 1 instructions (Steps 1–9).
 **Done:**
-- [ ] `nvidia-smi` works in Windows PowerShell
-- [ ] WSL2 + Ubuntu 24.04 installed (`wsl -l -v` shows VERSION 2)
-- [ ] `nvidia-smi` works **inside Ubuntu**
-- [ ] build tools, git, Python 3.12 installed
-- [ ] Rust installed (`cargo --version`)
-- [ ] git configured; `~/research` created
+- [ ] `nvidia-smi` works in PowerShell
+- [ ] Python 3.12 installed (`python --version`)
+- [ ] Git installed (`git --version`); name/email configured
+- [ ] Visual Studio Build Tools (C++ workload) installed
+- [ ] Rust installed (`rustc --version`, `cargo --version`)
+- [ ] `C:\research` created; test venv activates
 - [ ] Learning-log answers written
 
 **Decisions:**
-- **Work inside WSL2 (Ubuntu) rather than native Windows.** WareMax supports
-  Windows but its docs list Linux as recommended. On Windows, Rust also needs
-  the multi-GB Visual Studio Build Tools, so native Windows isn't less to
-  install. Linux gives one consistent environment for the simulator, the local
-  LLM and Python, which also makes the paper's reproducibility package simpler:
-  reviewers can rerun it on Linux. WSL2 runs inside Windows; it doesn't
-  replace or dual-boot Windows, and can be removed with
-  `wsl --unregister Ubuntu-24.04`.
+- **Native Windows instead of WSL2/Ubuntu.** You're more comfortable on
+  Windows, and WareMax officially supports it, so we lose no capability. The
+  cost is some extra setup (Visual Studio Build Tools for Rust, PowerShell
+  execution policy) and translating Linux-style commands in the WareMax docs.
+  Claude provides PowerShell versions of every command. The reproducibility
+  package will be tested on Linux later in CI or a container, not on your laptop.
+- Project lives in `C:\research`, **not** under Documents/Desktop: those are
+  often synced by OneDrive, which locks files mid-build and breaks Rust builds.
 - Effort confirmed at 2 h/day (~14 h/week). Memory (Week 11) and 7–8B ablation
   moved to stretch goals.
 

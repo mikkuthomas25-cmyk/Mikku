@@ -121,8 +121,8 @@ These sizes are approximate. Week 3 measures the real numbers on your laptop.
 *Resources:* [Python tutorial §12 (venv)](https://docs.python.org/3/tutorial/venv.html), [Pro Git ch. 2](https://git-scm.com/book/en/v2).
 
 **Build**
-1. If on Windows: install **WSL2 + Ubuntu** (WareMax's Rust build is much easier there). Install the NVIDIA driver on Windows; CUDA becomes visible inside WSL.
-2. Install Python 3.10+, git, and Rust (`rustup`).
+1. Native Windows: update the NVIDIA driver; install Visual Studio Build Tools (C++ workload), which the Rust compiler needs on Windows.
+2. Install Python 3.12, Git for Windows, and Rust (`rustup`, MSVC toolchain).
 3. Clone WareMax, **pin the commit** (record the hash), build the CLI, run
    `waremax run --preset standard -o results/`.
 4. Build the Python extension (`maturin develop ...`) and run `smoke_test.py`.
@@ -293,8 +293,9 @@ edge-agent/
 
 ## 8. Setup decisions (20 Oct 2026)
 
-- **OS:** Windows laptop, working inside **WSL2 + Ubuntu 24.04** (reasons in
-  `WORKLOG.md`, 20 Oct entry). Native Windows is a supported fallback.
+- **OS:** native **Windows** with PowerShell (WareMax officially supports
+  Windows). Project folder `C:\research`, outside OneDrive. WSL2 was considered
+  and set aside (see `WORKLOG.md`, 20 Oct entry).
 - **Effort:** 2 h/day, ~14 h/week.
 - **Start:** Tue 20 Oct 2026.
 - **WareMax:** pinned to commit `abaa4fdaa5c62b9dc32782969203e7f2d53cfbc2`.
