@@ -52,11 +52,23 @@ Every week below has four parts:
 | Keep the learning log and a results notebook | Checks results for statistical/experimental mistakes |
 | Make the go/no-go calls at each gate (with my recommendation) | Drafts paper sections for you to rewrite in your voice |
 
-**Assumed effort:** 15–20 hours/week. If you have less, tell me and I'll cut
-the scope (section 7 lists what gets cut first).
+**Effort:** 2 hours/day, ~14 hours/week (confirmed 20 Oct 2026). This is slightly
+below what the full plan needs, so two items are now **stretch goals** that we do
+only if we're ahead of schedule: memory/reflection (Week 11) and the 7–8B model
+ablation. Everything else stays.
 
-**Weekly rhythm:** Monday — read the week's plan and ask questions. Mid-week — build.
-Friday — push code, update the learning log, paste results to me for review.
+**Daily rhythm (2-hour session):** 10 min — read today's step in `WORKLOG.md`.
+90 min — build/run. 20 min — write the session entry in `WORKLOG.md` and, at
+week's end, the explain-back answers in `LEARNING_LOG.md`.
+
+**Weekly rhythm:** Monday — read the week's plan and ask questions.
+Friday — push code, paste results to Claude for review.
+
+**Two logs, two purposes**
+- `WORKLOG.md` — running, dated record of *what was done* each session, decisions
+  made, problems hit, and the next step. This becomes the project's history and
+  makes the paper's methods section easy to write.
+- `LEARNING_LOG.md` — *what you understood*, in your own words, once per week.
 
 ---
 
@@ -214,7 +226,9 @@ WareMax lacks three things this study needs. Claude writes the patches; you run 
 ### Week 10 (21–27 Dec) — Holiday buffer
 Light work only: read 6–8 papers for related work (LLM agents for warehousing/MAPF, RMFS task allocation, edge LLM inference); one-paragraph note per paper in `notes/related_work.md`. Catch up on anything that slipped.
 
-### Week 11 (28 Dec – 3 Jan) — Memory and reflection
+### Week 11 (28 Dec – 3 Jan) — Memory and reflection *(stretch goal)*
+At 14 h/week this is done only if Gates 1–3 were passed on time. Otherwise
+Week 11 becomes catch-up and an early start on the full experiments.
 **Learn:** retrieval basics; Reflexion ([Shinn et al. 2023](https://arxiv.org/abs/2303.11366)).
 **Build:** after each recovery, store (exception type, compact state, action, outcome). At decision time, retrieve the 2–3 most similar past episodes (start with simple feature similarity; embeddings only if needed) and add them to the prompt.
 **Done when:** memory on/off can be toggled from config and both versions run.
@@ -277,8 +291,10 @@ edge-agent/
 
 ---
 
-## 8. What I need from you to start Week 1
+## 8. Setup decisions (20 Oct 2026)
 
-1. Operating system: Windows (then we use WSL2) or Linux?
-2. Realistic hours per week.
-3. Confirm the 19 Oct start, or give a different start date.
+- **OS:** Windows laptop, working inside **WSL2 + Ubuntu 24.04** (reasons in
+  `WORKLOG.md`, 20 Oct entry). Native Windows is a supported fallback.
+- **Effort:** 2 h/day, ~14 h/week.
+- **Start:** Tue 20 Oct 2026.
+- **WareMax:** pinned to commit `abaa4fdaa5c62b9dc32782969203e7f2d53cfbc2`.
