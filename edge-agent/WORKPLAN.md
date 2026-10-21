@@ -294,7 +294,7 @@ edge-agent/
 ## 8. Setup decisions (20 Oct 2026)
 
 - **OS:** native **Windows** with PowerShell (WareMax officially supports
-  Windows). Project folder `C:\research`, outside OneDrive. WSL2 was considered
+  Windows). Project folder `C:\Users\Midhu\Desktop\Warehouse`. WSL2 was considered
   and set aside (see `WORKLOG.md`, 20 Oct entry).
 - **Effort:** 2 h/day, ~14 h/week.
 - **Start:** Tue 20 Oct 2026.

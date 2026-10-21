@@ -50,7 +50,7 @@ Rust, a working Python virtual environment.
 - [ ] Git installed (`git --version`); name/email configured
 - [ ] Visual Studio Build Tools (C++ workload) installed
 - [ ] Rust installed (`rustc --version`, `cargo --version`)
-- [ ] `C:\research` created; test venv activates
+- [ ] Project repo cloned into `C:\Users\Midhu\Desktop\Warehouse`; test venv activates
 - [ ] Learning-log answers written
 
 **Decisions:**
@@ -60,8 +60,15 @@ Rust, a working Python virtual environment.
   execution policy) and translating Linux-style commands in the WareMax docs.
   Claude provides PowerShell versions of every command. The reproducibility
   package will be tested on Linux later in CI or a container, not on your laptop.
-- Project lives in `C:\research`, **not** under Documents/Desktop: those are
-  often synced by OneDrive, which locks files mid-build and breaks Rust builds.
+- **Project folder: `C:\Users\Midhu\Desktop\Warehouse`** (your choice).
+  Layout: `Warehouse\Mikku` (this repo, docs + our code in `edge-agent\`),
+  `Warehouse\waremax` (simulator, pinned commit), `Warehouse\.venv` (Python).
+  Caveat: if OneDrive "Desktop backup" is ever turned on, it can lock files
+  mid-build. If a Rust build fails with "access denied" / "file in use", pause
+  OneDrive sync first.
+- **Sync rule:** Claude works in the cloud copy of the repo and can't write to
+  the laptop directly. Files move through GitHub: `git pull` at the start of
+  every session, `git add` / `commit` / `push` at the end.
 - Effort confirmed at 2 h/day (~14 h/week). Memory (Week 11) and 7–8B ablation
   moved to stretch goals.
 
