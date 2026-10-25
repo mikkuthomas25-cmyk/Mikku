@@ -23,7 +23,7 @@ SL = slice(2025, 2040)
 
 
 def evaluate(x):
-    p = load_calibrated(dict(zip(PROBLEM["names"], x)))
+    p = load_calibrated(extra=dict(zip(PROBLEM["names"], x)))
     p["n_agents"] = 1500
     bau = run_model(p, combine("S0_BAU"), seed=11)
     comb = run_model(p, combine("S5_COMBINED"), seed=11)

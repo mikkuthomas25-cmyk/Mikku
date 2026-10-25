@@ -1,0 +1,50 @@
+
+displacement (top total-order indices)
+             param     S1    ST  ST_conf
+      sh_life_frac  0.658 0.662    0.141
+           rebound  0.245 0.241    0.061
+      lifetime_new  0.048 0.066    0.020
+          price_sh -0.014 0.023    0.010
+  price_elasticity -0.000 0.001    0.000
+ upgrade_cost_frac  0.000 0.000    0.000
+demand_growth_proj -0.001 0.000    0.000
+     uf_share_2024 -0.002 0.000    0.000
+
+ghg_bau (top total-order indices)
+                   param    S1    ST  ST_conf
+           ef_production 0.895 0.877    0.165
+      demand_growth_proj 0.084 0.089    0.023
+            lifetime_new 0.010 0.007    0.002
+        price_elasticity 0.002 0.005    0.002
+       upgrade_cost_frac 0.004 0.004    0.002
+         ef_incineration 0.005 0.004    0.001
+            sh_life_frac 0.001 0.001    0.000
+ef_open_recycling_credit 0.001 0.001    0.000
+
+policy_reduction_s5 (top total-order indices)
+             param     S1    ST  ST_conf
+  price_elasticity  0.316 0.391    0.100
+lifetime_dur_elast  0.210 0.255    0.087
+     uf_share_2024  0.135 0.140    0.036
+demand_growth_proj  0.137 0.134    0.037
+ upgrade_cost_frac  0.058 0.076    0.029
+      lifetime_new  0.024 0.027    0.010
+ p2p_share_adopter  0.014 0.003    0.001
+      pass_through -0.000 0.002    0.001
+
+virgin_fibre_bau (top total-order indices)
+             param     S1    ST  ST_conf
+demand_growth_proj  0.861 0.860    0.200
+      lifetime_new  0.061 0.068    0.018
+  price_elasticity  0.045 0.041    0.012
+ upgrade_cost_frac  0.054 0.040    0.013
+      sh_life_frac  0.005 0.010    0.002
+lifetime_dur_elast  0.011 0.008    0.003
+ p2p_share_adopter -0.001 0.004    0.002
+     uf_share_2024  0.002 0.002    0.001
+
+Output distributions (mean, 5%, 95%):
+virgin_fibre_bau [14369.305 12400.542 16476.184]
+policy_reduction_s5 [2107.234 1301.999 3065.753]
+displacement [0.493 0.202 0.78 ]
+ghg_bau [348002.49  195500.466 519760.214]

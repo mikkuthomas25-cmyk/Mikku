@@ -19,7 +19,7 @@ SEEDS = range(200, 210)
 
 def displacement(args):
     rebound, life, seed = args
-    p = load_calibrated({"rebound": rebound, "sh_life_frac": life})
+    p = load_calibrated(extra={"rebound": rebound, "sh_life_frac": life})
     sc = combine("S0_BAU")
     on = run_model(p, sc, seed=seed)
     off = run_model(p, sc, seed=seed, sh_off_from=2025)

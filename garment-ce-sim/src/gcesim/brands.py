@@ -64,7 +64,7 @@ class Brands:
             lo, hi = law_penalty_range(year)
             frac = np.clip((0.8 - self.dur) / 0.8, 0, 1)
             pen = np.where(self.dur < 0.8, lo + (hi - lo) * frac, 0.0) * sc.get("law_mult", 1.0)
-            cap = 0.5 * self.price0 / 1.2  # cap at 50% of pre-tax (ex-VAT 20%) price
+            cap = 0.5 * self.price0 / 1.2 if sc.get("law_cap", True) else np.inf  # 50% of pre-tax price
             f += np.minimum(pen, cap)
         return f
 

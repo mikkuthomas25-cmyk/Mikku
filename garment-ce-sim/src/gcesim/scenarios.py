@@ -7,6 +7,7 @@ Keys understood by the model:
   awareness            {year: multiplier on collection attractor}
   ff_law               bool, loi n° 2026-602 durability penalty
   law_mult             scale on the penalty band
+  law_cap              apply the 50 % of pre-tax price cap (default True)
   bonus_mult/malus_mult  scale on existing eco-modulation bonus/malus
   recycled_bonus_frac  recycled-content bonus as fraction of virgin fibre price
   recycled_content     {year: required recycled share of new mass}

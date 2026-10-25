@@ -1,0 +1,5 @@
+ok fig_calibration
+ok fig_scenarios
+skip fig_displacement [Errno 2] No such file or directory: '/home/user/Mikku/garment-ce-sim/results/displacement_grid.csv'
+skip fig_sobol [Errno 2] No such file or directory: '/home/user/Mikku/garment-ce-sim/results/sobol_indices.csv'
+ALLDONE

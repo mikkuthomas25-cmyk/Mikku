@@ -3,6 +3,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
+import matplotlib.ticker  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
@@ -35,6 +36,7 @@ def fig_calibration():
                 ax.scatter(dd.year, dd.value, marker=mk, s=18, color=c, zorder=3,
                            label={"validation": "2025 hold-out"}.get(use, "observed"))
         ax.set_title(title)
+        ax.xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
     h, l = axes[0].get_legend_handles_labels()
     uniq = dict(zip(l, h))
     fig.legend(uniq.values(), uniq.keys(), loc="lower center", ncol=4, frameon=False)
