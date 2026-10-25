@@ -1,174 +1,154 @@
 ---
-title: "Survey Instrument: DPP Readiness among Indian Textile and Apparel Exporters (DRAFT v0.1)"
-subtitle: "Two-wave key-informant survey. This draft is for supervisor review and will be revised after expert interviews and the pilot (January 2027)."
+title: "Structured Interview Questionnaire: DPP Readiness among Indian Textile and Apparel Exporters (DRAFT v0.2, fsQCA design)"
+subtitle: "One session per firm, 30–40 minutes, in person or by video. Draft for supervisor review; to be revised after expert review and 3–5 pretest interviews (Nov–Dec 2026)."
 ---
 
 # Notes for the research team (not shown to respondents)
 
-* **Waves.** Wave 1 (Feb 2027) covers sections A–F. Wave 2 (Mar 2027, 3–4 weeks later, same firm and ideally the same informant) covers sections G–J. The firm ID links the two waves.
-* **Scale.** Unless stated otherwise, items use 1 = strongly disagree … 7 = strongly agree, with a separate "don't know" option that is coded as missing.
-* **Reference period.** "The last 12 months" unless stated otherwise.
-* **Item codes** (e.g., `BTP1`) match the variable names in `analysis/pls_model.R`.
-* **Sources.** "Adapted from" means wording is reworded for the DPP context and must be checked against the original paper before finalising. "New" items need content validation (expert review + card sort).
-* **Ethics.** Institutional ethics approval and informed consent are required before fielding. Firm-level responses are confidential and reported only in aggregate.
-* **Languages.** English master, with Hindi and Tamil versions produced by translation and back-translation.
+* **Design.** A single session per firm, with no second wave. Target 40–60 firms, sampled purposively for diversity in cluster, tier, size and integration (see the quota grid in Online Appendix C).
+* **Mode.** The researcher reads the questions and records the answers. Two researchers attend where possible; one asks, the other notes.
+* **Factual first.** Sections C, D, E and G are factual yes/no checklists about *current* practice. Where the respondent agrees, ask to **see one sample document** (e.g., a transaction certificate, test report or buyer data template) and tick "sighted".
+* **Scale items.** Sections F and H use 1 = strongly disagree … 7 = strongly agree. "Don't know" is coded as missing.
+* **Codes** (e.g., `DPR_3`) match `analysis/fsqca.R`. How each section becomes a fuzzy set is set out in Online Appendix A.
+* **Ethics.** Institutional ethics approval and informed consent are required before fielding. Firm identities are confidential; case descriptions in the paper are anonymised.
 
 ---
 
-# Introduction (shown to respondents)
+# Introduction (read to the respondent)
 
-> Thank you for taking part in this study on how textile and apparel exporters prepare for the European Union's new product-data requirements, including the **Digital Product Passport (DPP)**. A DPP is a digital record, reached through a QR code on each product, that shows information such as fibre composition, where each production stage took place, chemicals used, environmental footprint, durability and recyclability. EU rules will require it for clothing and textiles in the coming years.
+> Thank you for taking part in this study on how textile and apparel exporters prepare for the European Union's new product-data rules, including the **Digital Product Passport (DPP)**. A DPP is a digital record, reached through a QR code on each product, that shows information such as fibre composition, where each production stage took place, chemicals used, environmental footprint, durability and recyclability.
 >
-> The survey takes about 15 minutes. There are no right or wrong answers. Your responses are confidential and will be reported only in aggregate. Please answer for **your firm (the legal entity that exports)**.
+> Most questions are simple yes/no questions about what your firm does **today**. There are no right or wrong answers. Your answers are confidential and will only be reported without naming your firm.
 
 ---
 
-# WAVE 1
-
-## Section A: Screening and informant
+# Section A: Respondent
 
 | Code | Question | Response |
 |---|---|---|
-| SCR1 | Has your firm shipped goods to buyers in the European Union in the last 12 months? | Yes / No (*No → end*) |
-| SCR2 | What is your role? | Owner/MD/Director; Head of compliance/sustainability; Head of merchandising/sourcing; Head of production/operations; Other (specify) |
-| SCR3 | How many years have you worked at this firm? | number |
-| KNOW1 | I am knowledgeable about my firm's dealings with EU buyers on sustainability and product data. | 1–7 |
-| INV1 | I am personally involved in responding to buyers' data and compliance requests. | 1–7 |
+| A1 | Your role | Owner/MD/Director; Head of compliance/sustainability; Head of merchandising/sourcing; Head of production; Other |
+| A2 | Years at this firm | number |
+| A3 | How involved are you in handling EU buyers' data and compliance requests? | Not involved / Somewhat / Directly responsible |
 
-*Exclude informants with KNOW1 or INV1 ≤ 3, or tenure under 1 year.*
+*Proceed only if A3 = Somewhat or Directly responsible.*
 
-## Section B: Firm profile (controls)
+# Section B: Firm profile (sampling, description and robustness)
 
 | Code | Question | Response |
 |---|---|---|
-| SIZE | Number of permanent employees (all units) | number (log-transformed in analysis) |
-| AGE_EXP | Number of years your firm has been exporting | number |
-| TIER | What does your firm mainly sell to EU customers? | Finished garments/home textiles (tier 1); Fabric (tier 2); Yarn (tier 3); Fibre (tier 4); Other |
-| VI1–VI6 | Which stages do you perform **in-house**? (tick all) | Spinning; Weaving/Knitting; Dyeing/Printing/Finishing; Cutting & sewing; Trims/Embroidery; Packing/Logistics. The count of ticks gives `VI` |
-| CERT | Which certifications does your firm currently hold? (tick all) | GOTS; GRS/RCS; OEKO-TEX (Standard 100/STeP); bluesign; Higg FEM verified; SA8000/SLCP; ZDHC; Better Cotton member; ISO 14001; Other. The count gives `CERT` |
-| EUSHARE | Approximately what % of your export turnover goes to the EU? | 0–100 |
-| BUYCON | What % of your EU turnover comes from your largest EU buyer? | 0–100 |
-| OWN | Ownership | Indian private; Indian listed; Foreign/JV; Other |
-| CLUSTER | Main production location | Tiruppur/Coimbatore; Bengaluru; NCR (Delhi/Noida/Gurugram); Ludhiana; Kolkata; Mumbai/Surat; Jaipur; Other |
+| B1 | Has the firm shipped to EU buyers in the last 12 months? | Yes / No (*No → end*) |
+| B2 | Permanent employees (all units) | number |
+| B3 | Main product sold to EU buyers | Garments/home textiles (tier 1); Fabric (tier 2); Yarn (tier 3); Fibre (tier 4) |
+| B4 | Approximate % of export turnover going to the EU | 0–100 |
+| B5 | Main production location | Tiruppur/Coimbatore; Bengaluru; NCR; Ludhiana; Kolkata; Other |
+| B6 | Certifications currently held (tick all) | GOTS; GRS/RCS; OEKO-TEX; bluesign; Higg FEM verified; ZDHC; Better Cotton; ISO 14001; Other. The count gives `CERT` (robustness condition) |
 
-## Section C: Buyer-transmitted regulatory information pressure (BTP)
-*Construct: the extent to which EU buyers pass EU product-data requirements on to the firm. Adapted from Zhu and Sarkis (2007) institutional pressure items.*
+# Section C: Vertical integration (condition `VI`)
+
+"Which of these stages does your firm perform **in its own units** (not job work)?"
+
+| Code | Stage | In-house? |
+|---|---|---|
+| VI_1 | Spinning | Y/N |
+| VI_2 | Weaving or knitting | Y/N |
+| VI_3 | Dyeing, printing or finishing | Y/N |
+| VI_4 | Cutting and sewing | Y/N |
+| VI_5 | Embroidery, trims or washing | Y/N |
+| VI_6 | Packing and dispatch | Y/N |
+
+`VI` = number of Yes answers (1–6).
+
+# Section D: Digital traceability (condition `DTC`)
+
+"Does your firm currently…"
+
+| Code | Practice | Y/N | Sighted |
+|---|---|---|---|
+| DTC_1 | …record input lots (fibre, yarn, fabric) digitally and link them to each style or batch? | | |
+| DTC_2 | …hold this traceability data in one system (ERP or traceability platform), not separate spreadsheets or paper? | | |
+| DTC_3 | …trace a finished product back to its input lots within one working day? | | |
+| DTC_4 | …exchange product data with buyers in a structured format (portal upload, API, standard template)? | | |
+| DTC_5 | …store certificates and test reports digitally, linked to the products they cover? | | |
+
+`DTC` = number of Yes answers (0–5).
+
+# Section E: Multi-tier data sharing (condition `MDS`)
+
+| Code | Question | Response |
+|---|---|---|
+| MDS_N | How many **key** upstream suppliers (mills, dyehouses, spinners, fibre suppliers) do you buy from regularly? | number |
+| MDS_1 | Of these, how many provide you with data on **material origin** (country and facility) when asked? | number |
+| MDS_2 | Of these, how many provide data on **chemicals and wet-processing inputs**? | number |
+| MDS_3 | Of these, how many tell you who **their own** suppliers are? | number |
+
+`MDS` = mean of (MDS_1, MDS_2, MDS_3) ÷ MDS_N × 100, i.e. the % of key suppliers sharing data.
+
+# Section F: Buyer pressure (condition `BTP`)
 
 "In the last 12 months, our EU buyers…"
 
-| Code | Item |
+| Code | Item (1–7) |
 |---|---|
-| BTP1 | …have asked us for more detailed product-level sustainability data than before. |
-| BTP2 | …have told us that data we provide will be used for EU legal requirements (e.g., the Digital Product Passport, the ban on destroying unsold goods, or extended producer responsibility). |
-| BTP3 | …have made the provision of product data a condition for future orders. |
-| BTP4 | …have asked us for data about our own suppliers (mills, dyehouses, spinners). |
-| BTP5 | …have added data-provision clauses to contracts, codes of conduct or supplier manuals. |
+| BTP_1 | …have made the provision of product-level data a condition for future orders. |
+| BTP_2 | …have asked us for data about our own suppliers (mills, dyehouses, spinners). |
+| BTP_3 | …have linked their data requests to EU legal requirements (the passport, the ban on destroying unsold goods, or producer responsibility). |
 
-## Section D: Data-appropriation concern (DAC)
-*Construct: the firm's concern that product and supply chain data it shares will be used against its interests. New scale, informed by King et al. (2023) on stakeholder concerns about data sharing.*
+`BTP` = mean of the three items.
 
-| Code | Item |
-|---|---|
-| DAC1 | We worry that buyers will use the cost or process data we share to push our prices down. |
-| DAC2 | We worry that sharing the names of our suppliers will allow buyers to bypass us and buy directly. |
-| DAC3 | We are concerned that product data shared through digital passports could reach our competitors. |
-| DAC4 | Our own suppliers are reluctant to share data because they fear how it will be used. |
+# Section G: DPP readiness (outcome `DPR`)
 
-## Section E: Digital traceability capability (DTC)
-*Construct: the extent to which material and process data are captured in structured, interoperable digital form linked to batches and styles. Adapted from supply visibility measures (Srinivasan & Swink, 2018) and traceability literature (Agrawal et al., 2021).*
+"If an EU buyer asked **today**, could you supply **verified data at style or batch level** on…"
 
-| Code | Item |
-|---|---|
-| DTC1 | We record material inputs (fibre, yarn, fabric lots) digitally and link them to each production batch or style. |
-| DTC2 | Our traceability data are held in an integrated system (e.g., ERP or a traceability platform), not in separate spreadsheets or paper files. |
-| DTC3 | We can trace a finished product back to its input material lots within one working day. |
-| DTC4 | Our product data use standard identifiers or formats that can be exchanged with buyers' systems (e.g., GS1/GTIN, API, structured file upload). |
-| DTC5 | Certificates and test reports are stored digitally and linked to the products they cover. |
-
-## Section F: Multi-tier data sharing (MDS)
-*Construct: the extent to which upstream suppliers (tier 2 and beyond) provide timely, accurate and complete data to the firm. Adapted from Fawcett et al. (2007) and Kembro et al. (2017).*
-
-"Our main suppliers (fabric mills, dyehouses, spinners, fibre suppliers)…"
-
-| Code | Item |
-|---|---|
-| MDS1 | …share data on material origin and composition with us on time. |
-| MDS2 | …share data on chemicals and wet-processing inputs with us. |
-| MDS3 | …share environmental data (energy, water, emissions) for the products we buy. |
-| MDS4 | …tell us who *their* suppliers are when we ask. |
-| MDS5 | …provide data that we can trust without re-checking. |
-
-## Section F2: Perceived regulatory uncertainty (RU), control
-
-| Code | Item |
-|---|---|
-| RU1 | It is unclear to us exactly which data the EU Digital Product Passport will require. |
-| RU2 | It is unclear to us when the EU product-data requirements will apply to our products. |
-| RU3 | Different EU buyers ask us for different, inconsistent data. |
-
-## Section F3: Marker variable (MV), for common-method testing
-*Theoretically unrelated to the model's constructs.*
-
-| Code | Item |
-|---|---|
-| MV1 | I prefer to receive work communication by phone rather than by email. |
-| MV2 | I usually read the news in print rather than online. |
-| MV3 | I prefer meetings in person rather than by video. |
-
----
-
-# WAVE 2
-
-## Section G: DPP readiness (DPR)
-*Construct: the firm's ability to supply, at style or batch level, the data categories expected in an EU textile DPP. New scale; categories derived from ESPR Art. 7 and Annex III, the EPRS (2024) textile DPP study, and Jensen et al. (2023).*
-
-"If an EU buyer asked today, we could provide **verified data at style or batch level** on…"
-
-| Code | Item |
-|---|---|
-| DPR1 | …fibre composition, including recycled content. |
-| DPR2 | …the country and facility of each processing stage (spinning, weaving/knitting, wet processing, cutting & sewing). |
-| DPR3 | …substances of concern and chemicals used in processing. |
-| DPR4 | …carbon and water footprint of the product. |
-| DPR5 | …durability and physical test results (e.g., pilling, colour fastness, seam strength). |
-| DPR6 | …care, repair and end-of-life information (e.g., recyclability, separability of trims). |
-| DPR7 | …all of the above in a machine-readable format, within the time our buyer requires. |
-
-## Section H: Circular supply chain capability (CSC)
-*Construct: the firm's ability to keep materials in use across its supply chain. Adapted from circular economy practices in textiles (Jia et al., 2020).*
-
-| Code | Item |
-|---|---|
-| CSC1 | We systematically collect and sort pre-consumer waste (cutting waste, rejects) for reuse or recycling. |
-| CSC2 | We use a meaningful share of recycled or regenerated fibres in our products. |
-| CSC3 | We work with buyers on design-for-recycling (e.g., mono-material fabrics, removable trims). |
-| CSC4 | We have arrangements to resell, rework or donate unsold or rejected stock instead of destroying it. |
-| CSC5 | We take part in take-back or recycling programmes run by buyers or third parties. |
-
-## Section I: EU export performance (EXP)
-*Construct: the firm's performance with EU buyers relative to its main competitors over the last 12 months.*
-
-"Compared with our main competitors, in the last 12 months…"
-
-| Code | Item |
-|---|---|
-| EXP1 | …our order volume from EU buyers has grown faster. |
-| EXP2 | …EU buyers have given us a larger share of their business. |
-| EXP3 | …we have won new EU buyers more easily. |
-| EXP4 | …the prices or margins we obtain from EU buyers have been better. |
-| EUSHARE_CHG | (Objective triangulation) The change in the EU share of your export turnover compared with the previous financial year: decreased >10 points / decreased 1–10 / no change / increased 1–10 / increased >10 |
-
-## Section J: Open questions (optional)
-
-* OPEN1: What is the single biggest obstacle to providing the product data EU buyers ask for?
-* OPEN2: What support (from buyers, industry associations or government) would help most?
-* Would you like a summary of the findings? (email)
-
----
-
-# Item count and timing
-
-| Wave | Reflective items | Profile/control items | Estimated time |
+| Code | Data category | Y/N | Sighted |
 |---|---|---|---|
-| 1 | BTP 5, DAC 4, DTC 5, MDS 5, RU 3, MV 3 = 25 | ~12 | 12–14 min |
-| 2 | DPR 7, CSC 5, EXP 4 = 16 | 2 | 6–8 min |
+| DPR_1 | Fibre composition, including recycled content | | |
+| DPR_2 | Country and facility of each processing stage | | |
+| DPR_3 | Substances of concern and chemicals used | | |
+| DPR_4 | Carbon and/or water footprint | | |
+| DPR_5 | Durability and physical test results | | |
+| DPR_6 | Care, repair and end-of-life information (recyclability, separability of trims) | | |
+| DPR_7 | All of the above in a machine-readable format, within the time the buyer requires | | |
+
+`DPR` = number of Yes answers (0–7).
+
+# Section H: Data-appropriation concern (condition `DAC`)
+
+| Code | Item (1–7) |
+|---|---|
+| DAC_1 | We worry that buyers will use the cost or process data we share to push our prices down. |
+| DAC_2 | We worry that sharing the names of our suppliers will let buyers bypass us and buy directly. |
+| DAC_3 | Our own suppliers hold back data because they fear how it will be used. |
+
+`DAC` = mean of the three items. *(Asked after Section G, so that the readiness answers are not coloured by these concerns.)*
+
+# Section I: Circular capability (outcome `CSC`)
+
+"Does your firm currently…"
+
+| Code | Practice | Y/N |
+|---|---|---|
+| CSC_1 | …collect and sort cutting waste and rejects for reuse or recycling? | |
+| CSC_2 | …use recycled or regenerated fibres in at least some regular product lines? | |
+| CSC_3 | …work with buyers on design-for-recycling (e.g., mono-material fabrics, removable trims)? | |
+| CSC_4 | …resell, rework or donate unsold or rejected stock instead of destroying it? | |
+| CSC_5 | …take part in a take-back or recycling programme run by a buyer or third party? | |
+
+`CSC` = number of Yes answers (0–5).
+
+# Section J: Open questions (case knowledge; notes recorded verbatim where possible)
+
+* J1: Walk us through the last time an EU buyer asked you for product or supplier data. What happened?
+* J2: What is the single biggest obstacle to providing the data EU buyers ask for?
+* J3: What would make you, or your suppliers, more willing to share data?
+
+---
+
+# Timing
+
+| Section | Minutes |
+|---|---|
+| A–B Profile | 5 |
+| C–E Integration, traceability, sharing | 8–10 |
+| F–I Pressure, readiness, concern, circularity | 8–10 |
+| J Open questions | 10–15 |
+| **Total** | **30–40** |

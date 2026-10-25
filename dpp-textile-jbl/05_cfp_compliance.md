@@ -8,18 +8,18 @@ Each requirement in the call (*To the Point! Supply Chain Management Design: See
 
 | # | Requirement in the call | Status | Evidence |
 |---|---|---|---|
-| 1 | Empirical, based on data collected in **2026 or 2027**; secondary data must be the latest available | Met (by design) | Primary survey Feb–Mar 2027. Secondary facts are FY2025-26 and 2026 sources |
-| 2 | **3,500–4,000 words including references**; abstract, figures and tables excluded | Met | Body 2,784 + references 1,005 = **3,789** (about 200 words of headroom) (placeholders filled with numbers keep this roughly constant; recheck after the results are written) |
-| 2b | Online appendices encouraged for conciseness | Met | `04_online_appendix.md` holds measures, analysis plan and timeline |
+| 1 | Empirical, based on data collected in **2026 or 2027**; secondary data must be the latest available | Met (by design) | Structured interviews Dec 2026 – Feb 2027. Secondary facts are FY2025-26 and 2026 sources |
+| 2 | **3,500–4,000 words including references**; abstract, figures and tables excluded | Met | Body 2,758 + references 896 = **3,654** (placeholders filled with numbers keep this roughly constant; recheck after the results are written) |
+| 2b | Online appendices encouraged for conciseness | Met | `04_online_appendix.md` holds calibration anchors, the fsQCA protocol, robustness checks and the timeline |
 | 3 | Reader-friendly for scholars **and** practitioners | Met | Plain-language intro; "Key insights for practitioners" box; policy section |
-| 4 | High-quality, original, "cool" topic; theory to make sense of chaos | Met | DPP + circular textiles; OIPT plus institutional decoupling, with competing hypotheses H5a/H5b |
+| 4 | High-quality, original, "cool" topic; theory to make sense of chaos | Met | DPP + circular textiles; OIPT read configurationally (equifinal routes) plus institutional decoupling (P4); fsQCA |
 | 5 | Align with *Journal of Business Logistics* standards | Partly met (author action needed) | APA 7 references, unnumbered APA headings, anonymised manuscript (no author names in the text or docx metadata). **To do:** check the current JBL author guidelines on Wiley for the title page, abstract length and figure format before April |
 
 # Abstract requirements (deadline **31 December 2026**)
 
 | Requirement | Status | Evidence |
 |---|---|---|
-| ≤ 500 words | Met | 495 words *including* title and keywords |
+| ≤ 500 words | Met | 493 words *including* title and keywords |
 | What are you going to do? | Met | Labelled paragraph 1 |
 | Why should readers care? | Met | Labelled paragraph 2 |
 | What is your theoretical lens? | Met | Labelled paragraph 3 |
@@ -31,10 +31,10 @@ Each requirement in the call (*To the Point! Supply Chain Management Design: See
 
 | Call topic bullet | How the paper speaks to it |
 |---|---|
-| Connections and trade-offs among sustainability, risk and operational excellence | Circularity vs. decoupling (H5); compliance cost vs. competitiveness (Discussion) |
+| Connections and trade-offs among sustainability, risk and operational excellence | Circularity vs. decoupling (P4); compliance cost vs. competitiveness (Discussion) |
 | Redesigning global SC footprints amid geopolitical rivalry | U.S. tariffs and the EU–India FTA redirect Indian exports to the EU |
 | Public policy for SC transformation | Policy implications: shared data infrastructure, data-use safeguards |
-| Value creation across organisational boundaries | Multi-tier data sharing; data-appropriation concern |
+| Value creation across organisational boundaries | Integrated vs. networked routes; data-appropriation concern |
 | Technology to create distinctive SC capabilities | Digital traceability capability and the DPP |
 
 # Timeline set by the call
@@ -49,7 +49,7 @@ Each requirement in the call (*To the Point! Supply Chain Management Design: See
 
 # Open items before submission
 
-1. Fill all `[ ]` placeholders from the 2027 data only, and then recount the words (target 3,500–4,000 including references).
+1. Fill all `[ ]` placeholders from the 2026–27 interview data only, and then recount the words (target 3,500–4,000 including references).
 2. Verify every reference not marked as checked in `README.md`.
 3. Read the current JBL author guidelines and two or three recent JBL papers to match their format.
 4. Prepare the separate title page with authors (not in the blinded manuscript).
