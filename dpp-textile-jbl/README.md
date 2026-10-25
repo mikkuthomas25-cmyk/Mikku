@@ -13,9 +13,22 @@ Submission package for the **Journal of Business Logistics** Special Topic Forum
 | `04_online_appendix.md` / `.docx` | Calibration anchors, fsQCA protocol, robustness, quota grid, timeline | Draft |
 | `05_cfp_compliance.md` / `.docx` | Requirement-by-requirement check against the call | Current |
 | `figure1_model.svg` / `.png` | Figure 1 (configurational model) | Final |
-| `analysis/fsqca.R` | QCA-package pipeline: calibration, necessity, sufficiency, robustness (synthetic-data mode for testing) | **Not yet executed**; R was unavailable while drafting |
+| `analysis/fsqca.py` | **Primary analysis.** Python fsQCA: calibration, necessity, truth tables, Quine–McCluskey minimisation, intermediate solutions with core conditions, robustness | Tested on simulated data |
+| `analysis/fsqca.R` | Cross-check with the R `QCA` package | **Not yet executed**; R was unavailable while drafting |
+| `simulation/simulate_survey.py` + `SIMULATION_ASSUMPTIONS.md` | Answers every questionnaire item for 50 **fictional** firms in seven Indian-cluster archetypes | Pipeline test only |
+| `data/SIMULATED_responses.csv` / `.xlsx` | The simulated responses (column `SIMULATED = YES`) | **Not real data** |
+| `data/TEMPLATE_responses.csv` | Blank header row: enter your real interview data in this layout | Ready |
+| `results/fsqca_results.md` / `calibrated_sets.csv` | Output of `fsqca.py` (currently from simulated data) | Regenerate with real data |
+| `02b_manuscript_ILLUSTRATIVE_simulated.md` / `.docx` | The paper with simulated results filled in and the theory drafted (3,928 words) | **Watermarked; not for submission** |
 
 Rebuild the Word files with: `bash build_docx.sh`
+
+## Swapping in your real data
+
+1. Enter one row per firm in `data/TEMPLATE_responses.csv` (save as e.g. `data/responses.csv`). Use `Y`/`N` for checklists, 1–7 for scale items and numbers for counts, exactly as in `03_survey_instrument.md`.
+2. Run `python3 analysis/fsqca.py data/responses.csv`. The results file is rewritten without the SIMULATED banner.
+3. Rewrite the Results and Discussion of `02_manuscript.md` **from the new output**, using `02b_...` only as a guide to structure. If the real configurations differ from the simulated ones, the theory must change with them.
+4. Delete `data/SIMULATED_*`, `results/` from the simulation, and `02b_...` before sharing the package.
 
 ## What the call requires, and how this package meets it
 
@@ -30,7 +43,7 @@ Rebuild the Word files with: `bash build_docx.sh`
 
 ## Honesty notes (read before submitting)
 
-1. **No data have been collected.** Every `[ ]` and `[N]` in the manuscript must be filled from the real 2026–27 interviews. The R script's synthetic mode exists only to test the code.
+1. **No real data have been collected.** The simulated data and the illustrative manuscript encode our own assumptions (see `simulation/SIMULATION_ASSUMPTIONS.md`), so their "findings" cannot support any claim. Every `[ ]` and `[N]` in the manuscript must be filled from the real 2026–27 interviews. The R script's synthetic mode exists only to test the code.
 2. **Citation verification log.** Checked online during drafting: Jensen et al. (2023); King et al. (2023); Srinivasan & Swink (2018); the ESPR/DPP timeline; the destruction ban (Delegated Reg. (EU) 2026/296); Directive (EU) 2025/1892; the EU–India FTA; the India export figures. **All other references, including the fsQCA methods sources (Ragin 2008; Fiss 2011; Greckhamer et al. 2018; Misangyi et al. 2017; Schneider & Wagemann 2012; Dusa 2019), come from my knowledge of established literature and must be checked against the originals before submission.** Exact titles still to confirm: Delegated Regulation 2026/296, the Commission's FTA press release, and the Reuters article.
 3. Calibration anchors are set from theory, before data collection, and must be reviewed by the expert panel. Don't tune them afterwards to improve the results; robustness check R1 shows sensitivity instead.
 4. JBL's previous *To the Point!* papers could not be opened from this environment. Read two or three of them to calibrate tone and length, and check whether the journal has published fsQCA studies you can cite as precedent.

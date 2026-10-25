@@ -11,6 +11,7 @@ subtitle: "Appendix A (measures and calibration), B (fsQCA protocol and robustne
 |---|---|---|---|---|---|---|
 | DPP readiness (DPR) | Outcome 1 | Data categories supplied today (0–7) | 1 | 3.5 | 6 | Six or seven categories ≈ the textile DPP data set expected by EPRS (2024); one or none = no capability |
 | Circular capability (CSC) | Outcome 2 | Practices in place (0–5) | 0 | 2.5 | 4 | Four or more practices = circularity built into routine; none = linear |
+| Formal circularity (CSCF) | Outcome 2b | CSC_2, CSC_3, CSC_5 in place (0–3) | 0 | 1.5 | 3 | Separates brand-led circular practice from informal waste sale and surplus resale, which need no product data |
 | Digital traceability (DTC) | Condition | Digital practices (0–5) | 1 | 2.5 | 4 | Four or more = integrated digital records; one or none = paper/spreadsheet |
 | Vertical integration (VI) | Condition | Stages in-house (1–6) | 1 | 3.5 | 5 | Five or more = mill-to-garment; one = garment-only or trading |
 | Multi-tier data sharing (MDS) | Condition | % of key suppliers sharing data | 10 | 50 | 90 | Most suppliers sharing vs. almost none |
@@ -36,6 +37,7 @@ fsQCA does not use latent-variable estimation, and with 40–60 firms an EFA or 
 * Each condition and its negation is tested for high and low readiness, and for high and low circular capability
 * A condition counts as necessary if consistency ≥ 0.90 and coverage is not trivial (relevance of necessity, RoN ≥ 0.60) (Schneider & Wagemann, 2012)
 * Optional: necessary condition analysis (NCA) is reported alongside for necessity *in degree*
+* Buyer pressure is expected to be near-universal among EU suppliers, so its RoN is reported explicitly. A condition present in almost all cases can pass the consistency test while being trivial
 
 ## B.2 Sufficiency analysis
 
@@ -49,7 +51,7 @@ fsQCA does not use latent-variable estimation, and with 40–60 firms an EFA or 
 | Directional expectations (high DPR) | DTC present; VI present; MDS present; BTP present; DAC absent |
 | Directional expectations (low DPR) | DTC absent; VI absent; MDS absent; BTP present (pressure without capacity); DAC present |
 | Untenable assumptions | Checked with `SetMethods`; no simplifying assumption may contradict P2 (necessity of DTC) |
-| Outcome 2 (CSC) | Conditions: DPR, VI, MDS, BTP, CERT. P4 is supported if DPR alone is not sufficient (consistency < 0.80) and appears only in conjunction with other conditions |
+| Outcome 2 (CSC and CSCF) | Run for all circular practices and for formal practices only. Conditions: DPR, VI, MDS, BTP, CERT. P4 is supported if DPR alone is not sufficient (consistency < 0.80) and appears only in conjunction with other conditions |
 
 ## B.3 Robustness (Oana & Schneider-style checks)
 
@@ -70,7 +72,7 @@ A single respondent answers everything in one session. Mitigation: factual check
 
 ## B.5 Software
 
-R with the `QCA` (Dusa, 2019) and `SetMethods` packages (script: `analysis/fsqca.R`), or fsQCA 4.x as a cross-check.
+Primary: `analysis/fsqca.py` (Python implementation of this protocol). Cross-check: R with the `QCA` (Dusa, 2019) and `SetMethods` packages (`analysis/fsqca.R`), or fsQCA 4.x.
 
 # Appendix C: Sampling and timeline
 
