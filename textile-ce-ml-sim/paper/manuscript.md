@@ -350,7 +350,51 @@ points or less (Law, 2015). Table 1 summarises the experiments.
 | E5 | RQ5 | 5 labelling/retraining policies × spec (2); 52 weekly periods | 10 trajectories |
 | E6 | robustness | one-at-a-time low/high for 11 parameters × spec (2) × τ (0, 0.8) | 30 |
 
-[Sections 4–7 to be written from results.]
+## 4. Results
+
+All values are means over replications with 95% confidence-interval half-widths;
+differences between policies are paired across common random numbers. Summary tables are
+in `results/tables/`.
+
+### 4.1 Item-level accuracy and system circularity diverge (E1)
+
+Across the RMSEP range of 1–6.6%, the sensor model produces item-level accuracies of
+98.7% to 80.3% (Table 2), which brackets the accuracies reported for laboratory and
+industrial settings in Section 2.2. Without abstention (τ = 0) and with a 95% cotton
+specification, cotton recovery falls from 91.6% to 70.7% across that range. No cotton bale
+is rejected at any σ: misclassified items near the 95% class boundary contaminate bales
+only marginally, and mean bale purity stays at 98.4–98.7%. At this specification,
+sensor error costs *yield* (cotton routed to the wrong line or the residual), not
+*acceptance*.
+
+Under a 98% specification the picture changes. The same bale purities now fall
+close to the threshold, and 13.6% of cotton bales are rejected even with the best sensor
+(σ = 1%), rising to 28.7% at σ = 6.6%. Improving the sensor from 2% to 1% RMSEP
+raises recovery by only 1.3 points (77.9% → 79.2%), because at that point the residual
+contamination comes from sources that are not the classifier: mechanical discharge
+errors and elastane in "cotton" garments (quantified in E6).
+
+Figure 1 shows the central result. Raising the confidence threshold τ increases the
+accuracy of auto-sorted items monotonically at every σ—exactly the risk–coverage
+behaviour that selective-classification studies report—but cotton recovery is
+non-monotone: it rises for moderate τ and collapses beyond it. With σ = 3.5% and a 95%
+specification, the recovery-maximising threshold is τ = 0.6 (recovery 88.4%, +5.8
+points over τ = 0, paired CI ±0.05), while the accuracy-maximising threshold τ = 0.99
+delivers 98.8% auto-accuracy and only 31.4% recovery, 57.0 points less than the
+optimum. Under the 98% specification the collapse is sharper, because items that the
+overloaded manual station does handle are re-sorted with an 85% class accuracy; their
+errors push bale rejection from 15.6% at τ = 0 to 69.8% at τ = 0.99, and recovery
+falls to 9.5%. The recovery-optimal threshold decreases as the sensor gets worse
+(0.8 at σ ≤ 2%, 0.5–0.6 at σ ≥ 3.5% for the 95% spec) and, for the 98% spec and good
+sensors, is τ = 0: abstention does not pay at all.
+
+The mechanism is visible in the manual-station statistics. At σ = 3.5% the station
+receives 4% of items at τ = 0.5, 16% at τ = 0.7 and 58% at τ = 0.99; with two sorters
+it starts to overflow at τ ≈ 0.7 (20% of abstained items overflow at τ = 0.7, 78% at
+τ = 0.99), and overflow goes to the residual. **The operating point that a classification benchmark would select
+is among the worst for circularity.**
+
+[Sections 4.2–4.6 and 5–7 to be written from E2–E6 results.]
 
 ## References (draft — see docs/literature.md for verification status)
 

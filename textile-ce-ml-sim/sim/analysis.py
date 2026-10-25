@@ -211,3 +211,22 @@ if __name__ == "__main__":
                    "E4": "E4_dpp", "E5": "E5_drift", "E6": "E6_oat_sensitivity"}[e]).with_suffix(".csv").exists():
             globals()[f"fig_{e}"]()
             print("done", e)
+
+
+def paired_E1():
+    """Paired (CRN) differences: recovery-optimal tau vs tau=0 and vs accuracy-optimal tau=0.99."""
+    df = pd.read_csv(RES / "E1_accuracy_vs_circularity.csv")
+    t = pd.read_csv(TAB / "E1_summary.csv")
+    rows = []
+    for (spec, sg), g in t.groupby(["cfg_spec", "cfg_sigma"]):
+        best = g.loc[g.cotton_recovery_mean.idxmax(), "cfg_tau"]
+        d = df[(df.cfg_spec == spec) & (df.cfg_sigma == sg)].pivot(index="seed", columns="cfg_tau",
+                                                                    values="cotton_recovery")
+        for ref in (0.0, 0.99):
+            diff = d[best] - d[ref]
+            hw = diff.std(ddof=1) * stats.t.ppf(0.975, len(diff) - 1) / np.sqrt(len(diff))
+            rows.append(dict(spec=spec, sigma=sg, best_tau=best, ref_tau=ref,
+                             diff_mean=diff.mean(), diff_hw=hw))
+    out = pd.DataFrame(rows)
+    out.to_csv(TAB / "E1_paired.csv", index=False)
+    return out
