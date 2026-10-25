@@ -41,7 +41,8 @@ subtitle: "One session per firm, 30–40 minutes, in person or by video. Draft f
 | B3 | Main product sold to EU buyers | Garments/home textiles (tier 1); Fabric (tier 2); Yarn (tier 3); Fibre (tier 4) |
 | B4 | Approximate % of export turnover going to the EU | 0–100 |
 | B5 | Main production location | Tiruppur/Coimbatore; Bengaluru; NCR; Ludhiana; Kolkata; Other |
-| B6 | Certifications currently held (tick all) | GOTS; GRS/RCS; OEKO-TEX; bluesign; Higg FEM verified; ZDHC; Better Cotton; ISO 14001; Other. The count gives `CERT` (robustness condition) |
+| B6 | Certifications currently held (tick all) | GOTS; GRS/RCS; OCS; OEKO-TEX; bluesign; Higg FEM verified; ZDHC; Better Cotton; ISO 14001; Other (descriptive) |
+| B7 | **Chain-of-custody coverage (condition `CERT`).** Approximately what % of your EU shipments in the last 12 months were covered by **transaction certificates** under GOTS, GRS, RCS or OCS? (0 if none) | 0–100%. *Ask to see one recent transaction certificate.* |
 
 # Section C: Vertical integration (condition `VI`)
 
@@ -83,7 +84,7 @@ subtitle: "One session per firm, 30–40 minutes, in person or by video. Draft f
 
 `MDS` = mean of (MDS_1, MDS_2, MDS_3) ÷ MDS_N × 100, i.e. the % of key suppliers sharing data.
 
-# Section F: Buyer pressure (condition `BTP`)
+# Section F: Buyer pressure (`BTP`, background condition: reported descriptively and used in robustness check R4)
 
 "In the last 12 months, our EU buyers…"
 

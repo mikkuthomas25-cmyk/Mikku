@@ -23,9 +23,11 @@
   * CSC: waste sale < surplus resale < recycled fibre < design-for-recycling < take-back
 * **Supplier sharing (Section E):** origin data ≥ chemical data ≥ disclosure of sub-suppliers, and never more than the number of key suppliers.
 * **Likert items** are scattered (SD 0.9) around a firm-level mean and clipped to 1–7.
+* **Certification (item B7, v0.3):** firms holding a chain-of-custody scheme (GOTS, GRS/RCS, OCS) ship a share of EU volume under transaction certificates that depends on archetype (certification-led 70–98%, networked 40–85%, mills 25–60%, integrated 25–70%, others lower); firms without one ship 0%. Certificates are assumed to add up to about one readiness category at full coverage, and to drive readiness for certification-led firms. *This assumption creates the "borrowed" mechanism.*
 * **Circularity** depends on archetype, not on readiness. Informal practices (waste sale, surplus resale) are common everywhere, and formal practices are concentrated in large and certification-led firms. *This assumption drives the decoupling result for formal circularity.*
 * **Deliberate imperfection:** random noise (SD 0.6 on readiness) and archetype overlap produce contradictory and deviant cases, as in real data.
-* Seed `20261201`; rerunning the script reproduces the same 50 firms exactly.
+* Seed `20261201`; rerunning the script reproduces the same 50 firms exactly. (Adding item B7 in v0.3 changed the random draws, so v0.3 firms differ from v0.2.)
+* Every simulated firm has at least one informal circular practice, by construction: archetypes start at one or more practices, and waste sale is the easiest item.
 
 ## What the simulation can and cannot tell you
 

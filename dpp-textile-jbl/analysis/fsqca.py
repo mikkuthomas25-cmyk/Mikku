@@ -22,7 +22,11 @@ ROOT = os.path.join(HERE, "..")
 # ---- Calibration anchors (Online Appendix A.1): (full out, crossover, full in) -----
 ANCHORS = {
     "DPR": (1, 3.5, 6), "CSC": (0, 2.5, 4), "DTC": (1, 2.5, 4), "VI": (1, 3.5, 5),
-    "MDS": (10, 50, 90), "BTP": (2, 4, 6), "DAC": (2, 4, 6), "CERT": (0, 1.5, 3),
+    "MDS": (10, 50, 90), "BTP": (2, 4, 6), "DAC": (2, 4, 6),
+    # % of EU shipments under chain-of-custody transaction certificates (GOTS/GRS/RCS/OCS)
+    "CERT": (5, 50, 90),
+    # Firm size (employees): formal circularity is expected to need scale
+    "SIZE": (50, 250, 1000),
     # Formal circularity: recycled inputs, design-for-recycling, take-back (CSC_2, CSC_3, CSC_5)
     "CSCF": (0, 1.5, 3),
 }
@@ -40,7 +44,8 @@ def build_raw(d):
         "DPR": yes([f"DPR_{i}" for i in range(1, 8)]),
         "CSC": yes([f"CSC_{i}" for i in range(1, 6)]),
         "CSCF": yes(["CSC_2", "CSC_3", "CSC_5"]),
-        "CERT": d["CERT"],
+        "CERT": d["B7"],
+        "SIZE": d["B2"],
         "TIER": d["B3"],
         "cluster": d["B5"],
         "archetype": d.get("archetype", pd.Series([""] * len(d))),
@@ -246,7 +251,7 @@ def describe_solution(fs, terms, outcome, pars_terms):
 
 DIR_HIGH = {"VI": 1, "DTC": 1, "MDS": 1, "BTP": 1, "DAC": 0, "CERT": 1}
 DIR_LOW = {"VI": 0, "DTC": 0, "MDS": 0, "BTP": 1, "DAC": 1, "CERT": 0}
-DIR_CSC = {"DPR": 1, "VI": 1, "MDS": 1, "BTP": 1, "CERT": 1}
+DIR_CSC = {"DPR": 1, "VI": 1, "MDS": 1, "CERT": 1, "SIZE": 1}
 
 
 def run(fs, conds, outcome, dir_exp, incl=0.80, pri_cut=0.70, ncut=1):
@@ -293,7 +298,7 @@ def main():
     out = pd.concat([raw.set_index("firm"), fs.add_suffix("_fs")], axis=1)
     out.to_csv(os.path.join(ROOT, "results", "calibrated_sets.csv"))
 
-    conds = ["VI", "DTC", "MDS", "BTP", "DAC"]
+    conds = ["VI", "DTC", "MDS", "CERT", "DAC"]  # BTP is a background condition (robustness R4)
     md = []
     if simulated:
         md += ["# fsQCA results: SIMULATED DATA (pipeline test, not findings)", "",
@@ -331,7 +336,7 @@ def main():
 
     # P4: readiness and circularity
     dpr_csc = consistency(fs["DPR"], fs["CSC"])
-    csc_conds = ["DPR", "VI", "MDS", "BTP", "CERT"]
+    csc_conds = ["DPR", "VI", "MDS", "CERT", "SIZE"]
     circ = run(fs, csc_conds, "CSC", DIR_CSC)
     nec_csc = necessity(fs, csc_conds, "CSC")
     md += ["## 5. Readiness and circularity (P4)", "",
@@ -349,6 +354,8 @@ def main():
            fmt_tt(circf["tt"], csc_conds), "", fmt_solution(circf, "Intermediate solution for formal circularity (CSCF)")]
 
     # Robustness
+    fs_r6 = fs.copy()
+    fs_r6["DPR"] = calibrate((d[[f"DPR_{i}" for i in range(1, 7)]] == "Y").sum(axis=1), 1, 3, 5).values
     variants = {
         "Base": run(fs, conds, "DPR", DIR_HIGH),
         "R1 anchors +10%": run(calibrate_all(raw, 0.10), conds, "DPR", DIR_HIGH),
@@ -356,8 +363,10 @@ def main():
         "R2 consistency 0.75": run(fs, conds, "DPR", DIR_HIGH, incl=0.75),
         "R2 consistency 0.85": run(fs, conds, "DPR", DIR_HIGH, incl=0.85),
         "R3 frequency 2": run(fs, conds, "DPR", DIR_HIGH, ncut=2),
-        "R4 CERT replaces BTP": run(fs, ["VI", "DTC", "MDS", "CERT", "DAC"], "DPR", DIR_HIGH),
+        "R4 BTP replaces CERT": run(fs, ["VI", "DTC", "MDS", "BTP", "DAC"], "DPR", DIR_HIGH),
         "R5 tiers 1–2 only": run(fs[raw.set_index("firm")["TIER"] <= 2], conds, "DPR", DIR_HIGH),
+        "R6 DPR without DPR_7": run(fs_r6, conds, "DPR", DIR_HIGH),
+        "R7 BTP added (6 conditions)": run(fs, conds + ["BTP"], "DPR", DIR_HIGH),
     }
     md += ["## 6. Robustness (high readiness)", "",
            "| Variant | Intermediate solution | Consistency | Coverage |", "|---|---|---|---|"]

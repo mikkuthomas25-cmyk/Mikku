@@ -3,7 +3,7 @@
 Submission package for the **Journal of Business Logistics** Special Topic Forum
 *To the Point! Supply Chain Management Design: Seeking Research that Resonates* (2026/27).
 
-**Design (v0.2):** fuzzy-set qualitative comparative analysis (fsQCA) of 40–60 Indian textile and apparel exporters, using structured interviews from December 2026 to February 2027. This replaces the earlier PLS-SEM design (v0.1, in git history), which needed 200+ firms in two waves plus scale development.
+**Design (v0.3):** fuzzy-set qualitative comparative analysis (fsQCA) of 40–60 Indian textile and apparel exporters. The conditions are integration (own), supplier sharing (negotiate), chain-of-custody certification (borrow), digital traceability and data-appropriation concern; buyer pressure is a background condition. Data come from using structured interviews from December 2026 to February 2027. This replaces the earlier PLS-SEM design (v0.1, in git history), which needed 200+ firms in two waves plus scale development.
 
 | File | What it is | Status |
 |---|---|---|
@@ -20,7 +20,7 @@ Submission package for the **Journal of Business Logistics** Special Topic Forum
 | `data/TEMPLATE_responses.csv` | Blank header row: enter your real interview data in this layout | Ready |
 | `results/fsqca_results.md` / `calibrated_sets.csv` | Output of `fsqca.py` (currently from simulated data) | Regenerate with real data |
 | `01b_abstract_ILLUSTRATIVE_simulated.md` / `.docx` | Abstract as it would read with results (simulated) | **Watermarked; internal only, never submit** |
-| `02b_manuscript_ILLUSTRATIVE_simulated.md` / `.docx` | The paper with simulated results filled in and the theory drafted (3,928 words) | **Watermarked; not for submission** |
+| `02b_manuscript_ILLUSTRATIVE_simulated.md` / `.docx` | The paper with simulated results filled in and the theory drafted (3,907 words) | **Watermarked; not for submission** |
 
 Rebuild the Word files with: `bash build_docx.sh`
 
@@ -36,7 +36,7 @@ Rebuild the Word files with: `bash build_docx.sh`
 | STF requirement | How it is met |
 |---|---|
 | Empirical, with data from 2026/2027 | Structured interviews, Dec 2026 – Feb 2027 |
-| 3,500–4,000 words including references | 3,680 words (body 2,784 + references 896), with the results written as fill-in-the-blank sentences. Recount after filling them in |
+| 3,500–4,000 words including references | 3,822 words (body 2,926 + references 896), with the results written as fill-in-the-blank sentences. Recount after filling them in |
 | Germane, current, provocative | Destruction ban (July 2026), DPP Registry live (July 2026), EU–India FTA (Jan 2026), US tariffs. "Traceability without circularity?" (P4) |
 | Theory to make sense of chaos | Information processing theory read configurationally (Galbraith's alternative design strategies) + institutional decoupling |
 | STF topic bullets | Sustainability vs. operational trade-offs; global footprint and geopolitics; public policy; cross-boundary collaboration; technology |

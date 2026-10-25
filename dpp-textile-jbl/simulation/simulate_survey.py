@@ -15,6 +15,8 @@ Because the archetypes encode our own expectations, any configuration recovered 
 these data reflects those assumptions. That is why this is a pipeline test, not evidence.
 
 Usage: python3 simulate_survey.py  ->  ../data/SIMULATED_responses.csv / .xlsx
+
+v0.3: CERT is the % of EU shipments under chain-of-custody transaction certificates (item B7).
 """
 import csv
 import os
@@ -31,7 +33,12 @@ DTC_ORDER = ["DTC_5", "DTC_1", "DTC_2", "DTC_4", "DTC_3"]  # digital certificate
 DPR_ORDER = ["DPR_1", "DPR_5", "DPR_3", "DPR_2", "DPR_6", "DPR_4", "DPR_7"]  # fibre content easiest; machine-readable full set hardest
 CSC_ORDER = ["CSC_1", "CSC_4", "CSC_2", "CSC_3", "CSC_5"]  # waste sale & surplus resale common; take-back rare
 
-CERT_POOL = ["GOTS", "GRS/RCS", "OEKO-TEX", "bluesign", "Higg FEM verified", "ZDHC", "Better Cotton", "ISO 14001"]
+CERT_POOL = ["GOTS", "GRS/RCS", "OCS", "OEKO-TEX", "bluesign", "Higg FEM verified", "ZDHC", "Better Cotton", "ISO 14001"]
+COC = {"GOTS", "GRS/RCS", "OCS"}  # chain-of-custody schemes that issue transaction certificates
+# Share of EU shipments under transaction certificates, for firms holding a chain-of-custody scheme
+TC_SHARE = {"integrated_large": (25, 70), "networked_sme": (40, 85), "pressured_suspicious": (5, 30),
+            "digitised_isolated": (5, 35), "low_pressure_traditional": (0, 15), "certification_led": (70, 98),
+            "upstream_mill": (25, 60)}
 
 # --- Archetypes -------------------------------------------------------------------
 # Each value is a (low, high) range drawn uniformly, or a list to choose from.
@@ -184,7 +191,7 @@ def stages(tier, vi):
     return {f"VI_{i}": ("Y" if f"VI_{i}" in chosen else "N") for i in range(1, 7)}
 
 
-def readiness(rule, dtc, vi, mds, dac, certs):
+def readiness(rule, dtc, vi, mds, dac, certs, tc):
     """Number of passport data categories the firm can supply (0-7).
 
     Encodes the simulation's assumptions (see SIMULATION_ASSUMPTIONS.md), including
@@ -203,9 +210,13 @@ def readiness(rule, dtc, vi, mds, dac, certs):
     elif rule == "low_pressure":
         base = 0.6 + 0.6 * dtc
     elif rule == "certification":
-        base = 3.4 + 0.25 * certs    # transaction certificates substitute for in-house systems
+        base = 2.6 + 0.03 * tc       # transaction certificates substitute for in-house systems
     else:  # mill
         base = 2.2 + 0.4 * dtc
+    # Assumption ("borrowed" data): transaction certificates document fibre content and the
+    # facility of each stage, adding up to about one data category for full TC coverage.
+    if rule != "certification":
+        base += 0.012 * tc
     return int(min(7, max(0, round(base + rng.gauss(0, 0.6)))))
 
 
@@ -236,7 +247,8 @@ def build_firms():
             chem = min(origin, max(0, round(mds_n * share)))
             who = min(chem, max(0, round(mds_n * max(0, share - 0.15))))
 
-            dpr_n = readiness(a["dpr_rule"], dtc, vi, mds_pct, dac_mean, ncert)
+            tc = ri(*TC_SHARE[key]) if COC & set(certs) else 0
+            dpr_n = readiness(a["dpr_rule"], dtc, vi, mds_pct, dac_mean, ncert, tc)
             csc_n = ri(*a["csc"])
             note = a["notes"][j % len(a["notes"])]
 
@@ -255,7 +267,7 @@ def build_firms():
                 "B4": ri(*a["eu_share"]),
                 "B5": cluster,
                 "B6": "; ".join(certs),
-                "CERT": len(certs),
+                "B7": tc,
             }
             row.update(stages(tier, vi))
             row.update(checklist(DTC_ORDER, dtc))

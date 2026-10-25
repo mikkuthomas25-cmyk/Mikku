@@ -1,66 +1,78 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1150" height="440" viewBox="0 0 1150 440" font-family="Arial, Helvetica, sans-serif" font-size="15">
+<svg xmlns="http://www.w3.org/2000/svg" width="1150" height="470" viewBox="0 0 1150 470" font-family="Arial, Helvetica, sans-serif" font-size="15">
   <defs>
     <marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
       <path d="M0,0 L10,4 L0,8 z" fill="#222"/>
     </marker>
   </defs>
-  <rect width="1150" height="440" fill="#fff"/>
+  <rect width="1150" height="470" fill="#fff"/>
 
   <!-- Conditions -->
-  <rect x="20" y="60" width="230" height="290" rx="8" fill="#f4f4f4" stroke="#222" stroke-width="1.6"/>
-  <text x="135" y="88" text-anchor="middle" font-weight="bold">Conditions</text>
+  <rect x="20" y="40" width="240" height="300" rx="8" fill="#f4f4f4" stroke="#222" stroke-width="1.6"/>
+  <text x="140" y="68" text-anchor="middle" font-weight="bold">Conditions</text>
   <g font-size="14" fill="#111">
-    <text x="38" y="125">VI   Vertical integration</text>
-    <text x="38" y="170">DTC  Digital traceability</text>
-    <text x="38" y="215">MDS  Multi-tier data sharing</text>
-    <text x="38" y="260">BTP  Buyer pressure</text>
-    <text x="38" y="305">DAC  Data-appropriation concern</text>
+    <text x="36" y="105">VI    Vertical integration (own)</text>
+    <text x="36" y="150">MDS  Multi-tier sharing (negotiate)</text>
+    <text x="36" y="195">CERT Certification (borrow)</text>
+    <text x="36" y="240">DTC  Digital traceability</text>
+    <text x="36" y="285">DAC  Data-appropriation concern</text>
   </g>
-  <text x="135" y="380" text-anchor="middle" font-size="13" font-style="italic" fill="#333">P2: DTC necessary for high readiness</text>
+  <text x="140" y="362" text-anchor="middle" font-size="13" font-style="italic" fill="#333">Background: buyer pressure</text>
+  <text x="140" y="380" text-anchor="middle" font-size="13" font-style="italic" fill="#333">(near-universal; robustness only)</text>
 
   <!-- Configurations -->
   <g fill="#fff" stroke="#222" stroke-width="1.6">
-    <rect x="330" y="60"  width="290" height="70" rx="8"/>
-    <rect x="330" y="160" width="290" height="70" rx="8"/>
-    <rect x="330" y="280" width="290" height="70" rx="8" stroke-dasharray="6,4"/>
+    <rect x="330" y="30"  width="290" height="62" rx="8"/>
+    <rect x="330" y="112" width="290" height="62" rx="8"/>
+    <rect x="330" y="194" width="290" height="62" rx="8"/>
+    <rect x="330" y="300" width="290" height="62" rx="8" stroke-dasharray="6,4"/>
   </g>
   <g text-anchor="middle" fill="#111">
-    <text x="475" y="88" font-weight="bold">Integrated route (P1)</text>
-    <text x="475" y="113">VI ● DTC</text>
-    <text x="475" y="188" font-weight="bold">Networked route (P1)</text>
-    <text x="475" y="213">MDS ● DTC ● ~DAC</text>
-    <text x="475" y="308" font-weight="bold">Pressure under suspicion (P3)</text>
-    <text x="475" y="333">BTP ● DAC ● ~VI</text>
+    <text x="475" y="55" font-weight="bold">Owned route (P1)</text>
+    <text x="475" y="79">VI ● DTC</text>
+    <text x="475" y="137" font-weight="bold">Negotiated route (P1)</text>
+    <text x="475" y="161">MDS ● DTC ● ~DAC</text>
+    <text x="475" y="219" font-weight="bold">Borrowed route (P1, P2)</text>
+    <text x="475" y="243">CERT</text>
+    <text x="475" y="325" font-weight="bold">Suspicious and unsupported (P3)</text>
+    <text x="475" y="349">DAC ● ~VI ● ~CERT</text>
   </g>
+  <path d="M260,190 L295,190 M295,61 L295,331" stroke="#222" stroke-width="1.6" fill="none"/>
 
   <!-- Outcomes -->
   <g fill="#fff" stroke="#222" stroke-width="1.6">
-    <rect x="720" y="105" width="190" height="70" rx="8"/>
-    <rect x="720" y="280" width="190" height="70" rx="8"/>
-    <rect x="975" y="105" width="160" height="70" rx="8"/>
+    <rect x="720" y="108" width="190" height="70" rx="8"/>
+    <rect x="720" y="296" width="190" height="70" rx="8"/>
+    <rect x="975" y="60"  width="160" height="62" rx="8"/>
+    <rect x="975" y="160" width="160" height="62" rx="8"/>
   </g>
   <g text-anchor="middle" fill="#111">
-    <text x="815" y="135">High DPP</text>
-    <text x="815" y="155">readiness</text>
-    <text x="815" y="310">Low DPP</text>
-    <text x="815" y="330">readiness</text>
-    <text x="1055" y="135">Circular SC</text>
-    <text x="1055" y="155">capability</text>
+    <text x="815" y="138">High DPP</text>
+    <text x="815" y="158">readiness</text>
+    <text x="815" y="326">Low DPP</text>
+    <text x="815" y="346">readiness</text>
+    <text x="1055" y="86">Formal</text>
+    <text x="1055" y="106">circularity</text>
+    <text x="1055" y="186">Informal</text>
+    <text x="1055" y="206">circularity</text>
   </g>
 
-  <path d="M250,205 L290,205 M290,95 L290,315" stroke="#222" stroke-width="1.6" fill="none"/>
   <!-- Arrows -->
   <g stroke="#222" stroke-width="1.6" fill="none" marker-end="url(#a)">
-    <path d="M290,95 L328,95"/>
-    <path d="M290,195 L328,195"/>
-    <path d="M290,315 L328,315"/>
-    <path d="M620,95 L718,128"/>
-    <path d="M620,195 L718,152"/>
-    <path d="M620,315 L718,315"/>
-    <path d="M910,140 L973,140" stroke-dasharray="6,4"/>
+    <path d="M295,61 L328,61"/>
+    <path d="M295,143 L328,143"/>
+    <path d="M295,225 L328,225"/>
+    <path d="M295,331 L328,331"/>
+    <path d="M620,61 L718,128"/>
+    <path d="M620,143 L718,143"/>
+    <path d="M620,225 L718,160"/>
+    <path d="M620,331 L718,331"/>
+    <path d="M910,130 L973,95" stroke-dasharray="6,4"/>
   </g>
-  <text x="942" y="200" text-anchor="middle" font-size="13" font-style="italic" fill="#333">P4: not sufficient</text>
-  <text x="942" y="217" text-anchor="middle" font-size="13" font-style="italic" fill="#333">on its own</text>
+  <text x="1055" y="250" text-anchor="middle" font-size="13" font-style="italic" fill="#333">P4: readiness not</text>
+  <text x="1055" y="266" text-anchor="middle" font-size="13" font-style="italic" fill="#333">sufficient for formal</text>
+  <text x="1055" y="282" text-anchor="middle" font-size="13" font-style="italic" fill="#333">circularity; informal</text>
+  <text x="1055" y="298" text-anchor="middle" font-size="13" font-style="italic" fill="#333">loops need no data</text>
 
-  <text x="20" y="425" font-size="13" fill="#444">● = combined with (logical AND); ~ = absence of the condition. Each route is expected to be sufficient on its own (equifinality); low readiness has its own explanation (asymmetry).</text>
+  <text x="20" y="420" font-size="13" fill="#444">● = combined with (logical AND); ~ = absence of the condition. Each route is expected to be sufficient on its own (equifinality); low readiness has its own explanation (asymmetry).</text>
+  <text x="20" y="440" font-size="13" fill="#444">P2: digital traceability is not expected to be necessary when certification supplies the data.</text>
 </svg>

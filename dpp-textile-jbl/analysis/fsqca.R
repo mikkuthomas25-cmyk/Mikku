@@ -24,9 +24,11 @@ simulate_firms <- function(n = 50) {
   lat <- 0.5 * DTC + 0.5 * pmax(VI - 1, MDS / 20) - 0.2 * pmax(DAC - 4, 0) + rnorm(n, 0, 0.8)
   DPR <- pmin(7, pmax(0, round(lat)))
   CSC <- pmin(5, pmax(0, round(0.3 * DPR + 0.3 * VI + rnorm(n, 0, 1))))
-  CERT <- rpois(n, 1.5)
+  CERT <- round(runif(n, 0, 95))          # % of EU shipments under transaction certificates
+  SIZE <- round(exp(rnorm(n, 6, 1)))
   TIER <- sample(1:4, n, replace = TRUE, prob = c(0.6, 0.25, 0.1, 0.05))
-  data.frame(firm = sprintf("F%02d", 1:n), VI, DTC, MDS, BTP, DAC, DPR, CSC, CERT, TIER)
+  CSCF <- pmin(3, pmax(0, CSC - 2))
+  data.frame(firm = sprintf("F%02d", 1:n), VI, DTC, MDS, BTP, DAC, DPR, CSC, CSCF, CERT, SIZE, TIER)
 }
 
 build_raw <- function(d) {
@@ -40,7 +42,9 @@ build_raw <- function(d) {
     DAC  = rowMeans(d[, paste0("DAC_", 1:3)], na.rm = TRUE),
     DPR  = rowSums(d[, paste0("DPR_", 1:7)] == "Y"),
     CSC  = rowSums(d[, paste0("CSC_", 1:5)] == "Y"),
-    CERT = d$CERT,
+    CSCF = rowSums(d[, c("CSC_2", "CSC_3", "CSC_5")] == "Y"),
+    CERT = d$B7,                                  # % of EU shipments under transaction certificates
+    SIZE = d$B2,
     TIER = d$B3                                   # 1 = garments ... 4 = fibre
   )
 }
@@ -67,7 +71,9 @@ anchors <- list(
   MDS  = c(e = 10, c = 50,  i = 90),
   BTP  = c(e = 2,  c = 4,   i = 6),
   DAC  = c(e = 2,  c = 4,   i = 6),
-  CERT = c(e = 0,  c = 1.5, i = 3)
+  CERT = c(e = 5,  c = 50,  i = 90),
+  SIZE = c(e = 50, c = 250, i = 1000),
+  CSCF = c(e = 0,  c = 1.5, i = 3)
 )
 
 calibrate_all <- function(raw, anchors, shift = 0) {
@@ -86,20 +92,20 @@ calibrate_all <- function(raw, anchors, shift = 0) {
 fs <- calibrate_all(raw, anchors)
 cat("\n== Share of cases above crossover ==\n"); print(round(colMeans(fs > 0.5), 2))
 
-conds <- "VI, DTC, MDS, BTP, DAC"
+conds <- "VI, DTC, MDS, CERT, DAC"   # BTP is a background condition (robustness R4, R7)
 
 # ---- 3. Necessity (P2) -------------------------------------------------------
 
 cat("\n== Necessity for DPR (consistency >= .90, RoN >= .60) ==\n")
-print(pof("VI + DTC + MDS + BTP + DAC + ~VI + ~DTC + ~MDS + ~BTP + ~DAC",
+print(pof("VI + DTC + MDS + CERT + DAC + ~VI + ~DTC + ~MDS + ~CERT + ~DAC",
           outcome = "DPR", data = fs, relation = "necessity"))
 cat("\n== Necessity for ~DPR ==\n")
-print(pof("VI + DTC + MDS + BTP + DAC + ~VI + ~DTC + ~MDS + ~BTP + ~DAC",
+print(pof("VI + DTC + MDS + CERT + DAC + ~VI + ~DTC + ~MDS + ~CERT + ~DAC",
           outcome = "~DPR", data = fs, relation = "necessity"))
 
 # ---- 4. Sufficiency: high and low readiness (P1, P3) -------------------------
 
-run_suff <- function(fs, outcome, dir_exp, incl = 0.80, pri = 0.70, ncut = 1, conds = "VI, DTC, MDS, BTP, DAC") {
+run_suff <- function(fs, outcome, dir_exp, incl = 0.80, pri = 0.70, ncut = 1, conds = "VI, DTC, MDS, CERT, DAC") {
   tt <- truthTable(fs, outcome = outcome, conditions = conds,
                    incl.cut = incl, pri.cut = pri, n.cut = ncut,
                    complete = TRUE, show.cases = TRUE, sort.by = c("OUT", "incl"))
@@ -111,8 +117,8 @@ run_suff <- function(fs, outcome, dir_exp, incl = 0.80, pri = 0.70, ncut = 1, co
   )
 }
 
-high <- run_suff(fs, "DPR",  dir_exp = "VI, DTC, MDS, BTP, ~DAC")
-low  <- run_suff(fs, "~DPR", dir_exp = "~VI, ~DTC, ~MDS, BTP, DAC")
+high <- run_suff(fs, "DPR",  dir_exp = "VI, DTC, MDS, CERT, ~DAC")
+low  <- run_suff(fs, "~DPR", dir_exp = "~VI, ~DTC, ~MDS, ~CERT, DAC")
 
 cat("\n== Truth table: high DPR ==\n"); print(high$tt)
 cat("\nRows with >= 1 case:", sum(high$tt$tt$n >= 1), "of 32\n")
@@ -125,7 +131,9 @@ cat("\n== Parsimonious solution: low DPR ==\n"); print(low$par)
 
 cat("\n== Is DPR alone sufficient for CSC? (P4 expects consistency < .80) ==\n")
 print(pof("DPR", outcome = "CSC", data = fs, relation = "sufficiency"))
-circ <- run_suff(fs, "CSC", dir_exp = "DPR, VI, MDS, BTP, CERT", conds = "DPR, VI, MDS, BTP, CERT")
+circ <- run_suff(fs, "CSC", dir_exp = "DPR, VI, MDS, CERT, SIZE", conds = "DPR, VI, MDS, CERT, SIZE")
+circf <- run_suff(fs, "CSCF", dir_exp = "DPR, VI, MDS, CERT, SIZE", conds = "DPR, VI, MDS, CERT, SIZE")
+cat("\n== Intermediate solution: formal circularity (CSCF) ==\n"); print(circf$int)
 cat("\n== Intermediate solution: high CSC ==\n"); print(circ$int)
 
 # ---- 6. Robustness (Online Appendix B.3) -------------------------------------
@@ -138,13 +146,14 @@ summarise_solution <- function(sol) {
 
 rob <- list(
   base   = high$int,
-  R1_up  = run_suff(calibrate_all(raw, anchors, shift = 0.10),  "DPR", "VI, DTC, MDS, BTP, ~DAC")$int,
-  R1_dn  = run_suff(calibrate_all(raw, anchors, shift = -0.10), "DPR", "VI, DTC, MDS, BTP, ~DAC")$int,
-  R2_75  = run_suff(fs, "DPR", "VI, DTC, MDS, BTP, ~DAC", incl = 0.75)$int,
-  R2_85  = run_suff(fs, "DPR", "VI, DTC, MDS, BTP, ~DAC", incl = 0.85)$int,
-  R3_n2  = run_suff(fs, "DPR", "VI, DTC, MDS, BTP, ~DAC", ncut = 2)$int,
-  R4_cert = run_suff(fs, "DPR", "VI, DTC, MDS, CERT, ~DAC", conds = "VI, DTC, MDS, CERT, DAC")$int,
-  R5_tier12 = run_suff(fs[raw$TIER <= 2, ], "DPR", "VI, DTC, MDS, BTP, ~DAC")$int
+  R1_up  = run_suff(calibrate_all(raw, anchors, shift = 0.10),  "DPR", "VI, DTC, MDS, CERT, ~DAC")$int,
+  R1_dn  = run_suff(calibrate_all(raw, anchors, shift = -0.10), "DPR", "VI, DTC, MDS, CERT, ~DAC")$int,
+  R2_75  = run_suff(fs, "DPR", "VI, DTC, MDS, CERT, ~DAC", incl = 0.75)$int,
+  R2_85  = run_suff(fs, "DPR", "VI, DTC, MDS, CERT, ~DAC", incl = 0.85)$int,
+  R3_n2  = run_suff(fs, "DPR", "VI, DTC, MDS, CERT, ~DAC", ncut = 2)$int,
+  R4_btp = run_suff(fs, "DPR", "VI, DTC, MDS, BTP, ~DAC", conds = "VI, DTC, MDS, BTP, DAC")$int,
+  R7_btp6 = run_suff(fs, "DPR", "VI, DTC, MDS, CERT, ~DAC, BTP", conds = "VI, DTC, MDS, CERT, DAC, BTP")$int,
+  R5_tier12 = run_suff(fs[raw$TIER <= 2, ], "DPR", "VI, DTC, MDS, CERT, ~DAC")$int
 )
 cat("\n== Robustness: solution consistency / coverage ==\n")
 print(t(sapply(rob, function(s) tryCatch(summarise_solution(s), error = function(e) c(incl = NA, cov = NA)))))

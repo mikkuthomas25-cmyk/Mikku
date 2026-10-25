@@ -15,9 +15,10 @@ subtitle: "Appendix A (measures and calibration), B (fsQCA protocol and robustne
 | Digital traceability (DTC) | Condition | Digital practices (0–5) | 1 | 2.5 | 4 | Four or more = integrated digital records; one or none = paper/spreadsheet |
 | Vertical integration (VI) | Condition | Stages in-house (1–6) | 1 | 3.5 | 5 | Five or more = mill-to-garment; one = garment-only or trading |
 | Multi-tier data sharing (MDS) | Condition | % of key suppliers sharing data | 10 | 50 | 90 | Most suppliers sharing vs. almost none |
-| Buyer pressure (BTP) | Condition | Mean of 3 items (1–7) | 2 | 4 | 6 | Scale verbal anchors: "disagree" (2), neutral (4), "agree" (6) |
+| Chain-of-custody certification (CERT) | Condition ("borrowed" data) | % of EU shipments under GOTS/GRS/RCS/OCS transaction certificates (item B7) | 5 | 50 | 90 | Majority of EU volume certified vs. essentially none; certificate sighted |
 | Data-appropriation concern (DAC) | Condition | Mean of 3 items (1–7) | 2 | 4 | 6 | As above |
-| Certifications (CERT) | Robustness only | Number held | 0 | 1.5 | 3 | Swapped in for BTP in robustness check R4 |
+| Buyer pressure (BTP) | Background condition; robustness R4 and R7 | Mean of 3 items (1–7) | 2 | 4 | 6 | Scale verbal anchors: "disagree" (2), neutral (4), "agree" (6). Expected to be near-universal |
+| Firm size (SIZE) | Condition for circularity only | Employees | 50 | 250 | 1000 | Formal circular programmes are expected to need scale |
 
 Calibration uses the direct method (logistic transformation; Ragin, 2008): `QCA::calibrate(x, type = "fuzzy", thresholds = "e=…, c=…, i=…")`. Scores of exactly 0.5 are set to 0.501. Raw distributions (histograms) and the share of cases above each crossover are reported in Table A2, so that readers can judge whether each anchor separates cases meaningfully.
 
@@ -26,7 +27,7 @@ Calibration uses the direct method (logistic transformation; Ragin, 2008): `QCA:
 fsQCA does not use latent-variable estimation, and with 40–60 firms an EFA or CFA would not be stable. Measurement quality is established instead by:
 
 1. **Content validity:** an expert panel (5–6 exporters, brand sourcing managers and academics) reviews every item and anchor (Nov 2026).
-2. **Factual items:** five of the seven sets are checklists of current practice or counts, not attitudes, so they don't depend on latent constructs. Sample documents are sighted where possible, and the share verified is reported.
+2. **Factual items:** six of the eight sets are checklists, shares of current practice or counts, not attitudes, so they don't depend on latent constructs. Sample documents are sighted where possible, and the share verified is reported.
 3. **Short scales (BTP, DAC):** Cronbach's α and inter-item correlations are reported. If α < 0.70, the strongest single item is used and this is reported.
 4. **Researcher triangulation:** the two-researcher protocol and the open-question notes are used to check implausible answer patterns.
 
@@ -48,10 +49,11 @@ fsQCA does not use latent-variable estimation, and with 40–60 firms an EFA or 
 | Raw consistency | ≥ 0.80 |
 | PRI consistency | ≥ 0.70 (rows with high raw but low PRI are treated as contradictory and coded 0) |
 | Solutions | Conservative, intermediate (reported) and parsimonious; core conditions = in both the parsimonious and intermediate solutions (Fiss, 2011) |
-| Directional expectations (high DPR) | DTC present; VI present; MDS present; BTP present; DAC absent |
-| Directional expectations (low DPR) | DTC absent; VI absent; MDS absent; BTP present (pressure without capacity); DAC present |
+| Conditions | VI, DTC, MDS, CERT, DAC (BTP is a background condition) |
+| Directional expectations (high DPR) | DTC present; VI present; MDS present; CERT present; DAC absent |
+| Directional expectations (low DPR) | DTC absent; VI absent; MDS absent; CERT absent; DAC present |
 | Untenable assumptions | Checked with `SetMethods`; no simplifying assumption may contradict P2 (necessity of DTC) |
-| Outcome 2 (CSC and CSCF) | Run for all circular practices and for formal practices only. Conditions: DPR, VI, MDS, BTP, CERT. P4 is supported if DPR alone is not sufficient (consistency < 0.80) and appears only in conjunction with other conditions |
+| Outcome 2 (CSC and CSCF) | Run for all circular practices and for formal practices only. Conditions: DPR, VI, MDS, CERT, SIZE. P4 is supported if DPR alone is not sufficient for formal circularity (consistency < 0.80), while informal practices occur regardless of readiness |
 
 ## B.3 Robustness (Oana & Schneider-style checks)
 
@@ -60,15 +62,16 @@ fsQCA does not use latent-variable estimation, and with 40–60 firms an EFA or 
 | R1 | Calibration anchors shifted ±10% of the range |
 | R2 | Raw consistency threshold 0.75 and 0.85 |
 | R3 | Frequency threshold 2 |
-| R4 | CERT substituted for BTP |
+| R4 | BTP substituted for CERT |
 | R5 | Excluding tier-3/4 firms (yarn and fibre suppliers) |
-| R6 | DPR recomputed without DPR_7 (format/time item) |
+| R6 | DPR recomputed without DPR_7 (format/time item; anchors 1 / 3 / 5 of 6) |
+| R7 | BTP added as a sixth condition (64 rows) |
 
 Solutions are compared on fit and on whether the same configurations recur (subset/superset relations reported).
 
 ## B.4 Common-method considerations
 
-A single respondent answers everything in one session. Mitigation: factual checklists for five of seven sets; document sighting; ordering that separates the readiness questions from the concern items; and assured anonymity.
+A single respondent answers everything in one session. Mitigation: factual measures for six of eight sets; document sighting; ordering that separates the readiness questions from the concern items; and assured anonymity.
 
 ## B.5 Software
 
