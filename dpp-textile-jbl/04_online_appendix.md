@@ -63,7 +63,7 @@ G*Power, linear multiple regression (R² deviation from zero), with the largest 
 
 ## B.6 Software
 
-R with the `seminr` package (script: `analysis/pls_model.R`) or SmartPLS 4. The repository's conformal-prediction add-on (`../spike/`) can supply per-firm prediction intervals for DPR as an optional extension.
+R with the `seminr` package, or SmartPLS 4. Analysis code is available from the authors on request.
 
 # Appendix C: Data-collection protocol and timeline
 

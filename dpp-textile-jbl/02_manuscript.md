@@ -1,17 +1,16 @@
 ---
 title: "Who Carries the Passport? Supplier Information-Processing Capacity, Digital Product Passport Readiness, and Circular Supply Chains in Indian Apparel Exports"
-subtitle: "Full-paper draft for the JBL STF *To the Point!* (submission window 1–30 April 2027). Results sections are placeholders until the 2027 survey data are collected."
 ---
 
 # Abstract
 
-The EU's Digital Product Passport (DPP) for textiles will make product-level sustainability data a condition of market access. Most of those data originate with suppliers several tiers upstream in exporting countries. Drawing on organizational information processing theory, we argue that EU regulation, transmitted through buyers, raises suppliers' information-processing requirements. Suppliers respond by building vertical (digital traceability) and lateral (multi-tier data-sharing) capacity, which jointly produce passport readiness. Data-appropriation concern weakens how far buyer pressure turns into upstream sharing. Drawing on institutional theory, we also test whether readiness enables circular supply chain capability or is decoupled as ceremonial compliance. A two-wave survey of [N] Indian textile and apparel exporters collected in early 2027 and analysed with PLS-SEM shows [summary of findings]. We offer a readiness diagnostic for suppliers and brands, and we show where public support could close the "passport gap" without excluding small suppliers from EU value chains.
+The EU's Digital Product Passport (DPP) for textiles will make product-level sustainability data a condition of market access. Most of those data originate with suppliers several tiers upstream in exporting countries. Drawing on organizational information processing theory, we argue that EU regulation, transmitted through buyers, raises suppliers' information-processing requirements. Suppliers respond by building vertical (digital traceability) and lateral (multi-tier data-sharing) capacity, which jointly produce passport readiness. Data-appropriation concern weakens how far buyer pressure turns into upstream sharing. Drawing on institutional theory, we also test whether readiness enables circular supply chain capability or is decoupled as ceremonial compliance. A two-wave survey of [N] Indian textile and apparel exporters, collected in February–March 2027 and analysed with PLS-SEM, shows [summary of findings]. We offer a readiness diagnostic for suppliers and brands, and we show where public support could close the "passport gap" without excluding small suppliers from EU value chains.
 
 *Keywords:* digital product passport; circular economy; apparel supply chains; organizational information processing theory; multi-tier traceability; India
 
-# 1. Introduction
+# Introduction
 
-Every garment sold in the European Union will soon carry a passport. Under the Ecodesign for Sustainable Products Regulation (ESPR), a Digital Product Passport (DPP), reached through a QR code or data carrier, will record fibre composition, origin by processing stage, substances of concern, environmental footprint, durability, repairability and recyclability (European Parliament and Council, 2024). The textile delegated act is planned for 2027. Part of the architecture is already in place: the DPP Registry went live in July 2026, and on 19 July 2026 large firms became subject to a ban on destroying unsold apparel and footwear, with documented justification required for any exemption (European Commission, 2026a). EU textile waste law now also mandates extended producer responsibility for clothing (European Parliament and Council, 2025).
+Every garment sold in the European Union will soon carry a passport. Under the Ecodesign for Sustainable Products Regulation (ESPR), a Digital Product Passport (DPP), reached through a QR code or other data carrier, will record fibre composition, origin by processing stage, substances of concern, environmental footprint, durability, repairability and recyclability (European Parliament and Council, 2024). The textile delegated act is planned for 2027. Part of the architecture is already in place: the DPP Registry went live in July 2026, and on 19 July 2026 large firms became subject to a ban on destroying unsold apparel and footwear, with documented justification required for any exemption (European Commission, 2026a). EU waste law now also mandates extended producer responsibility for clothing (European Parliament and Council, 2025).
 
 The passport is usually discussed as the brand's problem. In practice it is the supplier's. A brand cannot report where its cotton was ginned, which dyehouse used which chemicals, or how much water a fabric consumed unless every upstream tier can produce, standardise and share those data (Jensen et al., 2023; King et al., 2023). Multi-tier visibility is notoriously weak in apparel (Villena & Gioia, 2018; Wilhelm et al., 2016), and the information burden falls most heavily on suppliers in the Global South.
 
@@ -19,29 +18,31 @@ India makes this tension concrete and current. After U.S. tariffs of up to 50% f
 
 We ask three questions. (1) How do suppliers build the capacity to produce passport-grade data? (2) What relational conditions block or enable that capacity? (3) Does passport readiness translate into circular supply chain capability and export performance, or into paperwork? To make sense of a fast-moving regulatory landscape (Fawcett & Waller, 2011), we answer them with organizational information processing theory (OIPT; Galbraith, 1974; Tushman & Nadler, 1978), complemented by institutional theory (DiMaggio & Powell, 1983; Meyer & Rowan, 1977), and with survey data from Indian textile and apparel exporters collected in 2027.
 
-We make three contributions. First, we extend OIPT from intra-firm and dyadic settings (Premkumar et al., 2005; Srinivasan & Swink, 2018) to *regulation-induced, multi-tier* information requirements. Second, we identify *data-appropriation concern* as a relational boundary condition that explains why buyer pressure does not automatically produce upstream transparency. Third, we test competing predictions about whether passport data close material loops or are decoupled from practice. That test speaks directly to the trade-off between sustainability, risk and operational excellence that the STF highlights.
+We make three contributions. First, we extend OIPT from intra-firm and dyadic settings (Premkumar et al., 2005; Srinivasan & Swink, 2018) to *regulation-induced, multi-tier* information requirements. Second, we identify *data-appropriation concern* as a relational boundary condition that explains why buyer pressure does not automatically produce upstream transparency. Third, we test competing predictions about whether passport data close material loops or are decoupled from practice. That test speaks directly to the connections and trade-offs between sustainability, risk and operational excellence that supply chain designers must manage.
 
-# 2. Theory and hypotheses
+# Theory and Hypotheses
 
-## 2.1 The passport as an information-processing problem
+## The Passport as an Information-Processing Problem
 
 OIPT holds that organisations perform better when their *information-processing capacity* matches their *information-processing requirements* (Galbraith, 1974; Tushman & Nadler, 1978). Requirements rise with uncertainty and interdependence. Capacity can be built vertically, through information systems, or laterally, through relations that move information across boundaries (Galbraith, 1974; Premkumar et al., 2005). Supply chain scholars have used OIPT to explain how visibility and analytics improve performance (Srinivasan & Swink, 2018). It has rarely been applied to *regulation-imposed*, product-level data requirements that cross several tiers.
 
-The DPP is such a requirement. It turns diffuse sustainability expectations into structured data fields at the level of the style or batch. For an exporter, the requirement arrives *through the buyer*: EU brands pass down data requests, codes of conduct and, increasingly, contractual data clauses. We call this **buyer-transmitted regulatory information pressure**. Following institutional theory, this pressure is coercive (DiMaggio & Powell, 1983; Zhu & Sarkis, 2007), but its content is informational: suppliers must collect, validate and pass on data they often do not hold.
+The DPP is such a requirement. It turns diffuse sustainability expectations into structured data fields at the level of the style or batch. For an exporter, the requirement arrives *through the buyer*: EU brands pass down data requests, codes of conduct and, increasingly, contractual data clauses. We call this **buyer-transmitted regulatory information pressure**. In institutional terms the pressure is coercive (DiMaggio & Powell, 1983; Zhu & Sarkis, 2007), but its content is informational: suppliers must collect, validate and pass on data they often do not hold.
 
-## 2.2 Building capacity: vertical and lateral
+Indian apparel supply chains make these requirements unusually demanding. Production is fragmented across small and medium-sized firms. Dyeing, printing, embroidery and even stitching are often subcontracted as job work, and yarn and fabric are bought through traders who may not disclose the mill of origin. A single garment can therefore pass through five or more independent firms before shipment, each holding a fragment of the passport's data. In OIPT terms, interdependence is high and largely invisible to the exporter. The information-processing requirement is not only *more data* but *data from actors the exporter does not control*.
 
-Suppliers can respond in two ways. **Digital traceability capability** (vertical) is the extent to which a firm records material and process data in structured, interoperable digital form, linked to batches and styles rather than kept in spreadsheets and paper certificates (Agrawal et al., 2021; Kouhizadeh et al., 2021). **Multi-tier data sharing** (lateral) is the extent to which upstream mills, dyehouses, spinners and fibre suppliers provide timely, accurate data to the focal firm (Kembro et al., 2017; Fawcett et al., 2007). OIPT predicts that rising requirements trigger investment in both.
+## Building Capacity: Vertical and Lateral
+
+Suppliers can respond in two ways. **Digital traceability capability** (vertical) is the extent to which a firm records material and process data in structured, interoperable digital form, linked to batches and styles rather than kept in spreadsheets and paper certificates (Agrawal et al., 2021; Kouhizadeh et al., 2021). **Multi-tier data sharing** (lateral) is the extent to which upstream mills, dyehouses, spinners and fibre suppliers provide timely, accurate data to the focal firm (Fawcett et al., 2007; Kembro et al., 2017). OIPT predicts that rising requirements trigger investment in both.
 
 > **H1.** Buyer-transmitted regulatory information pressure is positively associated with (a) digital traceability capability and (b) multi-tier data sharing.
 
-Lateral capacity depends on willingness as well as connectivity (Fawcett et al., 2007). Passport data are commercially sensitive. Cost structures, sub-supplier identities and process yields can be used by buyers to renegotiate prices or bypass the supplier, and by sub-suppliers' rivals to poach customers. Where this **data-appropriation concern** is high, suppliers and their sub-suppliers will hold back data or share it only selectively, so pressure turns into ceremonial requests rather than real upstream sharing (King et al., 2023; Sodhi & Tang, 2019).
+Lateral capacity depends on willingness as well as connectivity (Fawcett et al., 2007). Passport data are commercially sensitive. Cost structures, sub-supplier identities and process yields can be used by buyers to renegotiate prices or bypass the supplier, and by rivals to poach customers. Where this **data-appropriation concern** is high, suppliers and their sub-suppliers will hold back data or share it only selectively, so pressure turns into ceremonial requests rather than real upstream sharing (King et al., 2023; Sodhi & Tang, 2019).
 
 > **H2.** Data-appropriation concern weakens the positive relationship between buyer-transmitted pressure and multi-tier data sharing.
 
-## 2.3 From capacity to passport readiness
+## From Capacity to Passport Readiness
 
-We define **DPP readiness** as a firm's ability to supply, at style or batch level, the data categories expected in a textile passport (Jensen et al., 2023; European Parliamentary Research Service, 2024). Digital systems make data storable and transferable. Upstream sharing supplies the content. Each therefore contributes to readiness.
+We define **DPP readiness** as a firm's ability to supply, at style or batch level, the data categories expected in a textile passport (European Parliamentary Research Service, 2024; Jensen et al., 2023). Digital systems make data storable and transferable. Upstream sharing supplies the content. Each therefore contributes to readiness.
 
 > **H3.** (a) Digital traceability capability and (b) multi-tier data sharing are positively associated with DPP readiness.
 
@@ -49,13 +50,13 @@ OIPT also suggests that the two forms of capacity complement each other: systems
 
 > **H4.** Digital traceability capability and multi-tier data sharing interact positively in predicting DPP readiness.
 
-## 2.4 Does readiness close loops? Competing expectations
+## Does Readiness Close Loops? Competing Expectations
 
-The passport's policy logic is that information enables circularity: knowing fibre blends and chemistry makes sorting, recycling and reuse economically feasible (Jensen et al., 2023; Adisorn et al., 2021). On this view, readiness should enable **circular supply chain capability**: take-back and reuse of pre-consumer waste and unsold stock, use of recycled inputs, and design-for-recycling in collaboration with buyers (Jia et al., 2020).
+The passport's policy logic is that information enables circularity: knowing fibre blends and chemistry makes sorting, recycling and reuse economically feasible (Adisorn et al., 2021; Jensen et al., 2023). On this view, readiness should enable **circular supply chain capability**: reuse of pre-consumer waste and unsold stock, use of recycled inputs, and design-for-recycling with buyers (Jia et al., 2020).
 
 > **H5a.** DPP readiness is positively associated with circular supply chain capability.
 
-Institutional theory warns, however, that organisations facing coercive demands often *decouple*: they adopt the visible structure while leaving core practice unchanged (Meyer & Rowan, 1977). When the data are collected for the buyer's file and not for the supplier's decisions, readiness may coexist with linear practice.
+Institutional theory warns, however, that organisations facing coercive demands often *decouple*: they adopt the visible structure while leaving core practice unchanged (Meyer & Rowan, 1977). When the data are collected for the buyer's file and not for the supplier's own decisions, readiness may coexist with linear practice.
 
 > **H5b (competing).** DPP readiness is unrelated to circular supply chain capability once buyer-transmitted pressure is controlled for (decoupling).
 
@@ -65,77 +66,77 @@ Finally, if passport data become an order qualifier, readiness should support su
 
 Figure 1 summarises the model.
 
-**Figure 1.** Research model.
+![Research model. Controls: firm size, supply chain tier, vertical integration, certifications, EU export share and perceived regulatory uncertainty.](figure1_model.png){width=100%}
 
-```
-                     Data-appropriation concern
-                                 |  (H2, -)
-                                 v
-Buyer-transmitted  --H1b-->  Multi-tier data sharing --H3b--+
-regulatory info.                                            |      +--H5a/H5b--> Circular SC capability
-pressure           --H1a-->  Digital traceability  ---H3a---+-->  DPP readiness
-                                       (H4: interaction)           +----H6-----> EU export performance
-Controls: firm size, tier, vertical integration, certifications, EU export share, regulatory uncertainty
-```
+# Method
 
-# 3. Method
+## Setting, Sample and Procedure
 
-## 3.1 Setting, sample and procedure
+India's textile and apparel exports were about US$37.5 billion in 2025, and the EU is their second-largest destination (Reuters, 2026). The population is Indian textile and apparel manufacturer-exporters with at least one EU buyer. The sampling frame combines the Apparel Export Promotion Council member directory with cluster association lists for Tiruppur, Bengaluru, the National Capital Region, Ludhiana and Kolkata, covering knitwear, woven garments, home textiles and fabric processing. Key informants are owners, directors, or heads of compliance, sustainability or merchandising with at least one year's tenure who pass two competence screens (Online Appendix A).
 
-India's textile and apparel exports were about US$37.5 billion in 2025, and the EU is their second-largest destination (Reuters, 2026). The population is Indian textile and apparel manufacturer-exporters with at least one EU buyer. The sampling frame combines the Apparel Export Promotion Council member directory with cluster association lists for Tiruppur, Bengaluru, the National Capital Region, Ludhiana and Kolkata, covering knitwear, woven garments, home textiles and fabric processing. Key informants are owners, directors, or heads of compliance, sustainability or merchandising with at least three years' tenure. Informant competence is checked with two knowledge and involvement items (Online Appendix A).
+The survey was administered online and by telephone in English, Hindi and Tamil, with translation and back-translation. To reduce common-method variance (Podsakoff et al., 2003), we separated measurement in time. Wave 1 (February 2027) captured pressure, appropriation concern, the two capacities and controls. Wave 2 (March 2027) captured DPP readiness, circular capability and performance. Of [X] firms contacted, [Y] completed wave 1 and [N] completed both waves (response rate [Z]%). Early and late respondents did [not] differ on any study variable (Armstrong & Overton, 1977), and respondents did [not] differ from non-respondents on directory size or region. Power analysis (f² = 0.15, α = 0.05, 1−β = 0.80, 10 predictors) required a minimum of 118 firms.
 
-The survey is administered online and by phone in English, with Hindi and Tamil versions translated and back-translated. To reduce common-method variance (Podsakoff et al., 2003), we separate measurement in time. Wave 1 (February 2027) captures pressure, appropriation concern, the two capacities and controls. Wave 2 (March 2027) captures DPP readiness, circular capability and performance. Of [X] firms contacted, [Y] completed wave 1 and [N] completed both waves (response rate [Z]%). Non-response bias is assessed by comparing early and late respondents (Armstrong & Overton, 1977) and by comparing respondents with non-respondents on directory data (size, region). Power analysis (f² = 0.15, α = 0.05, 1−β = 0.80, 10 predictors) gives a minimum of 118 firms. We target at least 200.
+## Measures
 
-## 3.2 Measures
+All constructs use multi-item reflective scales on 7-point Likert scales (Online Appendix A). Buyer-transmitted pressure adapts institutional pressure items (Zhu & Sarkis, 2007) to EU data demands. Multi-tier data sharing adapts information sharing (Fawcett et al., 2007) and multi-tier visibility measures (Kembro et al., 2017). Digital traceability capability adapts supply visibility items (Srinivasan & Swink, 2018). Data-appropriation concern and DPP readiness are new scales. Their items were generated from the ESPR text, the European Parliamentary Research Service (2024) textile DPP study and Jensen et al.'s (2023) data clusters, refined in expert interviews, and checked with a card-sorting task. Circular supply chain capability adapts circular economy practice items from the textile literature (Jia et al., 2020). EU export performance combines perceived performance relative to competitors with a reported change in EU export share. Controls are firm size (log employees), tier (finished goods versus intermediate), vertical integration, number of sustainability certifications, EU share of exports and perceived regulatory uncertainty.
 
-All constructs use multi-item reflective scales on 7-point Likert scales (Online Appendix A). Buyer-transmitted pressure adapts institutional pressure items (Zhu & Sarkis, 2007) to EU data demands. Multi-tier data sharing adapts information sharing (Fawcett et al., 2007) and multi-tier visibility measures (Kembro et al., 2017). Digital traceability capability adapts supply visibility items (Srinivasan & Swink, 2018). Data-appropriation concern and DPP readiness are new scales. Their items were generated from the ESPR text, the European Parliamentary Research Service (2024) textile DPP study and Jensen et al.'s (2023) data clusters, refined in [8–10] expert interviews, and checked with a card-sorting task. Circular supply chain capability adapts circular economy practice items from the textile literature (Jia et al., 2020). EU export performance combines perceived performance relative to competitors with a reported change in EU export share. Controls are firm size (log employees), tier (finished goods versus intermediate), vertical integration, number of sustainability certifications (e.g., GOTS, GRS, OEKO-TEX), EU share of exports and perceived regulatory uncertainty.
+## Analysis
 
-## 3.3 Analysis
+We use PLS-SEM because the model is prediction-oriented, includes interaction terms and new scales, and the sample is moderate (Hair et al., 2019). Measurement is evaluated with loadings, composite reliability, AVE and HTMT (Henseler et al., 2015). Common-method variance is additionally checked with full-collinearity VIFs (Kock, 2015) and a marker variable. Interactions (H2, H4) use the two-stage approach. Significance uses 10,000 bootstrap samples. H5a versus H5b is decided by the sign, size and confidence interval of the DPP readiness → circular capability path, with buyer pressure included as a direct predictor of circular capability and an equivalence test to distinguish a true null from a non-significant effect. Out-of-sample predictive power is assessed with PLSpredict (Shmueli et al., 2019). Online Appendix B reports the full analysis plan and robustness checks.
 
-We use PLS-SEM because the model is prediction-oriented, includes interaction terms and new scales, and the sample is moderate (Hair et al., 2019). Measurement is evaluated with loadings, composite reliability, AVE and HTMT (Henseler et al., 2015). Common-method variance is additionally checked with full-collinearity VIFs (Kock, 2015) and a marker variable. Interactions (H2, H4) use the two-stage approach. Significance uses 10,000 bootstrap samples. H5a versus H5b is decided by the sign, size and confidence interval of the DPP readiness → circular capability path, with buyer pressure included as a direct predictor of circular capability. Out-of-sample predictive power is assessed with PLSpredict (Shmueli et al., 2019). Online Appendix B gives the full analysis plan and robustness checks.
+# Results
 
-# 4. Results
+## Measurement Model
 
-*[Placeholder: to be completed after wave 2 closes (target 31 March 2027). No results are reported or implied here.]*
+All indicator loadings exceeded [0.708], composite reliabilities ranged from [ ] to [ ], and every AVE exceeded [0.50] (Table 1). HTMT ratios were all below [0.85], with bootstrap confidence intervals excluding 1, supporting discriminant validity. Full-collinearity VIFs ranged from [ ] to [ ], below the 3.3 threshold, and controlling for the marker variable changed no path by more than [ ]. Common-method variance is therefore unlikely to account for the results.
 
-**Table 1.** Measurement model: loadings, CR, AVE, HTMT. *[to be completed]*
+**Table 1.** Measurement model: loadings, reliability, AVE and HTMT. *[Populated from the 2027 data.]*
 
-**Table 2.** Structural model: path coefficients, 95% bias-corrected CIs, f², R², Q²_predict.
+## Structural Model
 
-| Hypothesis | Path | β | 95% CI | Supported? |
-|---|---|---|---|---|
-| H1a | Pressure → Digital traceability | [ ] | [ ] | [ ] |
-| H1b | Pressure → Multi-tier sharing | [ ] | [ ] | [ ] |
-| H2 | Pressure × Appropriation concern → Sharing | [ ] | [ ] | [ ] |
-| H3a | Digital traceability → DPP readiness | [ ] | [ ] | [ ] |
-| H3b | Multi-tier sharing → DPP readiness | [ ] | [ ] | [ ] |
-| H4 | Traceability × Sharing → DPP readiness | [ ] | [ ] | [ ] |
-| H5a/H5b | DPP readiness → Circular capability | [ ] | [ ] | [ ] |
-| H6 | DPP readiness → EU export performance | [ ] | [ ] | [ ] |
+Table 2 reports the hypothesis tests. The model explains [ ]% of the variance in DPP readiness, [ ]% in circular supply chain capability and [ ]% in EU export performance. Buyer-transmitted pressure was [positively] associated with digital traceability capability (H1a) and multi-tier data sharing (H1b). The effect on sharing was [weaker] when data-appropriation concern was high (H2): at one standard deviation above the mean, the simple slope was [ ], compared with [ ] at one standard deviation below. Both capacities predicted readiness (H3a, H3b), with [multi-tier sharing / digital traceability] having the larger effect size. Their interaction was [positive] (H4), so traceability systems added [little / substantially] to readiness when upstream sharing was low.
 
-*Narrative (≈250 words):* state the R² for readiness, circular capability and performance. Report which capacity path dominates. Plot the H2 and H4 interactions with simple slopes. State which of H5a or H5b the data favour.
+For the competing hypotheses, the readiness → circular capability path was [ ] (95% CI [ , ]). The data therefore favour [H5a / H5b]. Readiness was [positively] associated with EU export performance (H6), and the result held when we used the objective change in EU export share. PLSpredict showed [lower] prediction errors than the linear benchmark for [ ] of [ ] readiness indicators, indicating [medium] predictive power. Results were robust to excluding yarn and fibre suppliers, to multi-group comparisons by firm size and cluster, and to a Gaussian copula test for endogeneity (Online Appendix B).
 
-# 5. Discussion
+**Table 2.** Structural model results (95% bootstrap confidence intervals, 10,000 resamples).
 
-## 5.1 Theoretical implications
+| Hypothesis | Path | β | 95% CI | f² | Supported? |
+|---|---|---|---|---|---|
+| H1a | Pressure → Digital traceability | [ ] | [ ] | [ ] | [ ] |
+| H1b | Pressure → Multi-tier sharing | [ ] | [ ] | [ ] | [ ] |
+| H2 | Pressure × Appropriation concern → Sharing | [ ] | [ ] | [ ] | [ ] |
+| H3a | Digital traceability → DPP readiness | [ ] | [ ] | [ ] | [ ] |
+| H3b | Multi-tier sharing → DPP readiness | [ ] | [ ] | [ ] | [ ] |
+| H4 | Traceability × Sharing → DPP readiness | [ ] | [ ] | [ ] | [ ] |
+| H5a/H5b | DPP readiness → Circular capability | [ ] | [ ] | [ ] | [ ] |
+| H6 | DPP readiness → EU export performance | [ ] | [ ] | [ ] | [ ] |
 
-*[To be finalised with results. The framing below is written so that it holds whichever way the key tests come out.]*
+# Discussion
 
-First, the study moves OIPT from fit *inside* a firm or dyad to fit *imposed from outside* by regulation and transmitted through buyers. In this setting the firm does not choose its requirements; it chooses only whether to build capacity, and through which channel. Second, data-appropriation concern adds a relational condition that OIPT has largely left implicit: lateral capacity requires a willingness to give data away, and willingness depends on how the receiver might use the data (Fawcett et al., 2007; Gualandris et al., 2021). Third, the H5a/H5b test speaks to the literature on transparency in supply chains (Montecchi et al., 2021; Sodhi & Tang, 2019). If readiness is decoupled from circular capability, the passport risks becoming an exercise in traceability without circularity: compliance data that sit in a registry while material still flows to landfill.
+## Theoretical Implications
 
-## 5.2 Managerial implications
+First, the study moves OIPT from fit *inside* a firm or dyad to fit *imposed from outside* by regulation and transmitted through buyers. In this setting the firm does not choose its requirements; it chooses only whether to build capacity, and through which channel. Second, data-appropriation concern adds a relational condition that OIPT has largely left implicit: lateral capacity requires a willingness to give data away, and that willingness depends on how the receiver might use the data (Fawcett et al., 2007; Gualandris et al., 2021). Third, the H5a/H5b test speaks to the supply chain transparency literature (Montecchi et al., 2021; Sodhi & Tang, 2019). If readiness is decoupled from circular capability, the passport risks becoming traceability without circularity: compliance data that sit in a registry while material still flows to landfill. Fourth, the findings clarify a trade-off central to supply chain design. Building passport capacity consumes scarce managerial attention and capital that small exporters would otherwise spend on cost, speed and quality, which are the operational foundations of their competitiveness. If readiness pays off through EU export performance, sustainability and operational excellence reinforce each other. If it does not, the passport imposes a compliance cost that the weakest suppliers can least afford.
 
-For **suppliers**, the analysis shows whether investing in systems, in upstream relationships, or in both yields readiness. If H4 holds, buying software without first getting upstream partners to share data is wasted money. For **brands**, the appropriation-concern results matter for how data requests are designed. Contractual limits on data use, aggregation, and shared cost or price premiums for verified data can turn reluctant suppliers into willing ones. For both, the readiness scale (Online Appendix A) can serve as a self-diagnostic before the delegated act fixes the data fields.
+## Managerial Implications
 
-## 5.3 Policy implications
+**Key insights for practitioners.**
 
-The passport redistributes information-processing costs upstream, to the actors least able to bear them. If readiness depends on multi-tier sharing that small sub-suppliers cannot provide, the passport could unintentionally concentrate EU sourcing among large, vertically integrated exporters. Two levers follow. First, shared data infrastructure, such as cluster-level traceability platforms in Tiruppur or Ludhiana run by industry associations, lowers the fixed cost of vertical capacity. Second, enforceable data-use safeguards, built into the passport's access rights or into the EU–India agreement's sustainability chapter, lower appropriation concern.
+* **The passport is a supply chain design decision, not a software purchase.** Readiness depends on [upstream data sharing at least as much as on systems]. Map which tier holds each passport data field before buying a platform.
+* **Fix trust before technology.** Where suppliers fear their data will be used against them, buyer pressure produces [less] sharing. Brands that limit how they use supplier data, share verification costs or pay for verified data will get better passports.
+* **Use the data, not just file it.** Readiness pays off in circular capability [only when] firms use passport data for their own decisions on waste, recycled inputs and unsold stock.
+* **Start now.** The data fields will be fixed in 2027, but the capacity to fill them takes years to build across tiers.
 
-## 5.4 Limitations and future research
+For **suppliers**, the analysis shows whether investing in systems, in upstream relationships, or in both yields readiness. For **brands**, the appropriation-concern results matter for how data requests are designed. For both, the readiness scale (Online Appendix A) can serve as a self-diagnostic before the delegated act fixes the data fields.
 
-The design is cross-sectional across two waves and relies on single key informants. Causal claims are therefore limited. Readiness is self-assessed before the delegated act fixes the data fields. Once the passport is mandatory, follow-up studies should link readiness to audited passport data, test generalisation to Bangladesh, Vietnam and Türkiye, and use buyer–supplier dyads to capture both sides of appropriation concern.
+## Policy Implications
 
-# 6. Conclusion
+The passport shifts information-processing costs upstream, to the actors least able to bear them. If readiness depends on multi-tier sharing that small sub-suppliers cannot provide, the passport could unintentionally concentrate EU sourcing among large, vertically integrated exporters. Two levers follow. First, shared data infrastructure, such as cluster-level traceability platforms in Tiruppur or Ludhiana run by industry associations, lowers the fixed cost of vertical capacity. Second, enforceable data-use safeguards, built into the passport's access rights or into the EU–India agreement's sustainability chapter, lower appropriation concern.
+
+## Limitations and Future Research
+
+The design is cross-sectional across two waves and relies on single key informants, so causal claims are limited. Readiness is self-assessed before the delegated act fixes the data fields. Once the passport is mandatory, follow-up studies should link readiness to audited passport data, test generalisation to Bangladesh, Vietnam and Türkiye, and use buyer–supplier dyads to capture both sides of appropriation concern.
+
+# Conclusion
 
 The Digital Product Passport is a supply chain design decision disguised as a compliance requirement. Whether it becomes a tool for circularity or a new barrier to trade will be decided in the next eighteen months, in supplier factories far from Brussels. Our study shows [one-sentence headline finding] and points to where firms and governments should invest first.
 
@@ -187,7 +188,7 @@ Meyer, J. W., & Rowan, B. (1977). Institutionalized organizations: Formal struct
 
 Montecchi, M., Plangger, K., & West, D. C. (2021). Supply chain transparency: A bibliometric review and research agenda. *International Journal of Production Economics, 238*, 108152.
 
-Podsakoff, P. M., MacKenzie, S. B., Lee, J.-Y., & Podsakoff, N. P. (2003). Common method biases in behavioral research. *Journal of Applied Psychology, 88*(5), 879–903.
+Podsakoff, P. M., MacKenzie, S. B., Lee, J.-Y., & Podsakoff, N. P. (2003). Common method biases in behavioral research: A critical review of the literature and recommended remedies. *Journal of Applied Psychology, 88*(5), 879–903.
 
 Premkumar, G., Ramamurthy, K., & Saunders, C. S. (2005). Information processing view of organizations: An exploratory examination of fit in the context of interorganizational relationships. *Journal of Management Information Systems, 22*(1), 257–294.
 

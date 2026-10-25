@@ -5,10 +5,12 @@ Submission package for the **Journal of Business Logistics** Special Topic Forum
 
 | File | What it is | Status |
 |---|---|---|
-| `01_abstract.md` / `.docx` | 500-word STF abstract (due **31 Dec 2026**) | Ready for supervisor review (470 words) |
+| `01_abstract.md` / `.docx` | 500-word STF abstract (due **31 Dec 2026**) | Ready for supervisor review (495 words incl. title and keywords; one labelled paragraph per question in the call) |
 | `02_manuscript.md` / `.docx` | Full paper draft (window **1–30 Apr 2027**) | Theory, hypotheses, method and discussion drafted; **results are placeholders** |
 | `03_survey_instrument.md` / `.docx` | Two-wave questionnaire, draft v0.1 | Needs expert review, card sort and pilot |
 | `04_online_appendix.md` / `.docx` | Measures, analysis plan, timeline | Draft |
+| `05_cfp_compliance.md` / `.docx` | Requirement-by-requirement check against the call | Current |
+| `figure1_model.svg` / `.png` | Figure 1 (research model) | Final |
 | `analysis/pls_model.R` | seminr PLS-SEM pipeline (synthetic-data mode for testing) | **Not yet executed**; R was unavailable while drafting |
 
 Rebuild the Word files with: `bash build_docx.sh`
@@ -18,7 +20,7 @@ Rebuild the Word files with: `bash build_docx.sh`
 | STF requirement | How it is met |
 |---|---|
 | Empirical, with data from 2026/2027 | Two-wave survey, Feb–Mar 2027 |
-| 3,500–4,000 words including references | Current draft: about 3,200 words (body ≈ 2,270 + references ≈ 920). About 300–700 words are left for the results |
+| 3,500–4,000 words including references | 3,590 words (body 2,660 + references 930), with the results written as fill-in-the-blank sentences. Recount after filling them in |
 | Germane, current, provocative | Destruction ban (July 2026), DPP Registry live (July 2026), EU–India FTA (Jan 2026), US tariffs. "Traceability without circularity?" competing hypotheses |
 | Theory to make sense of chaos | Organizational information processing theory + institutional decoupling |
 | STF topic bullets | Sustainability vs. operational trade-offs; global footprint and geopolitics; public policy; cross-boundary collaboration; technology |
