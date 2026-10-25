@@ -420,7 +420,31 @@ not only a logistics choice: it decides whether purity *variability* or purity *
 governs acceptance, and the right choice depends on where the line's mean sits
 relative to the buyer's specification.
 
-[Sections 4.4–4.6 and 5–7 to be written from E4–E6 results.]
+### 4.4 Digital product passports: coverage matters less than error structure (E4)
+
+When DPP composition data are accurate (2% of passports declare a wrong class), cotton
+recovery rises roughly linearly with DPP coverage, from 82.7% to 96.6% at full coverage
+with the baseline sensor and the 95% specification, and from 70.7% to 96.6% with the
+poorest sensor (Figure 4). The gain is largest where the sensor is weakest: passports
+substitute for spectroscopy, and they also rescue the dark items the sensor cannot read.
+Under the 98% specification, accurate passports raise recovery from 50.4% to 77.2% with
+the poorest sensor, but only from 69.8% to 77.2% with the baseline sensor, and bale
+rejection with the baseline sensor *rises* slightly with coverage (15.6% → 20.2%).
+
+With a 10% passport error rate the 95%-specification results remain positive (82.7% →
+90.0%), but under the 98% specification passports become harmful: with the baseline
+sensor, recovery falls from 69.8% to 38.0% at full coverage and bale rejection climbs
+from 15.6% to 58.0%. The reason is the *structure* of the error rather than its rate. A
+sensor error is usually marginal—a 93%-cotton garment read as 95%—and adds little
+foreign fibre to a bale. A wrong passport (as modelled here) assigns a garment to the
+most plausible wrong class, so a 60/40 polycotton item enters the cotton bale whole. A
+small rate of gross errors therefore does more damage to a strict specification than a
+larger rate of marginal ones. *Caveat:* the error model for passports is an assumption;
+the result shows that DPP data quality requirements should be specified relative to
+the recycler specifications they are meant to serve, not that a particular error rate
+is realistic.
+
+[Sections 4.5–4.6 and 5–7 to be written from E5–E6 results.]
 
 ## References (draft — see docs/literature.md for verification status)
 
