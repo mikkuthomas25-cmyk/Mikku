@@ -65,7 +65,7 @@ def fig_E1():
     for a in axes[1]:
         a.set_xlabel("Confidence threshold τ")
     axes[0, 0].legend(fontsize=7, loc="lower right")
-    fig.suptitle("Selective classification raises item-level accuracy but lowers recovered cotton",
+    fig.suptitle("Accuracy of auto-sorted items rises with τ; recovered cotton peaks at moderate τ, then collapses",
                  fontsize=9.5, color=INK, x=0.02, ha="left")
     fig.savefig(FIG / "F1_accuracy_vs_recovery.png")
     plt.close(fig)
