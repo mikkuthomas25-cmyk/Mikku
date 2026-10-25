@@ -3,7 +3,7 @@
 Submission package for the **Journal of Business Logistics** Special Topic Forum
 *To the Point! Supply Chain Management Design: Seeking Research that Resonates* (2026/27).
 
-**Design (v0.3):** fuzzy-set qualitative comparative analysis (fsQCA) of 40–60 Indian textile and apparel exporters. The conditions are integration (own), supplier sharing (negotiate), chain-of-custody certification (borrow), digital traceability and data-appropriation concern; buyer pressure is a background condition. Data come from using structured interviews from December 2026 to February 2027. This replaces the earlier PLS-SEM design (v0.1, in git history), which needed 200+ firms in two waves plus scale development.
+**Design (v0.3):** fuzzy-set qualitative comparative analysis (fsQCA) of 40–60 Indian textile and apparel exporters. The conditions are integration (own), supplier sharing (negotiate), chain-of-custody certification (borrow), digital traceability and data-appropriation concern; buyer pressure is a background condition. Data come from structured interviews from December 2026 to February 2027. This replaces the earlier PLS-SEM design (v0.1, in git history), which needed 200+ firms in two waves plus scale development.
 
 | File | What it is | Status |
 |---|---|---|
