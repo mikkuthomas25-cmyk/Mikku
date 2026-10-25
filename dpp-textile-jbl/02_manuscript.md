@@ -78,17 +78,17 @@ The survey was administered online and by telephone in English, Hindi and Tamil,
 
 ## Measures
 
-All constructs use multi-item reflective scales on 7-point Likert scales (Online Appendix A). Buyer-transmitted pressure adapts institutional pressure items (Zhu & Sarkis, 2007) to EU data demands. Multi-tier data sharing adapts information sharing (Fawcett et al., 2007) and multi-tier visibility measures (Kembro et al., 2017). Digital traceability capability adapts supply visibility items (Srinivasan & Swink, 2018). Data-appropriation concern and DPP readiness are new scales. Their items were generated from the ESPR text, the European Parliamentary Research Service (2024) textile DPP study and Jensen et al.'s (2023) data clusters, refined in expert interviews, and checked with a card-sorting task. Circular supply chain capability adapts circular economy practice items from the textile literature (Jia et al., 2020). EU export performance combines perceived performance relative to competitors with a reported change in EU export share. Controls are firm size (log employees), tier (finished goods versus intermediate), vertical integration, number of sustainability certifications, EU share of exports and perceived regulatory uncertainty.
+All constructs use multi-item reflective scales on 7-point Likert scales (Online Appendix A). Buyer-transmitted pressure adapts institutional pressure items (Zhu & Sarkis, 2007) to EU data demands. Multi-tier data sharing adapts information sharing (Fawcett et al., 2007) and multi-tier visibility measures (Kembro et al., 2017). Digital traceability capability adapts supply visibility items (Srinivasan & Swink, 2018). Data-appropriation concern and DPP readiness are new scales. Their items were generated from the ESPR text, the European Parliamentary Research Service (2024) textile DPP study and Jensen et al.'s (2023) data clusters, refined in expert interviews, checked with a card-sorting task, and tested with exploratory factor analysis (EFA) on an independent pilot sample of [n] firms (Online Appendix A). Circular supply chain capability adapts circular economy practice items from the textile literature (Jia et al., 2020). EU export performance combines perceived performance relative to competitors with a reported change in EU export share. Controls are firm size (log employees), tier (finished goods versus intermediate), vertical integration, number of sustainability certifications, EU share of exports and perceived regulatory uncertainty.
 
 ## Analysis
 
-We use PLS-SEM because the model is prediction-oriented, includes interaction terms and new scales, and the sample is moderate (Hair et al., 2019). Measurement is evaluated with loadings, composite reliability, AVE and HTMT (Henseler et al., 2015). Common-method variance is additionally checked with full-collinearity VIFs (Kock, 2015) and a marker variable. Interactions (H2, H4) use the two-stage approach. Significance uses 10,000 bootstrap samples. H5a versus H5b is decided by the sign, size and confidence interval of the DPP readiness → circular capability path, with buyer pressure included as a direct predictor of circular capability and an equivalence test to distinguish a true null from a non-significant effect. Out-of-sample predictive power is assessed with PLSpredict (Shmueli et al., 2019). Online Appendix B reports the full analysis plan and robustness checks.
+We use PLS-SEM because the model is prediction-oriented, includes interaction terms and new scales, and the sample is moderate (Hair et al., 2019). Following the two-step approach (Anderson & Gerbing, 1988), we assess the measurement model before the structural model. In PLS-SEM this is done through confirmatory composite analysis (Hair et al., 2020): loadings, composite reliability, AVE and HTMT (Henseler et al., 2015). Because the method debate around PLS-SEM remains active (Rönkkö & Evermann, 2013), we also estimate a covariance-based confirmatory factor analysis (CFA) of the full measurement model as a robustness check. Common-method variance is additionally checked with full-collinearity VIFs (Kock, 2015) and a marker variable. Interactions (H2, H4) use the two-stage approach. Significance uses 10,000 bootstrap samples. H5a versus H5b is decided by the sign, size and confidence interval of the DPP readiness → circular capability path, with buyer pressure included as a direct predictor of circular capability and an equivalence test to distinguish a true null from a non-significant effect. Out-of-sample predictive power is assessed with PLSpredict (Shmueli et al., 2019). Online Appendix B reports the full analysis plan and robustness checks.
 
 # Results
 
 ## Measurement Model
 
-All indicator loadings exceeded [0.708], composite reliabilities ranged from [ ] to [ ], and every AVE exceeded [0.50] (Table 1). HTMT ratios were all below [0.85], with bootstrap confidence intervals excluding 1, supporting discriminant validity. Full-collinearity VIFs ranged from [ ] to [ ], below the 3.3 threshold, and controlling for the marker variable changed no path by more than [ ]. Common-method variance is therefore unlikely to account for the results.
+In the pilot EFA, the new scales produced [three] factors that matched their intended constructs (KMO = [ ]; loadings ≥ [0.50]; no cross-loading above [0.30]). In the main sample, all indicator loadings exceeded [0.708], composite reliabilities ranged from [ ] to [ ], and every AVE exceeded [0.50] (Table 1). The covariance-based CFA fit the data acceptably (χ²/df = [ ], CFI = [ ], TLI = [ ], RMSEA = [ ], SRMR = [ ]). HTMT ratios were all below [0.85], with bootstrap confidence intervals excluding 1, supporting discriminant validity. Full-collinearity VIFs ranged from [ ] to [ ], below the 3.3 threshold, and controlling for the marker variable changed no path by more than [ ]. Common-method variance is therefore unlikely to account for the results.
 
 **Table 1.** Measurement model: loadings, reliability, AVE and HTMT. *[Populated from the 2027 data.]*
 
@@ -146,6 +146,8 @@ Adisorn, T., Tholen, L., & Götz, T. (2021). Towards a digital product passport 
 
 Agrawal, T. K., Kumar, V., Pal, R., Wang, L., & Chen, Y. (2021). Blockchain-based framework for supply chain traceability: A case example of textile and clothing industry. *Computers & Industrial Engineering, 154*, 107130. https://doi.org/10.1016/j.cie.2021.107130
 
+Anderson, J. C., & Gerbing, D. W. (1988). Structural equation modeling in practice: A review and recommended two-step approach. *Psychological Bulletin, 103*(3), 411–423.
+
 Armstrong, J. S., & Overton, T. S. (1977). Estimating nonresponse bias in mail surveys. *Journal of Marketing Research, 14*(3), 396–402.
 
 DiMaggio, P. J., & Powell, W. W. (1983). The iron cage revisited: Institutional isomorphism and collective rationality in organizational fields. *American Sociological Review, 48*(2), 147–160.
@@ -170,6 +172,8 @@ Gualandris, J., Longoni, A., Luzzini, D., & Pagell, M. (2021). The association b
 
 Hair, J. F., Risher, J. J., Sarstedt, M., & Ringle, C. M. (2019). When to use and how to report the results of PLS-SEM. *European Business Review, 31*(1), 2–24.
 
+Hair, J. F., Howard, M. C., & Nitzl, C. (2020). Assessing measurement model quality in PLS-SEM using confirmatory composite analysis. *Journal of Business Research, 109*, 101–110.
+
 Henseler, J., Ringle, C. M., & Sarstedt, M. (2015). A new criterion for assessing discriminant validity in variance-based structural equation modeling. *Journal of the Academy of Marketing Science, 43*(1), 115–135.
 
 Jensen, S. F., Kristensen, J. H., Adamsen, S., Christensen, A., & Waehrens, B. V. (2023). Digital product passports for a circular economy: Data needs for product life cycle decision-making. *Sustainable Production and Consumption, 37*, 242–255. https://doi.org/10.1016/j.spc.2023.02.021
@@ -191,6 +195,8 @@ Montecchi, M., Plangger, K., & West, D. C. (2021). Supply chain transparency: A 
 Podsakoff, P. M., MacKenzie, S. B., Lee, J.-Y., & Podsakoff, N. P. (2003). Common method biases in behavioral research: A critical review of the literature and recommended remedies. *Journal of Applied Psychology, 88*(5), 879–903.
 
 Premkumar, G., Ramamurthy, K., & Saunders, C. S. (2005). Information processing view of organizations: An exploratory examination of fit in the context of interorganizational relationships. *Journal of Management Information Systems, 22*(1), 257–294.
+
+Rönkkö, M., & Evermann, J. (2013). A critical examination of common beliefs about partial least squares path modeling. *Organizational Research Methods, 16*(3), 425–448.
 
 Reuters. (2026, January). India's textile exporters pin hopes on EU deal after US tariff blow. *Reuters*.
 

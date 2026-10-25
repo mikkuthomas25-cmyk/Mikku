@@ -11,7 +11,8 @@ Submission package for the **Journal of Business Logistics** Special Topic Forum
 | `04_online_appendix.md` / `.docx` | Measures, analysis plan, timeline | Draft |
 | `05_cfp_compliance.md` / `.docx` | Requirement-by-requirement check against the call | Current |
 | `figure1_model.svg` / `.png` | Figure 1 (research model) | Final |
-| `analysis/pls_model.R` | seminr PLS-SEM pipeline (synthetic-data mode for testing) | **Not yet executed**; R was unavailable while drafting |
+| `analysis/efa_pilot.R` | EFA of the new scales on the pilot sample (psych) | **Not yet executed** |
+| `analysis/pls_model.R` | seminr PLS-SEM pipeline + lavaan CFA robustness check (synthetic-data mode for testing) | **Not yet executed**; R was unavailable while drafting |
 
 Rebuild the Word files with: `bash build_docx.sh`
 
@@ -20,7 +21,7 @@ Rebuild the Word files with: `bash build_docx.sh`
 | STF requirement | How it is met |
 |---|---|
 | Empirical, with data from 2026/2027 | Two-wave survey, Feb–Mar 2027 |
-| 3,500–4,000 words including references | 3,590 words (body 2,660 + references 930), with the results written as fill-in-the-blank sentences. Recount after filling them in |
+| 3,500–4,000 words including references | 3,789 words (body 2,784 + references 1,005), with the results written as fill-in-the-blank sentences. Recount after filling them in |
 | Germane, current, provocative | Destruction ban (July 2026), DPP Registry live (July 2026), EU–India FTA (Jan 2026), US tariffs. "Traceability without circularity?" competing hypotheses |
 | Theory to make sense of chaos | Organizational information processing theory + institutional decoupling |
 | STF topic bullets | Sustainability vs. operational trade-offs; global footprint and geopolitics; public policy; cross-boundary collaboration; technology |

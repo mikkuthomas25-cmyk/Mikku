@@ -133,6 +133,38 @@ full_vif <- sapply(names(scores), function(v) {
 })
 cat("\n== Full-collinearity VIFs (flag > 3.3) ==\n"); print(round(full_vif, 2))
 
+# ---- 6b. Covariance-based CFA (robustness; Online Appendix B.2a) -------------
+
+if (requireNamespace("lavaan", quietly = TRUE)) {
+  cfa_model <- '
+    BTP =~ BTP1 + BTP2 + BTP3 + BTP4 + BTP5
+    DAC =~ DAC1 + DAC2 + DAC3 + DAC4
+    DTC =~ DTC1 + DTC2 + DTC3 + DTC4 + DTC5
+    MDS =~ MDS1 + MDS2 + MDS3 + MDS4 + MDS5
+    DPR =~ DPR1 + DPR2 + DPR3 + DPR4 + DPR5 + DPR6 + DPR7
+    CSC =~ CSC1 + CSC2 + CSC3 + CSC4 + CSC5
+    EXP =~ EXP1 + EXP2 + EXP3 + EXP4
+    RU  =~ RU1 + RU2 + RU3
+  '
+  cfa_fit <- lavaan::cfa(cfa_model, data = survey, estimator = "MLR", std.lv = TRUE)
+  cat("\n== CFA fit (CFI/TLI >= .90, RMSEA/SRMR <= .08) ==\n")
+  print(lavaan::fitMeasures(cfa_fit, c("chisq.scaled", "df", "cfi.robust", "tli.robust",
+                                       "rmsea.robust", "rmsea.ci.lower.robust",
+                                       "rmsea.ci.upper.robust", "srmr")))
+  cat("\n== CFA standardised loadings ==\n")
+  std <- lavaan::standardizedSolution(cfa_fit)
+  print(std[std$op == "=~", c("lhs", "rhs", "est.std", "pvalue")])
+
+  # One-factor (Harman-type) comparison model
+  all_items <- unique(std$rhs[std$op == "=~"])
+  one_fit <- lavaan::cfa(paste("F =~", paste(all_items, collapse = " + ")),
+                         data = survey, estimator = "MLR")
+  cat("\n== Eight-factor vs one-factor model ==\n")
+  print(lavaan::lavTestLRT(cfa_fit, one_fit))
+} else {
+  message("Install lavaan to run the CFA robustness check: install.packages('lavaan')")
+}
+
 # ---- 7. Prediction (PLSpredict) ----------------------------------------------
 
 # predict_pls may not support interaction terms; if it fails, re-estimate the
