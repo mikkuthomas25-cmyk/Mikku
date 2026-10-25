@@ -298,7 +298,9 @@ Each replication simulates one week (40 h) of operation, ≈114,000 garments and
    measures purity with Gaussian error (SD 0.5 percentage points; *assumed*) and accepts
    the bale if the measurement meets the specification: 95% or 98% cotton for COT,
    90% polyester for PES, 95% cotton+polyester for PC. The trailing incomplete bale of
-   each line is carried over and excluded from all replications alike.
+   each line is carried over to the next period; to avoid a horizon artefact that
+   would grow with bale size, its mass is credited at the line's observed acceptance
+   rate in the replication.
 
 ### 3.4 Outputs
 

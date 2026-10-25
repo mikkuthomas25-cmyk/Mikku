@@ -43,9 +43,8 @@ def test_perfect_system_gives_pure_accepted_bales():
     # bale purity >= spec by construction of the class rule, so nothing is rejected
     assert r["COT_reject"] == 0 and r["PES_reject"] == 0 and r["PC_reject"] == 0
     assert r["COT_purity"] >= 0.95
-    # only the trailing partial bale (< bale_kg) is excluded
-    cot_line_kg = r["input_kg"] * 0.42
-    assert r["cotton_recovery"] >= 1 - p.bale_kg / cot_line_kg - 0.01
+    # carried-over partial bale is credited at the observed (100%) acceptance rate
+    assert abs(r["cotton_recovery"] - 1) < 1e-3  # mass-based carry-over credit
 
 
 def test_mass_conservation():
@@ -100,7 +99,7 @@ def test_full_dpp_with_no_errors_bypasses_sensor():
     p = Params(dpp_share=1.0, dpp_error=0.0, p_discharge=0.0, sigma=0.2, horizon_h=5, qc_sd=0)
     r = run(p, 9)
     assert r["COT_reject"] == 0
-    assert r["cotton_recovery"] >= 1 - p.bale_kg / (r["input_kg"] * 0.42) - 0.01
+    assert abs(r["cotton_recovery"] - 1) < 1e-3  # mass-based carry-over credit
 
 
 def test_common_random_numbers_reproducible():

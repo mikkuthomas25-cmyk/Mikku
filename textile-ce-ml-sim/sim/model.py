@@ -205,7 +205,8 @@ def bale_lines(dest, mass, comp, p: Params, rng):
     res = {}
     for k in BALED:
         idx = np.flatnonzero(dest == k)
-        empty = dict(n_bales=0, accepted_kg=0.0, baled_kg=0.0, purity=np.array([]), acc=np.array([], bool))
+        empty = dict(n_bales=0, accepted_kg=0.0, baled_kg=0.0, purity=np.array([]), acc=np.array([], bool),
+                     scale=1.0)
         if len(idx) == 0:
             res[CLASSES[k]] = empty
             continue
@@ -222,8 +223,12 @@ def bale_lines(dest, mass, comp, p: Params, rng):
         purity = bt / bm
         acc = purity + rng.normal(0, p.qc_sd, nb) >= p.spec[k]
         item_accepted[idx[keep]] = acc[bid[keep]]
-        res[CLASSES[k]] = dict(n_bales=nb, accepted_kg=float(bm[acc].sum()), baled_kg=float(bm.sum()),
-                               purity=purity, acc=acc)
+        # The trailing partial bale is carried over to the next period. Its items are
+        # neither lost nor accepted yet; flow KPIs are scaled by line mass / baled mass,
+        # i.e. the carried-over mass is credited at this line's observed acceptance rate.
+        scale = float(m.sum() / bm.sum())
+        res[CLASSES[k]] = dict(n_bales=nb, accepted_kg=float(bm[acc].sum()) * scale, baled_kg=float(bm.sum()),
+                               purity=purity, acc=acc, scale=scale)
     return res, item_accepted
 
 
@@ -270,7 +275,7 @@ def run(p: Params, seed: int, return_items: bool = False) -> dict:
     total = mass.sum()
     cot_items = true == C_COT
     cotton_avail = (mass * comp[:, COTTON])[cot_items].sum()
-    cotton_recovered = (mass * comp[:, COTTON])[(dest == C_COT) & item_acc].sum()
+    cotton_recovered = (mass * comp[:, COTTON])[(dest == C_COT) & item_acc].sum() * bales["COT"]["scale"]
     sensed = ~dpp
     out = dict(
         n_items=n,
