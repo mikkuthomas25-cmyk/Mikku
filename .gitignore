@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+garment-ce-sim/results/calibration_log.txt

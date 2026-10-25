@@ -1,0 +1,94 @@
+name,value,low,high,unit,source_id,role,description
+n_agents,3000,,,agents,ASSUMP,structural,Number of consumer agents (each represents population/n_agents people)
+network_k,8,,,neighbours,ASSUMP,structural,Watts-Strogatz mean degree of consumer social network
+network_p,0.1,,,prob,ASSUMP,structural,Watts-Strogatz rewiring probability
+kg_per_item,0.25,0.24,0.26,kg/item,ADEME24,fixed,"Mean mass per TLC item (886 kt / 3.48 bn = 0.255; 600 kt / 2.5 bn = 0.24)"
+lifetime_new,3.5,2.5,5.0,yr,ASSUMP,gsa,Mean first-owner active life of a new item at reference durability
+sh_life_frac,0.6,0.4,0.9,fraction,ASSUMP,gsa,Remaining life of a second-hand item relative to a new one
+wardrobe_adj_time,2.0,1.0,4.0,yr,ASSUMP,fixed,Time to close gap between desired and actual wardrobe
+seg_share_trend,0.25,,,fraction,ASSUMP,fixed,Share of trend-driven consumers
+seg_share_main,0.55,,,fraction,ASSUMP,fixed,Share of mainstream consumers
+seg_share_consc,0.20,,,fraction,ASSUMP,fixed,Share of sustainability-conscious consumers
+purchase_sigma,0.5,,,log-sd,ASSUMP,fixed,Lognormal heterogeneity of individual purchase intensity
+price_sh,8.0,4.0,12.0,EUR/item,LID26,gsa,"Mean second-hand price (16.70 vintage, 9.40 platforms, 3.40 charity shops)"
+rebound,0.3,0.0,0.7,fraction,ASSUMP,gsa,Share of money saved by buying second-hand that is re-spent on more clothing
+price_elasticity,0.6,0.3,1.2,-,ASSUMP,gsa,Absolute price elasticity of desired clothing acquisitions
+bass_p,0.01,0.002,0.05,1/yr,BASS,calibrate,Innovation coefficient for resale-platform adoption (Bass); start 2012
+bass_q,0.38,0.2,0.6,1/yr,BASS,calibrate,Imitation coefficient (fraction of adopter neighbours)
+bass_potential,0.6,0.3,0.9,fraction,ASSUMP,calibrate,Share of consumers who can ever adopt resale platforms (Bass market potential)
+bass_start,2012,,,year,ASSUMP,fixed,Year resale platforms start diffusing in France (Vinted FR 2013)
+sh_share_adopter,0.20,0.10,0.40,fraction,ASSUMP,calibrate,Share of acquisitions bought second-hand by platform adopters
+sh_share_base,0.005,0.0,0.02,fraction,ASSUMP,fixed,Share bought second-hand by non-adopters (charity shops)
+p2p_share_adopter,0.20,0.05,0.40,fraction,ASSUMP,gsa,Share of discards resold peer-to-peer by adopters
+p2p_share_base,0.02,0.0,0.05,fraction,ASSUMP,fixed,Share of discards passed on peer-to-peer by non-adopters
+seg_sh_mult_trend,0.8,,,multiplier,ASSUMP,fixed,Second-hand propensity multiplier for trend-driven segment
+seg_sh_mult_consc,1.6,,,multiplier,ASSUMP,fixed,Second-hand propensity multiplier for conscious segment
+c_max,0.6,0.3,0.9,fraction,ASSUMP,calibrate,Maximum attainable separate-collection propensity with saturated access
+access_kappa,1.5,0.3,5.0,per (points/1000 inh),ASSUMP,calibrate,Access response: c* = c_max (1 - exp(-kappa * density))
+alpha_norm,0.2,0.05,0.5,1/yr,ASSUMP,gsa,Speed of adjustment of collection habit to neighbours (social norm)
+alpha_access,0.3,0.05,0.8,1/yr,ASSUMP,calibrate,Speed of adjustment of collection habit to access-driven attractor
+habit_sigma,0.05,,,sd,ASSUMP,fixed,Idiosyncratic noise in collection habit update
+seg_collect_mult_consc,1.3,,,multiplier,ASSUMP,fixed,Collection propensity multiplier for conscious segment
+seg_collect_mult_trend,0.8,,,multiplier,ASSUMP,fixed,Collection propensity multiplier for trend-driven segment
+collection_points_2010,25000,10000,34600,points,ASSUMP,calibrate,Collection points in 2010 (no source found; interpolation anchor)
+n_brands_per_segment,10,,,agents,ASSUMP,structural,Brand agents per market segment (UF fast mid premium)
+uf_share_2010,0.02,,,fraction,ASSUMP,fixed,Ultra-fast-fashion share of new items in 2010
+uf_share_2024,0.15,0.08,0.25,fraction,ASSUMP,gsa,Ultra-fast-fashion share of new items in 2024 (forced historically)
+price_uf,8,,,EUR/item,ASSUMP,fixed,Mean price ultra-fast segment
+price_fast,15,,,EUR/item,ASSUMP,fixed,Mean price fast segment
+price_mid,30,,,EUR/item,ASSUMP,fixed,Mean price mid segment
+price_premium,70,,,EUR/item,ASSUMP,fixed,Mean price premium segment
+dur_uf,0.55,,,index,ASSUMP,fixed,Durability coefficient ultra-fast (law threshold 0.8)
+dur_fast,0.70,,,index,ASSUMP,fixed,Durability coefficient fast
+dur_mid,0.85,,,index,ASSUMP,fixed,Durability coefficient mid
+dur_premium,0.95,,,index,ASSUMP,fixed,Durability coefficient premium
+rec_uf,0.30,,,index,ASSUMP,fixed,Recyclability (mono-material share) ultra-fast
+rec_fast,0.40,,,index,ASSUMP,fixed,Recyclability fast
+rec_mid,0.50,,,index,ASSUMP,fixed,Recyclability mid
+rec_premium,0.60,,,index,ASSUMP,fixed,Recyclability premium
+dur_ref,0.75,,,index,ASSUMP,fixed,Durability at which lifetime_new applies
+lifetime_dur_elast,1.0,0.5,1.5,-,ASSUMP,gsa,Elasticity of item lifetime to durability coefficient
+base_fee,0.04,0.02,0.06,EUR/item,REFFEE25,fixed,Mean standard eco-contribution per item
+dur_bonus,0.07,0.0,0.7,EUR/item,TGC23,fixed,Durability bonus per item for dur >= 0.8 (tail rate)
+rec_malus,0.05,0.0,0.2,EUR/item,ASSUMP,fixed,Recyclability malus per item for rec < 0.5 (from 2025)
+pass_through,0.8,0.5,1.0,fraction,ASSUMP,gsa,Share of fee/penalty passed through to consumer price
+upgrade_step,0.1,,,index,ASSUMP,fixed,Durability increase per brand upgrade decision
+upgrade_cost_frac,0.08,0.03,0.20,fraction of price,ASSUMP,gsa,Unit cost increase per upgrade step (as share of price)
+upgrade_logit,3.0,,,-,ASSUMP,fixed,Bounded-rationality logit sensitivity of upgrade decision
+logit_price,1.5,,,-,ASSUMP,fixed,Consumer price sensitivity in segment choice (log price)
+logit_dur_consc,3.0,,,-,ASSUMP,fixed,Weight on durability for conscious consumers in segment choice
+n_sorters,67,,,agents,REF23KPI,structural,Number of contracted sorting operators
+big_sorter_share,0.6,,,fraction,TI25,fixed,Capacity share of the largest network (Le Relais)
+sort_capacity_2010,140,100,200,kt/yr,ASSUMP,calibrate,Total sorting capacity in 2010
+capacity_adj_time,3.0,1.5,5.0,yr,ASSUMP,calibrate,Delay for sorting capacity to adjust to desired level
+capacity_margin_sens,0.004,0.0,0.01,per EUR/t,ASSUMP,calibrate,Effect of margin (support - net cost) on desired capacity
+exit_margin,40,,,EUR/t,ASSUMP,fixed,Loss level (negative margin) counted as a loss year for exit
+exit_prob,0.1,,,1/yr,ASSUMP,fixed,Annual exit probability after 3 consecutive heavy-loss years
+entry_prob,0.2,,,1/yr,ASSUMP,fixed,Annual probability a vacant operator slot is filled when average margin > 0
+unsorted_export_share,0.209,0.15,0.25,fraction,OCC20,fixed,Share of collected exported unsorted ('original')
+storage_frac,0.15,,,fraction of capacity,ASSUMP,fixed,Max backlog storage before overflow
+overflow_export_share,0.5,0.2,0.8,fraction,ASSUMP,gsa,Share of overflow exported unsorted (rest incinerated)
+reuse_share_base,0.58,,,fraction,OCC20,fixed,Reuse-grade share of sorted output at zero ultra-fast share
+reuse_quality_slope,0.3,0.0,1.0,-,ASSUMP,calibrate,Reduction in reuse share per unit ultra-fast share of discards
+domestic_reuse_frac,0.08,0.03,0.15,fraction,ASSUMP,gsa,Share of reuse-grade output sold in France (rest exported)
+recycling_frac_nonreuse,0.565,,,fraction,REF24,fixed,Material recycling share of non-reuse output (0.2428/0.43)
+wipes_frac_nonreuse,0.233,,,fraction,REF24,fixed,Wipes share of non-reuse output (0.10/0.43)
+energy_frac_nonreuse,0.184,,,fraction,REF24,fixed,Energy recovery share of non-reuse output (0.079/0.43)
+export_price_ref,513,,,EUR/t,LID26,fixed,Reference export price (2024)
+net_cost_ref,123,,,EUR/t,CGE25,fixed,Reference net sorting cost at export_price_ref
+f2f_capacity_2024,2.0,0.5,5.0,kt/yr,ASSUMP,fixed,Fibre-to-fibre recycling capacity in France 2024 (pilot scale)
+f2f_learning_rate,0.18,0.10,0.25,fraction,ASSUMP,gsa,Cost reduction per doubling of cumulative F2F output
+f2f_cost_premium_0,0.6,0.3,1.0,fraction,ASSUMP,gsa,F2F fibre cost premium over virgin in 2024
+f2f_max_growth,0.4,,,1/yr,ASSUMP,fixed,Maximum annual growth of F2F capacity
+f2f_build_delay,3.0,,,yr,ASSUMP,fixed,F2F construction delay
+f2f_yield,0.7,0.6,0.85,fraction,ASSUMP,fixed,Fibre yield of F2F process
+f2f_feedstock_factor,0.6,,,fraction,ASSUMP,fixed,Share of recyclable (mono-material) recycling-grade that is technically suitable
+ef_production,20.0,12.0,35.0,kgCO2e/kg,ASSUMP,gsa,Cradle-to-gate GHG of a new garment
+fibre_stage_share,0.2,0.1,0.3,fraction,ASSUMP,fixed,Share of production GHG at fibre stage (replaced by F2F)
+f2f_rel_impact,0.5,0.3,0.8,fraction,ASSUMP,fixed,F2F fibre impact relative to virgin fibre
+ef_incineration,1.5,0.5,3.0,kgCO2e/kg,ASSUMP,gsa,GHG of incineration/landfill per kg
+ef_open_recycling_credit,2.0,0.5,7.5,kgCO2e/kg,ADEMEPR25,gsa,Avoided GHG per kg of open-loop recycling (upper bound ADEME 7.5)
+ef_export,0.2,0.1,0.5,kgCO2e/kg,ASSUMP,fixed,Transport GHG per kg exported
+ef_sorting,0.1,,,kgCO2e/kg,ASSUMP,fixed,Collection and sorting GHG per kg
+pop_growth_proj,0.0025,,,1/yr,ASSUMP,fixed,Population growth after 2024
+demand_growth_proj,0.01,0.0,0.03,1/yr,ASSUMP,gsa,Trend growth of desired wardrobe after 2024 (BAU)

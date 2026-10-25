@@ -1,0 +1,66 @@
+variable,year,value,unit,source_id,confidence,use,note
+placed_on_market,2014,600,kt,NATSCI,medium,forcing,"'~600,000 t' round figure used by Eco TLC for several years"
+placed_on_market,2015,600,kt,ECOTLC15,medium,forcing,"2.5 bn pieces; round figure"
+placed_on_market,2018,624,kt,ECOTLC18,high,forcing,"2.6 bn pieces"
+placed_on_market,2019,648,kt,OCC20,high,forcing,
+placed_on_market,2021,715.29,kt,RA21,high,forcing,
+placed_on_market,2023,811,kt,ADEMEMAG25,high,forcing,
+placed_on_market,2024,886,kt,ADEME24,high,forcing,"Refashion reports 891.31 kt; ADEME 886 kt used (household scope)"
+placed_on_market,2024,891.31,kt,REF24,high,alternative,
+placed_on_market,2025,917.604,kt,RECY25,medium,validation,"held out from calibration"
+units_on_market,2015,2500,million items,ECOTLC15,medium,derived,
+units_on_market,2018,2600,million items,ECOTLC18,high,derived,
+units_on_market,2024,3480,million items,ADEME24,high,derived,
+collected,2009,129,kt,OCC20B,low,target_lowweight,"derived: ~2 kg/inh x 64.3 M inhabitants"
+collected,2014,175,kt,NATSCI,medium,target,
+collected,2018,239,kt,ECOTLC18,high,target,
+collected,2019,248.547,kt,OCC20,high,target,
+collected,2021,244.448,kt,RA21,high,target,"COVID-affected period (2020-2021)"
+collected,2022,264,kt,AREC,medium,target,"derived: 3.9 kg/inh x 67.8 M"
+collected,2023,259.594,kt,AREC,medium,target,"conflicts with ADEME 267.899 kt; mean of both used for calibration"
+collected,2023,267.899,kt,ADEMEMAG25,medium,target,
+collected,2024,289.393,kt,REF24,high,target,
+collected,2025,272.479,kt,RECY25,medium,validation,"held out; Le Relais collection halt in summer 2025"
+sorted,2019,196.054,kt,OCC20,medium,target,"another source gives 187.16 kt"
+sorted,2022,187.609,kt,REF23KPI,high,target,
+sorted,2023,187.51,kt,REF23KPI,high,target,
+sorted,2024,206.136,kt,REF24,high,target,"ADEME gives 197 kt"
+sorted,2025,216.264,kt,RECY25,medium,validation,
+unsorted_export_share,2019,0.209,fraction of collected,OCC20,medium,target,"exported 'original' without sorting"
+reuse_share_sorted,2019,0.578,fraction of sorted,OCC20,high,target,
+reuse_share_sorted,2024,0.568,fraction of sorted,REF24,high,target,
+recycling_share_sorted,2024,0.2428,fraction of sorted,REF24,high,target,"material recycling"
+wipes_share_sorted,2024,0.10,fraction of sorted,REF24,medium,target,"industrial wipes"
+energy_share_sorted,2024,0.079,fraction of sorted,REF24,medium,target,"energy recovery (CSR)"
+collection_points,2014,34600,points,OCC20,low,forcing,"derived: 2019 count / 1.33 ('grew by about one third 2014-2019')"
+collection_points,2019,46066,points,OCC20,high,forcing,
+collection_points,2021,44829,points,CNR22,high,forcing,"COVID dip"
+collection_points,2022,44633,points,CRESS22,medium,forcing,
+collection_points,2023,47551,points,REF23KPI,high,forcing,
+collection_points,2024,47948,points,REF24,high,forcing,
+collection_points,2025,47227,points,RECY25,medium,forcing,
+sorting_support,2010,65,EUR/t,IGEDD,medium,forcing,"65 €/t until Sept 2017"
+sorting_support,2017,65,EUR/t,IGEDD,medium,forcing,
+sorting_support,2018,82.5,EUR/t,IGEDD,high,forcing,"arrêté 19 Sep 2017"
+sorting_support,2022,82.5,EUR/t,ASSUMP,low,forcing,"no source found 2019-2022; held at 82.5"
+sorting_support,2023,156,EUR/t,FN25,medium,forcing,"'156 €/t before' 2025; new cahier des charges 2023 (base 80 + complement)"
+sorting_support,2024,187,EUR/t,REF6M,high,forcing,"156 + 31 €/t retroactive"
+sorting_support,2025,223,EUR/t,FN25,high,forcing,
+sorting_support,2026,268,EUR/t,AE26,high,forcing,
+net_sorting_cost,2012,64,EUR/t,IGEDD,high,forcing,"cost minus sales revenue"
+net_sorting_cost,2013,69,EUR/t,IGEDD,high,forcing,
+net_sorting_cost,2014,87,EUR/t,IGEDD,high,forcing,
+net_sorting_cost,2024,123,EUR/t,CGE25,medium,forcing,"not audited by Refashion per CGE"
+export_price,2024,513,EUR/t,LID26,medium,forcing,"back-calculated: 471 / (1-0.082)"
+export_price,2025,471,EUR/t,LID26,high,forcing,
+used_textile_exports,2025,172,kt,LID26,high,validation,
+population,2010,64.61,million,INSEE,medium,forcing,"to verify"
+population,2015,66.42,million,INSEE,medium,forcing,"to verify"
+population,2020,67.29,million,INSEE,medium,forcing,"to verify"
+population,2024,68.37,million,INSEE,medium,forcing,"to verify"
+sh_domestic_sales,2024,62.4,kt,REFBAR26,medium,target,"derived: 65.4 / 1.048"
+sh_domestic_sales,2025,65.4,kt,REFBAR26,high,validation,
+sh_buyer_share,2023,0.38,fraction of consumers,REFBAR24,high,target,"bought >=1 second-hand TLC item in year"
+sh_items_per_buyer,2023,7.3,items/yr,REFBAR24,high,target,
+n_sorters,2022,67,operators,REF23KPI,high,validation,"contracted sorting operators"
+n_sorters,2023,66,operators,REF23KPI,high,validation,
