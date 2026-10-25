@@ -202,17 +202,6 @@ def fig_E6():
     return t
 
 
-if __name__ == "__main__":
-    FIG.mkdir(parents=True, exist_ok=True)
-    TAB.mkdir(parents=True, exist_ok=True)
-    which = sys.argv[1:] or ["E1", "E2", "E3", "E4", "E5", "E6"]
-    for e in which:
-        if (RES / {"E1": "E1_accuracy_vs_circularity", "E2": "E2_fallback_design", "E3": "E3_bale_spec",
-                   "E4": "E4_dpp", "E5": "E5_drift", "E6": "E6_oat_sensitivity"}[e]).with_suffix(".csv").exists():
-            globals()[f"fig_{e}"]()
-            print("done", e)
-
-
 def paired_E1():
     """Paired (CRN) differences: recovery-optimal tau vs tau=0 and vs accuracy-optimal tau=0.99."""
     df = pd.read_csv(RES / "E1_accuracy_vs_circularity.csv")
@@ -230,3 +219,115 @@ def paired_E1():
     out = pd.DataFrame(rows)
     out.to_csv(TAB / "E1_paired.csv", index=False)
     return out
+
+
+def fig_E7():
+    """Policy comparison with holdout selection of each family's parameter."""
+    df = pd.read_csv(RES / "E7_policy_comparison.csv")
+    df["cfg_budget_safety"] = df["cfg_budget_safety"].fillna(-1)
+    seeds = sorted(df.seed.unique())
+    sel_seeds, eval_seeds = seeds[: len(seeds) // 2], seeds[len(seeds) // 2:]
+    cond = ["cfg_spec", "cfg_p_discharge", "cfg_manual_servers", "cfg_manual_accuracy"]
+    par = ["cfg_policy", "cfg_tau", "cfg_budget_safety"]
+    sel = df[df.seed.isin(sel_seeds)].groupby(cond + par).cotton_recovery.mean().reset_index()
+    best = sel.loc[sel.groupby(cond + ["cfg_policy"]).cotton_recovery.idxmax()][cond + par]
+    ev = df[df.seed.isin(eval_seeds)].merge(best, on=cond + par)
+    t = summarise(ev, cond + par, ["cotton_recovery", "COT_reject", "closed_loop_share", "manual_items",
+                                    "manual_util", "protective_divert"])
+    t.to_csv(TAB / "E7_holdout_best.csv", index=False)
+    # paired differences vs best fixed threshold (A) on evaluation seeds
+    piv = ev.pivot_table(index=cond + ["seed"], columns="cfg_policy", values="cotton_recovery").reset_index()
+    rows = []
+    for key, g in piv.groupby(cond):
+        for pol in ("capacity", "quality"):
+            d = g[pol] - g["fixed"]
+            hw = d.std(ddof=1) * stats.t.ppf(0.975, len(d) - 1) / np.sqrt(len(d))
+            rows.append(dict(zip(cond, key), policy=pol, diff_vs_fixed=d.mean(), hw=hw))
+    pd.DataFrame(rows).to_csv(TAB / "E7_paired_vs_fixed.csv", index=False)
+    # figure: best recovery per family, panels spec x discharge, x = manual servers, manual accuracy .85
+    fig, axes = plt.subplots(2, 3, figsize=(8.4, 4.8), sharey="row", sharex=True)
+    fam = [("fixed", "A fixed threshold"), ("capacity", "B capacity-aware"), ("quality", "C quality-aware")]
+    for i, spec in enumerate(SPEC_LABEL):
+        for j, dis in enumerate(sorted(t.cfg_p_discharge.unique())):
+            ax = axes[i, j]
+            for c, (pol, lab) in zip(CAT, fam):
+                d = t[(t.cfg_spec == spec) & (t.cfg_p_discharge == dis) & (t.cfg_policy == pol)
+                      & (t.cfg_manual_accuracy == 0.85)].sort_values("cfg_manual_servers")
+                ax.errorbar(d.cfg_manual_servers, d.cotton_recovery_mean * 100, yerr=d.cotton_recovery_hw * 100,
+                            color=c, marker="o", ms=3, capsize=2, label=lab)
+            if i == 0:
+                ax.set_title(f"discharge error {dis:.0%}", color=INK)
+            if j == 0:
+                ax.set_ylabel(f"{SPEC_LABEL[spec]}\ncotton recovered (%)")
+            if i == 1:
+                ax.set_xlabel("Manual sorters")
+    axes[0, 0].legend(fontsize=6.5, loc="lower right")
+    fig.savefig(FIG / "F7_policy_comparison.png")
+    plt.close(fig)
+    return t
+
+
+def fig_bale_purity():
+    """Distribution of cotton-bale purity by bale size (baseline, one long replication)."""
+    import model as M
+    fig, ax = plt.subplots(figsize=(5.2, 2.9))
+    cols = seq(3, "Greens", 0.45, 0.95)
+    for c, b in zip(cols, (50, 200, 1000)):
+        pur = np.concatenate([M.run(M.with_(M.Params(), bale_kg=b, horizon_h=200), 777 + r,
+                                    return_items=True)["_bale_purity"]["COT"] for r in range(3)])
+        ax.hist(pur * 100, bins=np.linspace(95, 100, 51), histtype="step", lw=2, color=c, density=True,
+                label=f"{b} kg (sd {pur.std()*100:.2f} pp)")
+    for s, ls in ((95, ":"), (98, "--"), (99, "-.")):
+        ax.axvline(s, color=INK2, lw=1, ls=ls)
+        ax.text(s, ax.get_ylim()[1] * 0.95, f" {s}%", color=INK2, fontsize=7)
+    ax.set_xlabel("Cotton-bale purity (%)")
+    ax.set_ylabel("Density")
+    ax.legend(fontsize=7, loc="upper left")
+    fig.savefig(FIG / "F3b_bale_purity_distribution.png")
+    plt.close(fig)
+
+
+def fig_calibration():
+    """Reliability of the sensor's confidence score (does conf c mean P(correct) = c?)."""
+    import model as M
+    fig, ax = plt.subplots(figsize=(4.2, 3.6))
+    rows = []
+    for c, sg in zip(seq(3), (0.01, 0.035, 0.066)):
+        it = M.run(M.with_(M.Params(), sigma=sg, horizon_h=40), 4242, return_items=True)["_items"]
+        m = ~it["dark"] & ~it["has_dpp"]
+        conf, ok = it["conf"][m], (it["pred"] == it["true"])[m]
+        bins = np.linspace(0, 1, 11)
+        idx = np.clip(np.digitize(conf, bins) - 1, 0, 9)
+        x = [conf[idx == b].mean() for b in range(10) if (idx == b).sum() > 50]
+        y = [ok[idx == b].mean() for b in range(10) if (idx == b).sum() > 50]
+        ece = sum((idx == b).mean() * abs(conf[idx == b].mean() - ok[idx == b].mean())
+                  for b in range(10) if (idx == b).sum())
+        rows.append(dict(sigma=sg, ece=ece))
+        ax.plot(x, y, color=c, marker="o", ms=3, label=f"RMSEP {sg*100:.1f}% (ECE {ece:.3f})")
+    ax.plot([0, 1], [0, 1], color=INK2, lw=1, ls="--")
+    ax.set_xlabel("Confidence score")
+    ax.set_ylabel("Observed accuracy")
+    ax.legend(fontsize=7)
+    fig.savefig(FIG / "F8_calibration.png")
+    plt.close(fig)
+    pd.DataFrame(rows).to_csv(TAB / "calibration_ece.csv", index=False)
+
+
+if __name__ == "__main__":
+    FIG.mkdir(parents=True, exist_ok=True)
+    TAB.mkdir(parents=True, exist_ok=True)
+    which = sys.argv[1:] or ["E1", "E2", "E3", "E4", "E5", "E6", "E7", "bale", "calib"]
+    files = {"E1": "E1_accuracy_vs_circularity", "E2": "E2_fallback_design", "E3": "E3_bale_spec",
+             "E4": "E4_dpp", "E5": "E5_drift", "E6": "E6_oat_sensitivity", "E7": "E7_policy_comparison"}
+    for e in which:
+        if e == "bale":
+            fig_bale_purity()
+        elif e == "calib":
+            fig_calibration()
+        elif (RES / files[e]).with_suffix(".csv").exists():
+            globals()[f"fig_{e}"]()
+            if e == "E1":
+                paired_E1()
+        else:
+            continue
+        print("done", e)
