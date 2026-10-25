@@ -54,6 +54,9 @@ class Params:
     n_conf_draws: int = 64               # resamples used for the confidence score
     tau: float = 0.0                     # confidence threshold for auto-routing
     audit_share: float = 0.0             # random share sent to manual for labelling (drift study)
+    # delegation policy: "fixed" (A), "capacity" (B) or "quality" (C); see delegate_online()
+    policy: str = "fixed"
+    budget_safety: float = 0.5           # policy C: share of (1 - spec) allowed for sensor-visible contamination
     # --- digital product passport ---
     dpp_share: float = 0.0
     dpp_error: float = 0.02              # ASSUMPTION
@@ -144,13 +147,19 @@ def sense(comp: np.ndarray, sigma_item: np.ndarray, n_draws: int, rng: np.random
     est = comp[:, :2] + rng.standard_normal((len(comp), 2)) * s
     pred = _rule2(est[:, 0], est[:, 1])
     conf = np.empty(len(comp))
+    efor = np.empty(len(comp))
     chunk = 50_000
     for a in range(0, len(comp), chunk):
         b = min(a + chunk, len(comp))
         draws = est[a:b, None, :] + rng.standard_normal((b - a, n_draws, 2)) * s[a:b, None, :]
         cls = _rule2(draws[..., 0], draws[..., 1])
         conf[a:b] = (cls == pred[a:b, None]).mean(axis=1)
-    return est, pred, conf
+        # estimated non-target mass fraction if the item joins its predicted line
+        # (unclipped point estimate, so that sums over a bale are unbiased)
+        e, pk = est[a:b], pred[a:b]
+        tgt = np.where(pk == C_COT, e[:, 0], np.where(pk == C_PES, e[:, 1], e[:, 0] + e[:, 1]))
+        efor[a:b] = np.where(pk == C_OTH, 0.0, 1 - tgt)
+    return est, pred, conf, efor
 
 
 def nearest_wrong_class(comp: np.ndarray, true: np.ndarray) -> np.ndarray:
@@ -232,6 +241,66 @@ def bale_lines(dest, mass, comp, p: Params, rng):
     return res, item_accepted
 
 
+def delegate_online(cand, arrival_h, mass, pred, conf, efor, p: Params, rng):
+    """Online delegation for policies B (capacity-aware) and C (downstream-quality-aware).
+
+    Decisions use only information available on the line at the item's arrival: the
+    sensor estimate and confidence, the manual queue state, and (policy C) the line's
+    running estimate of the open bale's contamination. Returns per-item codes:
+    0 = auto-route to predicted line, 1 = manual station, 2 = divert to residual.
+    """
+    n = len(mass)
+    code = np.zeros(n, np.int8)
+    sig = np.sqrt(np.log1p(p.manual_service_cv**2))
+    mu = np.log(p.manual_service_s / 3600) - sig**2 / 2
+    svc = rng.lognormal(mu, sig, n)
+    c, K = p.manual_servers, p.manual_buffer
+    free_at = [0.0] * max(c, 1)
+    waiting: list[float] = []
+    busy = 0.0
+    a_m = p.manual_accuracy
+    # policy C state per baled line: open-bale mass and estimated foreign mass
+    open_m = np.zeros(3)
+    open_f = np.zeros(3)
+    budget = np.array([(1 - s) * p.bale_kg * p.budget_safety for s in p.spec])
+
+    for i in np.flatnonzero(cand):
+        t = arrival_h[i]
+        while waiting and waiting[0] <= t:
+            heapq.heappop(waiting)
+        start = max(t, free_at[0]) if c else np.inf
+        room = c > 0 and (start <= t or len(waiting) < K)
+        k = pred[i]
+        m = mass[i]
+        if p.policy == "capacity" or k == C_OTH:
+            # delegate only when the manual sorter is more likely right than the sensor
+            want = conf[i] < min(p.tau, a_m)
+            threat = False
+        else:  # "quality"
+            # per-kg contamination allowance left in the open bale; an item threatens the
+            # bale if its estimated foreign fraction exceeds that allowance
+            allow = (budget[k] - open_f[k]) / max(p.bale_kg - open_m[k], m)
+            threat = efor[i] > allow
+            want = threat
+        if want and room:
+            code[i] = 1
+            heapq.heapreplace(free_at, start + svc[i])
+            if start > t:
+                heapq.heappush(waiting, start)
+            busy += max(0.0, min(start + svc[i], p.horizon_h) - min(start, p.horizon_h))
+        elif threat:
+            code[i] = 2  # would break the bale's contamination budget and cannot be checked
+        elif k != C_OTH:
+            # auto-routed: charge the item's estimated foreign mass to the open bale
+            # (manual outcomes are unknown at decision time and are not tracked)
+            open_m[k] += m
+            open_f[k] += m * efor[i]
+            if open_m[k] >= p.bale_kg:
+                open_m[k] -= p.bale_kg
+                open_f[k] = open_f[k] * open_m[k] / (open_m[k] + p.bale_kg)
+    return code, busy, svc
+
+
 def run(p: Params, seed: int, return_items: bool = False) -> dict:
     """One replication; returns scalar KPIs (and optionally item-level arrays)."""
     rng = np.random.default_rng(seed)
@@ -241,31 +310,45 @@ def run(p: Params, seed: int, return_items: bool = False) -> dict:
 
     sigma_item = np.full(n, p.sigma)
     sigma_item[s["novel"]] *= p.novel_kappa
-    _, pred, conf = sense(comp, sigma_item, p.n_conf_draws, rng)
+    _, pred, conf, efor = sense(comp, sigma_item, p.n_conf_draws, rng)
 
     dest = np.full(n, RESIDUAL)
-    auto = (conf >= p.tau) & ~(rng.random(n) < p.audit_share)
-    dest[auto] = pred[auto]
-    # carbon-black / dark items give no usable spectrum: detected by low signal and
-    # sent to the residual (dark) fraction, as reported for NIR textile sorters (Q2)
-    dest[s["dark"]] = RESIDUAL
-    auto = auto | s["dark"]
-
     dpp = s["has_dpp"]
+    dark = s["dark"]
+    audit = rng.random(n) < p.audit_share
     dpp_cls = np.where(rng.random(n) < p.dpp_error, nearest_wrong_class(comp, true), true)
-    dest[dpp] = dpp_cls[dpp]
-    auto = auto | dpp
+    mis_draw = rng.random(n) < p.p_discharge
+    shift = rng.integers(1, 4, n)
+
+    if p.policy == "fixed":
+        auto = (conf >= p.tau) & ~audit
+        dest[auto] = pred[auto]
+        # carbon-black / dark items give no usable spectrum: detected by low signal and
+        # sent to the residual (dark) fraction, as reported for NIR textile sorters (Q2)
+        auto = auto | dark | dpp
+        dest[dark] = RESIDUAL
+        dest[dpp] = dpp_cls[dpp]
+        unsure = np.flatnonzero(~auto)
+        served, busy = manual_station(s["arrival_h"][unsure], p, rng)
+        srv = unsure[served]
+    else:
+        cand = ~dark & ~dpp
+        code, busy, _ = delegate_online(cand, s["arrival_h"], mass, pred, conf, efor, p, rng)
+        to_manual = (code == 1) | (audit & cand)
+        dest[cand & (code == 0)] = pred[cand & (code == 0)]
+        dest[dark] = RESIDUAL
+        dest[dpp] = dpp_cls[dpp]
+        auto = ~to_manual
+        unsure = np.flatnonzero(to_manual)
+        srv = unsure  # admission was decided online; audit items bypass the capacity check
+        served = np.ones(len(unsure), bool)
 
     # mechanical discharge error on machine-routed items: lands in a random other bin
-    mis = auto & (rng.random(n) < p.p_discharge)
+    mis = auto & mis_draw
     bins = np.array([C_COT, C_PES, C_PC, RESIDUAL])
-    shift = rng.integers(1, 4, n)
     pos = np.searchsorted(bins, np.where(dest == C_OTH, RESIDUAL, dest))
     dest[mis] = bins[(pos[mis] + shift[mis]) % 4]
 
-    unsure = np.flatnonzero(~auto)
-    served, busy = manual_station(s["arrival_h"][unsure], p, rng)
-    srv = unsure[served]
     wrong = rng.random(len(srv)) > p.manual_accuracy
     dest[srv] = np.where(wrong, nearest_wrong_class(comp[srv], true[srv]), true[srv])
 
@@ -289,6 +372,8 @@ def run(p: Params, seed: int, return_items: bool = False) -> dict:
         cotton_recovery=float(cotton_recovered / cotton_avail) if cotton_avail else np.nan,
         residual_share=float(mass[dest == RESIDUAL].sum() / total),
         novel_labelled=int(s["novel"][srv].sum()),
+        manual_items=int(len(srv)),
+        protective_divert=float(mass[code == 2].sum() / total) if p.policy == "quality" else 0.0,
     )
     acc_total = 0.0
     for k in BALED:
@@ -302,7 +387,8 @@ def run(p: Params, seed: int, return_items: bool = False) -> dict:
     out["f2f_share"] = (bales["COT"]["accepted_kg"] + bales["PES"]["accepted_kg"]) / total
     out["closed_loop_share"] = acc_total / total
     if return_items:
-        out["_items"] = dict(s, pred=pred, conf=conf, dest=dest, item_acc=item_acc)
+        out["_items"] = dict(s, pred=pred, conf=conf, dest=dest, item_acc=item_acc, manual_idx=srv)
+        out["_bale_purity"] = {k: v["purity"] for k, v in bales.items()}
     return out
 
 

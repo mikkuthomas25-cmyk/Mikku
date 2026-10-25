@@ -92,6 +92,7 @@ OAT = {  # one-at-a-time sensitivity: (low, high) around Params() defaults
     "bale_kg": (100.0, 500.0),
     "qc_sd": (0.0, 0.01),
     "share_pes_mono": (0.10, 0.22),
+    "share_pc_blend": (0.06, 0.24),
     "sigma": (0.02, 0.066),
 }
 
@@ -106,6 +107,25 @@ def E6(reps):
                 configs.append({k: lo, "spec": spec, "tau": tau})
                 configs.append({k: hi, "spec": spec, "tau": tau})
     return run_grid("E6_oat_sensitivity", configs, reps)
+
+
+POLICY_FAMILIES = (
+    [dict(policy="fixed", tau=t) for t in (0.0, 0.5, 0.6, 0.7, 0.8, 0.9)]
+    + [dict(policy="capacity", tau=t) for t in (0.6, 0.8, 1.0)]
+    + [dict(policy="quality", tau=1.0, budget_safety=b) for b in (1.0, 0.8, 0.6, 0.4)]
+)
+
+
+def E7(reps):
+    """Delegation-policy comparison across operating conditions (RQ2 extended).
+
+    Policy parameters are selected on replications 0..reps/2-1 and evaluated on the
+    remaining replications (holdout) in the analysis, to avoid optimistic selection bias.
+    """
+    conds = grid(spec=[SPEC_95, SPEC_98], p_discharge=[0.0, 0.01, 0.02],
+                 manual_servers=[1, 2, 4], manual_accuracy=[0.85, 0.95])
+    configs = [{**c, **pol} for c in conds for pol in POLICY_FAMILIES]
+    return run_grid("E7_policy_comparison", configs, reps)
 
 
 # ---------------- E5: drift and the data loop ----------------
@@ -157,7 +177,7 @@ def E5(reps):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("exps", nargs="*", default=["E1", "E2", "E3", "E4", "E5", "E6"])
+    ap.add_argument("exps", nargs="*", default=["E1", "E2", "E3", "E4", "E5", "E6", "E7"])
     ap.add_argument("--reps", type=int, default=20)
     a = ap.parse_args()
     OUT.mkdir(exist_ok=True)

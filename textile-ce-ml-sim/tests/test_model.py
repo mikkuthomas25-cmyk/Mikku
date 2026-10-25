@@ -27,7 +27,7 @@ def test_stream_mass_and_composition():
 
 def test_noiseless_sensor_is_perfect_and_certain():
     s = generate_stream(Params(horizon_h=2), np.random.default_rng(1))
-    _, pred, conf = sense(s["comp"], np.full(len(s["mass"]), 1e-9), 16, np.random.default_rng(2))
+    _, pred, conf, _ = sense(s["comp"], np.full(len(s["mass"]), 1e-9), 16, np.random.default_rng(2))
     assert (pred == s["true"]).all()
     assert (conf == 1).all()
 
@@ -106,3 +106,25 @@ def test_common_random_numbers_reproducible():
     a = run(with_(Params(horizon_h=3), tau=0.5), 11)
     b = run(with_(Params(horizon_h=3), tau=0.5), 11)
     assert a == b
+
+
+def test_capacity_policy_without_manual_station_auto_sorts_everything_sensed():
+    p = Params(policy="capacity", tau=1.0, manual_servers=0, horizon_h=3)
+    r = run(p, 12)
+    assert r["manual_items"] == 0 and r["coverage"] == 1.0
+
+
+def test_capacity_policy_never_delegates_items_above_manual_accuracy():
+    p = Params(policy="capacity", tau=1.0, manual_servers=50, horizon_h=3)
+    r = run(p, 13, return_items=True)
+    it = r["_items"]
+    # an item is delegated only if the manual sorter is more likely right than the sensor
+    assert r["manual_items"] > 0
+    assert (it["conf"][it["manual_idx"]] < p.manual_accuracy).all()
+
+
+def test_quality_policy_with_unlimited_budget_matches_capacity_policy():
+    a = run(Params(policy="quality", tau=1.0, budget_safety=1e9, horizon_h=3), 14)
+    b = run(Params(policy="capacity", tau=1.0, horizon_h=3), 14)
+    assert a["manual_items"] <= b["manual_items"]
+    assert a["protective_divert"] == 0
