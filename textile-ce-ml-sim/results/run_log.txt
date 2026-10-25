@@ -3,3 +3,4 @@ E3_bale_spec: 25 configs x 30 reps in 110s
 E4_dpp: 48 configs x 30 reps in 218s
 E6_oat_sensitivity: 100 configs x 30 reps in 454s
 E7_policy_comparison: 468 configs x 20 reps in 1500s
+E2_fallback_design: 240 configs x 20 reps in 846s
