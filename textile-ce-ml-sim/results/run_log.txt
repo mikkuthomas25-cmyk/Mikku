@@ -1,3 +1,4 @@
 E1_accuracy_vs_circularity: 80 configs x 30 reps in 358s
 E3_bale_spec: 25 configs x 30 reps in 106s
 E4_dpp: 48 configs x 30 reps in 198s
+E6_oat_sensitivity: 92 configs x 30 reps in 390s

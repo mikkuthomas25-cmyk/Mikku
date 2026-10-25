@@ -33,7 +33,7 @@ def seq(n, cmap="Blues", lo=0.35, hi=0.95):
 
 
 def summarise(df, by, cols):
-    g = df.groupby(by)[cols]
+    g = df.groupby(by, dropna=False)[cols]
     m, s, n = g.mean(), g.std(ddof=1), g.count()
     hw = s * stats.t.ppf(0.975, n - 1) / np.sqrt(n)
     out = m.add_suffix("_mean").join(hw.add_suffix("_hw"))
