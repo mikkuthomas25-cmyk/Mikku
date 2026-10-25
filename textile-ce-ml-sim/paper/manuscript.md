@@ -428,10 +428,11 @@ manual error, as modelled, moves a whole garment into a wrong class. Equal error
 *probabilities* do not imply equal *contamination*. E8 repeats policy B with a
 confidence score recalibrated on a separate replication (monotone binning map), on
 the same seeds, to separate the two mechanisms (`E8_calibration_effect.csv`).
-Recalibration recovers part of the loss—0.4 to 2.1 points under the 95% specification
+Recalibration recovers part of the loss—0.4 to 1.8 points under the 95% specification
 and up to 5.0 points where raw scores over-delegated most (four sorters, manual accuracy
 0.85, 98% specification)—but calibrated deferral still trails the fixed threshold of 0.6
-by up to 3.4 points under the 95% specification and up to 8.8 points under the 98%
+in most conditions—by up to 3.4 points under the 95% specification (it matches or
+slightly exceeds it, by up to 0.8 points, only with four sorters of accuracy 0.85)— and up to 8.8 points under the 98%
 specification. Miscalibration therefore explains only part of the gap; the remainder
 is consistent with the second mechanism, the asymmetry between marginal sensor errors
 and gross manual errors, which a correctness-probability criterion ignores by
