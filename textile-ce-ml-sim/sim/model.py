@@ -56,6 +56,7 @@ class Params:
     audit_share: float = 0.0             # random share sent to manual for labelling (drift study)
     # delegation policy: "fixed" (A), "capacity" (B) or "quality" (C); see delegate_online()
     policy: str = "fixed"
+    conf_map: tuple = ()                 # optional calibration map ((x...), (y...)) applied to confidence
     budget_safety: float = 0.5           # policy C: share of (1 - spec) allowed for sensor-visible contamination
     # --- digital product passport ---
     dpp_share: float = 0.0
@@ -311,6 +312,8 @@ def run(p: Params, seed: int, return_items: bool = False) -> dict:
     sigma_item = np.full(n, p.sigma)
     sigma_item[s["novel"]] *= p.novel_kappa
     _, pred, conf, efor = sense(comp, sigma_item, p.n_conf_draws, rng)
+    if p.conf_map:
+        conf = np.interp(conf, *p.conf_map)
 
     dest = np.full(n, RESIDUAL)
     dpp = s["has_dpp"]
@@ -394,3 +397,22 @@ def run(p: Params, seed: int, return_items: bool = False) -> dict:
 
 def with_(p: Params, **kw) -> Params:
     return replace(p, **kw)
+
+
+def fit_calibration(p: Params, seed: int = 99, bins: int = 16) -> tuple:
+    """Monotone (isotonic-style) map from confidence score to observed accuracy.
+
+    Fitted on a separate calibration replication; returned as ((x...), (y...)) for
+    Params.conf_map. Monotonicity is enforced with a running maximum.
+    """
+    q = replace(p, conf_map=(), policy="fixed", tau=0.0)
+    it = run(q, seed, return_items=True)["_items"]
+    m = ~it["dark"] & ~it["has_dpp"]
+    conf, ok = it["conf"][m], (it["pred"] == it["true"])[m]
+    edges = np.quantile(conf, np.linspace(0, 1, bins + 1))
+    idx = np.clip(np.searchsorted(edges, conf, side="right") - 1, 0, bins - 1)
+    xs = np.array([conf[idx == b].mean() for b in range(bins) if (idx == b).any()])
+    ys = np.maximum.accumulate([ok[idx == b].mean() for b in range(bins) if (idx == b).any()])
+    xs, keep = np.unique(xs, return_index=True)
+    return (tuple(np.r_[0.0, xs, 1.0]), tuple(np.r_[0.0, np.asarray(ys)[keep], 1.0]))
+

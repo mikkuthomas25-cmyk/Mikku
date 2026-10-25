@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from model import Params, run, with_  # noqa: E402
+from model import Params, fit_calibration, run, with_  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "results"
@@ -128,6 +128,17 @@ def E7(reps):
     return run_grid("E7_policy_comparison", configs, reps)
 
 
+def E8(reps):
+    """Capacity-aware deferral with a recalibrated confidence score (same conditions and
+    seeds as E7, so results pair with E7's uncalibrated policy B and fixed policy A)."""
+    xs, ys = fit_calibration(BASE)
+    cmap = (tuple(float(x) for x in xs), tuple(float(y) for y in ys))
+    conds = grid(spec=[SPEC_95, SPEC_98], p_discharge=[0.0, 0.01, 0.02],
+                 manual_servers=[1, 2, 4], manual_accuracy=[0.85, 0.95])
+    configs = [{**c, "policy": "capacity", "tau": 1.0, "conf_map": cmap} for c in conds]
+    return run_grid("E8_calibrated_deferral", configs, reps)
+
+
 # ---------------- E5: drift and the data loop ----------------
 KAPPA0, N0, WEEKS, NOVEL_MAX = 2.0, 500.0, 52, 0.4  # ASSUMPTIONS, see docs/parameters.md
 
@@ -177,7 +188,7 @@ def E5(reps):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("exps", nargs="*", default=["E1", "E2", "E3", "E4", "E5", "E6", "E7"])
+    ap.add_argument("exps", nargs="*", default=["E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8"])
     ap.add_argument("--reps", type=int, default=20)
     a = ap.parse_args()
     OUT.mkdir(exist_ok=True)
