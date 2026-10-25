@@ -35,7 +35,7 @@ Rebuild the Word files with: `bash build_docx.sh`
 | STF requirement | How it is met |
 |---|---|
 | Empirical, with data from 2026/2027 | Structured interviews, Dec 2026 – Feb 2027 |
-| 3,500–4,000 words including references | 3,654 words (body 2,758 + references 896), with the results written as fill-in-the-blank sentences. Recount after filling them in |
+| 3,500–4,000 words including references | 3,680 words (body 2,784 + references 896), with the results written as fill-in-the-blank sentences. Recount after filling them in |
 | Germane, current, provocative | Destruction ban (July 2026), DPP Registry live (July 2026), EU–India FTA (Jan 2026), US tariffs. "Traceability without circularity?" (P4) |
 | Theory to make sense of chaos | Information processing theory read configurationally (Galbraith's alternative design strategies) + institutional decoupling |
 | STF topic bullets | Sustainability vs. operational trade-offs; global footprint and geopolitics; public policy; cross-boundary collaboration; technology |

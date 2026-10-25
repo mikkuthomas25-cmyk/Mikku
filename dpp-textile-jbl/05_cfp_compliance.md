@@ -9,7 +9,7 @@ Each requirement in the call (*To the Point! Supply Chain Management Design: See
 | # | Requirement in the call | Status | Evidence |
 |---|---|---|---|
 | 1 | Empirical, based on data collected in **2026 or 2027**; secondary data must be the latest available | Met (by design) | Structured interviews Dec 2026 – Feb 2027. Secondary facts are FY2025-26 and 2026 sources |
-| 2 | **3,500–4,000 words including references**; abstract, figures and tables excluded | Met | Body 2,758 + references 896 = **3,654** (placeholders filled with numbers keep this roughly constant; recheck after the results are written) |
+| 2 | **3,500–4,000 words including references**; abstract, figures and tables excluded | Met | Body 2,784 + references 896 = **3,680** (placeholders filled with numbers keep this roughly constant; recheck after the results are written) |
 | 2b | Online appendices encouraged for conciseness | Met | `04_online_appendix.md` holds calibration anchors, the fsQCA protocol, robustness checks and the timeline |
 | 3 | Reader-friendly for scholars **and** practitioners | Met | Plain-language intro; "Key insights for practitioners" box; policy section |
 | 4 | High-quality, original, "cool" topic; theory to make sense of chaos | Met | DPP + circular textiles; OIPT read configurationally (equifinal routes) plus institutional decoupling (P4); fsQCA |
