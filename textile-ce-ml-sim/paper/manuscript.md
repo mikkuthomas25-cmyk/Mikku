@@ -413,6 +413,17 @@ carries a 15% chance of a gross error that a strict bale cannot absorb. A thresh
 tuned for one staffing level is therefore not transferable to another, and the
 direction of the adjustment depends on the specification.
 
+E2 extends this to 0–8 sorters and manual accuracies of 0.75–0.95 with the
+baseline 2% discharge error (Figure 2; `E2_summary.csv`). Three regularities emerge.
+(i) Without a manual station (abstained items go to the residual), abstention never
+pays: the best τ is 0 in every condition. (ii) Under the 95% specification the best τ
+rises with both capacity and manual accuracy—from 0.5 (one sorter) to 0.7–0.9 (eight
+sorters)—and the gain over τ = 0 grows from 3.4–4.5 to 4.9–9.3 points. (iii) Under the
+98% specification the best τ stays at the lowest positive value tested (0.5) for manual
+accuracies of 0.75 and 0.85 whatever the capacity, and only rises with capacity when
+manual accuracy is 0.95; gains over τ = 0 are 3.2–8.5 points. Because 0.5 is the lowest
+positive grid value, the true optimum in those conditions may lie between 0 and 0.5.
+
 **The textbook deferral rule underperforms a tuned threshold.** Policy B in its
 untuned form (τ = 1) applies the standard learning-to-defer criterion: send an item to
 the human when the human is more likely to be correct than the classifier
