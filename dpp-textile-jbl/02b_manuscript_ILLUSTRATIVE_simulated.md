@@ -1,5 +1,5 @@
 ---
-title: "[ILLUSTRATIVE – SIMULATED DATA – NOT FOR SUBMISSION] Who Carries the Passport? Configurations of Supplier Capacity for Digital Product Passport Readiness and Circularity in Indian Apparel Exports"
+title: "[ILLUSTRATIVE – SIMULATED DATA – NOT FOR SUBMISSION] Who Carries the Passport? Owned, Negotiated or Borrowed Routes to Digital Product Passport Readiness in Indian Apparel Exports"
 ---
 
 > **ILLUSTRATIVE VERSION.** All results below come from *simulated* responses for 50 fictional firms (`data/SIMULATED_responses.csv`; assumptions in `simulation/SIMULATION_ASSUMPTIONS.md`). They show how the paper will read and what the analysis produces. They are **not findings**. Replace the data, rerun `analysis/fsqca.py`, and rewrite the Results and Discussion from the real output before any use.

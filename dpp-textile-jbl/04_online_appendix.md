@@ -82,7 +82,7 @@ Target 50 firms (minimum 40). The aim is to cover the configurations that theory
 
 | Dimension | Categories | Minimum per category |
 |---|---|---|
-| Cluster | Tiruppur/Coimbatore; NCR; Bengaluru; Ludhiana; Kolkata/other | 6 |
+| Cluster | Tiruppur/Coimbatore; NCR; Bengaluru; Ludhiana; Panipat (certified recyclers); Kolkata/other | 5 |
 | Tier | Finished goods; intermediate (fabric/yarn) | 12 |
 | Integration | Garment-only (VI ≤ 2); partly integrated (3–4); integrated (≥ 5) | 10 |
 | Size | < 250 employees; ≥ 250 employees | 15 |

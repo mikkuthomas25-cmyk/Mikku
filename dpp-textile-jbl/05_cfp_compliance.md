@@ -19,7 +19,7 @@ Each requirement in the call (*To the Point! Supply Chain Management Design: See
 
 | Requirement | Status | Evidence |
 |---|---|---|
-| ≤ 500 words | Met | 493 words *including* title and keywords |
+| ≤ 500 words | Met | 482 words *including* title and keywords |
 | What are you going to do? | Met | Labelled paragraph 1 |
 | Why should readers care? | Met | Labelled paragraph 2 |
 | What is your theoretical lens? | Met | Labelled paragraph 3 |

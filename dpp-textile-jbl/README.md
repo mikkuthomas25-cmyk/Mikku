@@ -7,7 +7,7 @@ Submission package for the **Journal of Business Logistics** Special Topic Forum
 
 | File | What it is | Status |
 |---|---|---|
-| `01_abstract.md` / `.docx` | 500-word STF abstract (due **31 Dec 2026**) | Ready for supervisor review (493 words incl. title and keywords; one labelled paragraph per question in the call) |
+| `01_abstract.md` / `.docx` | 500-word STF abstract (due **31 Dec 2026**) | Ready for supervisor review (482 words incl. title and keywords; theory-sharpened, no results claimed; one labelled paragraph per question in the call) |
 | `02_manuscript.md` / `.docx` | Full paper draft (window **1–30 Apr 2027**) | Theory, propositions, method and discussion drafted; **results are placeholders** |
 | `03_survey_instrument.md` / `.docx` | Structured interview questionnaire (single session, 30–40 min) | Needs expert review and 3–5 pretests (Nov 2026) |
 | `04_online_appendix.md` / `.docx` | Calibration anchors, fsQCA protocol, robustness, quota grid, timeline | Draft |
@@ -19,6 +19,7 @@ Submission package for the **Journal of Business Logistics** Special Topic Forum
 | `data/SIMULATED_responses.csv` / `.xlsx` | The simulated responses (column `SIMULATED = YES`) | **Not real data** |
 | `data/TEMPLATE_responses.csv` | Blank header row: enter your real interview data in this layout | Ready |
 | `results/fsqca_results.md` / `calibrated_sets.csv` | Output of `fsqca.py` (currently from simulated data) | Regenerate with real data |
+| `01b_abstract_ILLUSTRATIVE_simulated.md` / `.docx` | Abstract as it would read with results (simulated) | **Watermarked; internal only, never submit** |
 | `02b_manuscript_ILLUSTRATIVE_simulated.md` / `.docx` | The paper with simulated results filled in and the theory drafted (3,928 words) | **Watermarked; not for submission** |
 
 Rebuild the Word files with: `bash build_docx.sh`

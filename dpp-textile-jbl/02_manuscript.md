@@ -1,5 +1,5 @@
 ---
-title: "Who Carries the Passport? Configurations of Supplier Capacity for Digital Product Passport Readiness and Circularity in Indian Apparel Exports"
+title: "Who Carries the Passport? Owned, Negotiated or Borrowed Routes to Digital Product Passport Readiness in Indian Apparel Exports"
 ---
 
 # Abstract
