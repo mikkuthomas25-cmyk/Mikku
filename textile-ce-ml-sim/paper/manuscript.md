@@ -394,9 +394,60 @@ it starts to overflow at τ ≈ 0.7 (20% of abstained items overflow at τ = 0.7
 τ = 0.99), and overflow goes to the residual. **The operating point that a classification benchmark would select
 is among the worst for circularity.**
 
-### 4.2 Delegation policy, manual capacity and post-decision errors (E2, E7)
+### 4.2 Delegation policy, manual capacity and post-decision errors (E7, E8)
 
-[To be written from E2/E7.]
+E7 compares three delegation policies across 36 operating conditions (2 specifications ×
+3 discharge-error rates × 1, 2 or 4 manual sorters × manual accuracy 0.85 or 0.95). Each
+policy's parameter (τ for A and B; the contamination-budget share for C) was selected
+on replications 1–10 and evaluated on replications 11–20, so that the comparison does
+not reward over-fitting to noise. Figure 7 shows the holdout results; paired
+differences are in `results/tables/E7_paired_vs_fixed.csv`.
+
+**The best fixed threshold depends on manual capacity.** With manual accuracy 0.85 and
+a 95% specification, the recovery-maximising τ is 0.5 with one sorter, 0.6 with two and
+0.7 with four (0.5, 0.6 and 0.8 with manual accuracy 0.95). More capacity allows more
+abstention before the station overflows. Under the 98% specification with discharge
+errors present, the best τ stays at 0.5 regardless of capacity when manual accuracy is
+0.85: extra manual capacity is not used, because each additional manual decision
+carries a 15% chance of a gross error that a strict bale cannot absorb. A threshold
+tuned for one staffing level is therefore not transferable to another, and the
+direction of the adjustment depends on the specification.
+
+**The textbook deferral rule underperforms a tuned threshold.** Policy B in its
+untuned form (τ = 1) applies the standard learning-to-defer criterion: send an item to
+the human when the human is more likely to be correct than the classifier
+(confidence < manual accuracy) and the station has room. Against a fixed threshold of
+0.6, it loses 0.5–4.3 points of recovery under the 95% specification and up to 13.8
+points under the 98% specification with four sorters (`E7_robustness.csv`). Two
+mechanisms can explain this. First, the confidence score is not calibrated (Figure 8;
+expected calibration error 0.043 at baseline), and in the 0.6–0.9 range it
+under-states the probability of being correct, so comparing it with manual accuracy
+over-delegates. Second, the two decision-makers' errors have different consequences:
+a sensor error is typically marginal (a garment near a class boundary), whereas a
+manual error, as modelled, moves a whole garment into a wrong class. Equal error
+*probabilities* do not imply equal *contamination*. E8 repeats policy B with a
+recalibrated confidence score to separate the two mechanisms. [E8 result to be
+inserted.] Once its threshold is tuned, B performs like A (differences within ±1.2
+points and mostly within the confidence intervals): capacity awareness that only
+prevents overflow adds nothing a correctly tuned threshold does not already achieve.
+
+**Quality-aware delegation helps only when bale contamination is visible to the
+sensor.** Policy C sends an item to manual inspection (or, if the station is full,
+to the residual) when its estimated foreign-fibre content exceeds the per-kilogram
+allowance left in its open bale. Under the 95% specification it raises recovery
+over the best fixed threshold by 1.5–1.9 points with one sorter (paired CI ±0.1),
+by 0.5–0.7 with two, and not at all (0 to −0.8 points) with four: it is a way of spending scarce manual
+capacity where it protects bales. Under the 98% specification it *reduces* recovery by
+3.0–5.9 points with one sorter. In that regime most bale rejections are caused by
+contamination the sensor cannot see at decision time—discharge errors after the
+decision and gross manual errors—so policing the sensor-visible contamination diverts
+or delegates good items without removing the cause of rejection.
+
+**Mechanical reliability dominates the policy lever under strict specifications.**
+With a 98% specification, moving the discharge error rate from 2% to 0% raises the
+best fixed-threshold recovery from 72–76% to 88–92% at every staffing level—about 15–17
+points—while the largest difference between tuned policies is about 6 points. Under the
+95% specification the same change in discharge error is worth only about 1.5 points.
 
 ### 4.3 Aggregation and the recycler's specification (E3)
 
