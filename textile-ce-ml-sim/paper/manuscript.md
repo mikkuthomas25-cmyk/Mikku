@@ -394,7 +394,33 @@ it starts to overflow at τ ≈ 0.7 (20% of abstained items overflow at τ = 0.7
 τ = 0.99), and overflow goes to the residual. **The operating point that a classification benchmark would select
 is among the worst for circularity.**
 
-[Sections 4.2–4.6 and 5–7 to be written from E2–E6 results.]
+### 4.2 Delegation policy, manual capacity and post-decision errors (E2, E7)
+
+[To be written from E2/E7.]
+
+### 4.3 Aggregation and the recycler's specification (E3)
+
+Bale size has no effect on cotton recovery as long as the specification lies well
+below the line's mean purity (95–96%: recovery 81–83% at all sizes). Near and above the
+mean it has opposite effects (Table 3, Figure 3). With a 98% specification, which sits
+0.6 points below the mean bale purity of 98.6%, enlarging bales from 50 to 1000 kg cuts
+rejection from 22.6% to 10.7% and raises recovery from 64.2% to 73.8%. With a 99%
+specification, above the mean, the same change raises rejection from 60.4% to 72.4% and
+lowers recovery from 32.9% to 22.9%.
+
+Figure 3b shows the mechanism. The standard deviation of bale purity falls from 0.85
+points for 50 kg bales to 0.42 for 200 kg and 0.19 for 1000 kg, close to the
+1/√(bale size) scaling expected from averaging independent garments. Small bales are
+also left-skewed: a single grossly misrouted garment—a polyester item ejected into the
+cotton bin, or a manual sorting error—can pull a 50 kg bale several points below the
+specification, whereas in a 1000 kg bale it is diluted. Larger bales therefore make
+acceptance close to a deterministic function of the line's mean purity, which helps
+when that mean is above the specification and hurts when it is below. Bale size is thus
+not only a logistics choice: it decides whether purity *variability* or purity *level*
+governs acceptance, and the right choice depends on where the line's mean sits
+relative to the buyer's specification.
+
+[Sections 4.4–4.6 and 5–7 to be written from E4–E6 results.]
 
 ## References (draft — see docs/literature.md for verification status)
 
