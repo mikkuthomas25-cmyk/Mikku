@@ -100,15 +100,23 @@ discrete-event models of sensor-based sorting have been fitted to experimental d
 (TU Delft study; VTT/Leoben, 2026). These models do not represent the features that make
 textile sorting distinctive—blends that sit close to class boundaries, minor elastane
 content, unusable spectra of carbon-black-dyed items, unreliable labels—nor the ML
-decision policy itself.
+decision policy itself. Conversely, the machine-learning literature on deferring
+uncertain decisions to humans has begun to handle human workload limits explicitly
+(e.g. cost-sensitive learning to defer under per-expert capacity constraints; Alves
+et al., 2024), but evaluates decisions one at a time; it does not consider outputs that
+are aggregated into lots and accepted or rejected as a whole.
 
-This paper addresses that gap. We ask:
+Our premise is that the value of a sorting decision depends on how its consequences
+propagate through human capacity constraints, material aggregation and downstream
+acceptance. We ask:
 
 - **RQ1.** How does the ML operating point—specifically the confidence threshold of a
   selective classifier—affect recycler acceptance and closed-loop yield, and does the
   operating point that maximises item-level accuracy also maximise circularity?
-- **RQ2.** Under which conditions of manual-fallback capacity and accuracy does
-  abstaining from automatic decisions help?
+- **RQ2.** How does the best delegation policy depend on manual capacity, manual
+  accuracy, the recycler's specification and errors introduced after the sorting
+  decision; and do capacity-aware or downstream-quality-aware delegation rules
+  outperform a tuned fixed threshold?
 - **RQ3.** How do recycler specifications and bale size shape the translation of
   item-level errors into bale rejection?
 - **RQ4.** How much do DPP composition data add, and how does their value depend on
@@ -116,12 +124,30 @@ This paper addresses that gap. We ask:
 - **RQ5.** When the incoming stream drifts, how do labelling and retraining policies
   interact with the operating point over time?
 
-Our contributions are (1) an open, verified, item-level discrete-event simulation model
-of ML-assisted textile sorting that couples a measurement-error sensor model and a
-selective-classification policy with a queueing model of manual re-sorting and a
-bale-acceptance model of the recycler; (2) evidence that item-level accuracy and system
-circularity can move in opposite directions; and (3) design and policy implications for
-specifying ML sorting systems in EPR-funded sorting infrastructure.
+We do not claim that the divergence between classifier accuracy and system performance
+is new in general, nor that capacity-aware deferral is new; both are established in
+other settings. Our contributions are narrower:
+
+1. **A model.** An open, verified, item-level discrete-event simulation that couples a
+   measurement-error model of NIR fibre quantification, a confidence-based delegation
+   policy, a finite-capacity manual station, bale aggregation and recycler acceptance.
+   To our knowledge (Section 2.4 and the literature matrix in the supplementary
+   material, which is based on abstracts and will be completed from full texts), no
+   textile-sorting study couples these elements.
+2. **Three mechanism-level findings** for textile fibre-to-fibre feedstock:
+   (a) recovered cotton is non-monotone in the confidence threshold, and the best
+   threshold shifts with manual capacity, manual accuracy and the recycler's
+   specification; (b) the standard deferral criterion—defer when the human is more
+   likely to be right—underperforms a tuned threshold, partly because of confidence
+   miscalibration and partly because sensor errors are marginal while manual errors
+   are gross, so equal error probabilities do not imply equal contamination;
+   (c) bale aggregation turns acceptance into a function of mean purity relative to the
+   specification, so bale size helps or hurts depending on that position.
+3. **A boundary on what ML can do.** Under strict specifications, contamination created
+   after the sorting decision (mechanical discharge, manual errors) dominates bale
+   rejection, and no delegation policy we tested compensates for it; under lenient
+   specifications the classifier and the manual station are the main levers. This
+   tells operators and EPR schemes where investment pays.
 
 ## 2. Background
 
@@ -551,7 +577,104 @@ marginal ones—hold across the tested range, but the *ranking* of improvement l
 (better ML versus better mechanics versus better labels) depends on the discharge error
 rate, which is why E7 treats it as an experimental factor rather than a constant.
 
-[Sections 5–7 to be written after E2, E5 and E7.]
+## 5. Discussion
+
+### 5.1 What the system adds to the classifier
+
+Read together, the experiments say that the circular value of an ML sorting decision
+is not a property of the classifier. It is determined by three couplings that sit
+outside the classifier: between abstention and manual capacity (E1, E2, E7), between
+the type of error and the bale it lands in (E4, E7, E8), and between bale size and the
+recycler's specification (E3). Each coupling has a simple mechanism—queue overflow,
+gross versus marginal contamination, averaging—but their combined effect is not
+visible from item-level metrics. The practical consequence is that the same classifier
+can be the best or a poor choice depending on the plant around it, and that operating
+points chosen on a validation set (maximum accuracy, or accuracy at a target coverage)
+can be among the worst for recovered fibre (Section 4.1).
+
+### 5.2 Why the textbook deferral rule fails here
+
+The learning-to-defer literature typically routes an item to the decision-maker most
+likely to be correct, subject to workload limits (e.g. Alves et al., 2024). Our results
+suggest that in material sorting this criterion is mis-specified in two ways. First,
+it relies on calibrated confidence; our plug-in confidence was miscalibrated by about
+0.04 (expected calibration error), and recalibration recovered up to 5 points of
+recovery. Second, and more fundamentally, a correctness criterion treats all errors as
+equal, whereas the recycler's acceptance depends on contaminant *mass*. A sensor that
+misreads a 93%-cotton garment as 95% and a sorter who places a polycotton shirt in the
+cotton bin make one error each, but the second does far more damage. Deferral criteria
+for sorting should therefore be stated in terms of expected contamination of the
+destination lot, not expected accuracy. Our policy C is a first, simple attempt; it
+helped only where the contamination that matters is visible at the time of the
+decision.
+
+### 5.3 Implications for operators, equipment suppliers and EPR schemes
+
+- *Specify performance at the bale, not the item.* Procurement and EPR reporting that
+  ask for "classification accuracy" reward the wrong quantity. A more useful
+  specification is accepted-bale yield of the target fibre at a stated recycler
+  specification, reported together with the manual workload it requires.
+- *Tune the threshold to the plant, and re-tune when staffing changes.* The best
+  threshold moved from 0.5 to 0.9 across staffing levels and manual accuracies.
+- *Know which regime you are in.* Under lenient specifications the classifier and the
+  manual station are the main levers. Under strict ones (≈98% cotton), mechanical
+  discharge reliability, elastane detection and recycler QC precision matter more than
+  further ML improvement. A plant supplying a 98%-cotton pulp process should measure
+  its ejection error before investing in a better classifier.
+- *Choose bale size relative to the line's mean purity.* Larger bales help when mean
+  purity is above the specification and hurt when it is below.
+- *Treat DPP data quality as a sorting parameter.* Under strict specifications a 10%
+  passport error rate made full DPP coverage harmful; data-quality requirements for
+  the Digital Product Passport should be set relative to the recycler specifications
+  the data are meant to serve.
+
+### 5.4 Limitations
+
+1. **The sensor is a calibrated stand-in, not a trained classifier.** It reproduces
+   published quantification errors (RMSEP 1–6.6%) and the resulting accuracy range, but
+   not the class-specific confusion structure of a real model (e.g. dyes, finishes,
+   moisture). Training a classifier on the NIST NIR-SORT spectra and replacing the
+   parametric sensor with its empirical confusion and confidence distributions is the
+   most important next step.
+2. **Manual sorting is modelled with constant accuracy and service time.** The model
+   represents congestion (overflow) but not fatigue or workload-dependent error. The
+   collapse at high thresholds is produced by overflow and by exposure of more items to
+   a constant error rate; we make no claim that overloaded people sort worse.
+3. **Key parameters are assumptions.** The discharge error rate, the most influential
+   parameter under strict specifications, has no published textile estimate. Bale
+   size, manual parameters, the DPP error model and the drift learning curve are also
+   assumed. We vary all of them and phrase conclusions as conditional where they
+   depend on them.
+4. **No operational validation.** We found no public data on bale acceptance at textile
+   recyclers. The model supports comparative and mechanism-level conclusions, not
+   point predictions for a given plant.
+5. **Single-stage line and stylised recycler.** Real plants have pre-sorting for reuse,
+   several sensor passes and negotiated specifications; recyclers may downgrade rather
+   than reject. Economic outcomes (prices, labour and rejection costs) are not modelled,
+   because we found no credible public cost data.
+6. **Literature verification.** Sources were verified from bibliographic records and
+   abstracts; full-text verification of the closest works is pending (supplementary
+   literature matrix).
+
+## 6. Conclusions
+
+Machine learning is expected to unlock fibre-to-fibre recycling by sorting post-consumer
+textiles accurately enough for recyclers to accept them. We built an item-level
+simulation that follows each garment from the NIR sensor through a confidence-based
+delegation policy, a finite manual station and baling to the recycler's acceptance
+decision. Three conclusions follow. First, the accuracy of automatically sorted items and
+the amount of fibre that closes the loop can move in opposite directions; the operating
+point that a classification benchmark would choose can be among the worst for
+circularity. Second, the best delegation policy depends on manual capacity, manual
+accuracy and the recycler's specification, and the standard criterion of deferring to
+whoever is more likely to be right underperforms a tuned threshold, because sorting
+errors differ in consequence, not only in probability. Third, under strict
+specifications, contamination generated after the sorting decision dominates bale
+rejection, so the binding constraint shifts from the classifier to mechanical
+reliability, elastane detection and quality control. Evaluating ML sorting systems by
+accepted-bale yield at a stated specification, rather than by accuracy, would align
+technology development and EPR-funded investment with what circularity actually
+requires.
 
 ## References (draft — see docs/literature.md for verification status)
 
