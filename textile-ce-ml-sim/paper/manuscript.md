@@ -444,7 +444,42 @@ the result shows that DPP data quality requirements should be specified relative
 the recycler specifications they are meant to serve, not that a particular error rate
 is realistic.
 
-[Sections 4.5–4.6 and 5–7 to be written from E5–E6 results.]
+### 4.5 Drift and the data loop (E5)
+
+[To be written from E5.]
+
+### 4.6 What drives the results: one-at-a-time sensitivity (E6)
+
+Figure 6 ranks twelve parameters by the change in cotton recovery between their low and
+high values. The ranking depends on the specification, and this is itself a finding.
+
+*95% specification, no abstention (baseline 82.7%).* Sensor RMSEP dominates (2% → +6.8
+points; 6.6% → −12.0), followed by the share of unreadable dark items (0% → +4.3;
+15% → −8.6) and elastane prevalence (10% → +2.0; 40% → −3.9). Mechanical discharge
+error matters little (0% → +1.4; 5% → −2.4). With τ = 0.8 the manual station becomes
+the second-largest driver after the sensor: four sorters instead of two add 13.4
+points, and halving service time adds the same. Garment mass also matters here
+(0.50 kg → +6.0), because heavier garments mean fewer items, and fewer items mean less
+manual work per tonne.
+
+*98% specification, no abstention (baseline 69.8%).* The ranking changes completely.
+The mechanical discharge error rate is now the dominant parameter by a wide margin:
+eliminating it adds 14.1 points, while raising it to 5% removes 53.4 points and pushes
+bale rejection to about 80%. Elastane prevalence is second (10% → +7.5; 40% → −25.2),
+sensor RMSEP third (2% → +8.0; 6.6% → −19.4), and the recycler's own measurement noise
+fourth (0 → +6.5; 1 point → −10.0).
+
+**Implication for the robustness of our conclusions.** The parameter that dominates
+strict-specification outcomes—discharge error—is one for which we found no published
+empirical estimate for textile sorting; its 2% baseline is an assumption. Conclusions
+about *levels* of recovery and rejection under the 98% specification are therefore
+conditional on it. Conclusions about *mechanisms*—the inverted-U in τ, the
+aggregation-versus-specification interaction, and the dominance of gross errors over
+marginal ones—hold across the tested range, but the *ranking* of improvement levers
+(better ML versus better mechanics versus better labels) depends on the discharge error
+rate, which is why E7 treats it as an experimental factor rather than a constant.
+
+[Sections 5–7 to be written after E2, E5 and E7.]
 
 ## References (draft — see docs/literature.md for verification status)
 
