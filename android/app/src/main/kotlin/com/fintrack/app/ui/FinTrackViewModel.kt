@@ -13,6 +13,7 @@ import com.fintrack.app.data.Prefs
 import com.fintrack.app.data.TxnStore
 import com.fintrack.app.sms.SmsImporter
 import com.fintrack.core.Categorizer
+import com.fintrack.core.SmsParser
 import com.fintrack.core.ClaudeAi
 import com.fintrack.core.Direction
 import com.fintrack.core.MonthSummary
@@ -36,6 +37,9 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
     val auth = AuthManager(app)
     val prefs = Prefs(app)
     private var store: TxnStore? = null
+
+    /** Text shared into FinTrack before sign-in; added once a session opens. */
+    private var pendingShared: String? = null
 
     /** Display name of the signed-in user; null means signed out. */
     var account by mutableStateOf<String?>(null); private set
@@ -90,6 +94,7 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
         account = prefs.activeUserName
         accountEmail = prefs.activeUserEmail ?: ""
         onResume()
+        pendingShared?.let { pendingShared = null; addShared(it) }
     }
 
     fun continueWithoutAccount() = openSession(null)
@@ -175,6 +180,25 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
     }
 
     fun delete(txn: Txn) = io { it.delete(txn.id) }
+
+    /**
+     * Adds a bank SMS the user shared into the app (Messages > Share > FinTrack).
+     * Works without SMS permission, so the app stays useful if the phone blocks it.
+     */
+    fun addShared(text: String) {
+        val s = store ?: run { pendingShared = text; return }
+        viewModelScope.launch {
+            val added = withContext(Dispatchers.IO) {
+                SmsParser.parse(text)?.takeIf { SmsImporter.ingest(s, text, System.currentTimeMillis(), "shared") }
+            }
+            message = when {
+                added != null -> "Added ${rupees(added.amount)} · ${added.merchant}"
+                SmsParser.parse(text) != null -> "Already added."
+                else -> "That doesn't look like a bank transaction message."
+            }
+            refresh()
+        }
+    }
 
     fun addManual(date: LocalDate, amount: Double, direction: Direction, merchant: String) = io {
         val category = Categorizer.categorize(merchant, direction, it.rules())

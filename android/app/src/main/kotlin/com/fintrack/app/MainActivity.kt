@@ -1,5 +1,6 @@
 package com.fintrack.app
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -16,12 +17,26 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        handleShare(intent)
         setContent {
             FinTrackTheme {
                 // Each screen draws its own glossy backdrop.
                 if (vm.account == null) LoginScreen(vm) else MainScreen(vm)
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleShare(intent)
+    }
+
+    /** Messages > Share > FinTrack: adds a bank SMS without needing SMS permission. */
+    private fun handleShare(intent: Intent?) {
+        if (intent?.action != Intent.ACTION_SEND || intent.type != "text/plain") return
+        intent.getStringExtra(Intent.EXTRA_TEXT)?.takeIf { it.isNotBlank() }?.let(vm::addShared)
+        // Don't re-add the same text after a rotation or when the activity is recreated.
+        intent.action = null
     }
 
     override fun onResume() {

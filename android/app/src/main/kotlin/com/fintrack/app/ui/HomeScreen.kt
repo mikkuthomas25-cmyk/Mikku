@@ -1,6 +1,5 @@
 package com.fintrack.app.ui
 
-import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -28,6 +27,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import com.fintrack.app.sms.PermissionHelper
 import androidx.compose.ui.unit.dp
 import com.fintrack.core.MonthSummary
 import java.time.LocalTime
@@ -160,27 +161,74 @@ private fun MiniStat(label: String, value: Double, modifier: Modifier) {
 
 @Composable
 private fun PermissionHero(vm: FinTrackViewModel) {
+    val context = LocalContext.current
+    // Set once the request comes back without SMS access: the phone blocked it or the user said no.
+    var blocked by rememberSaveable { mutableStateOf(false) }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         vm.onPermissionResult()
+        blocked = !vm.hasSmsPermission
     }
+    val white = Color.White
     HeroCard(Modifier.fillMaxWidth()) {
-        Text("Connect your messages", style = MaterialTheme.typography.titleLarge, color = Color.White)
-        Spacer(Modifier.height(8.dp))
-        Text(
-            "FinTrack reads bank transaction SMS to build your dashboard. Everything stays on this phone. " +
-                "OTPs and personal chats are ignored.",
-            style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.85f),
-        )
-        Spacer(Modifier.height(18.dp))
-        Row(
-            Modifier.clip(PillShape).background(Color.White).clickable {
-                launcher.launch(arrayOf(Manifest.permission.READ_SMS, Manifest.permission.RECEIVE_SMS))
-            }.padding(horizontal = 22.dp, vertical = 13.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text("Allow SMS access", style = MaterialTheme.typography.labelLarge, color = Fin.colors.heroStart)
-            Spacer(Modifier.width(6.dp))
-            Text("›", color = Fin.colors.heroStart)
+        if (!blocked) {
+            Text("Connect your messages", style = MaterialTheme.typography.titleLarge, color = white)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "FinTrack reads bank transaction SMS to build your dashboard. Everything stays on this phone. " +
+                    "OTPs and personal chats are ignored.",
+                style = MaterialTheme.typography.bodyMedium, color = white.copy(alpha = 0.85f),
+            )
+            Spacer(Modifier.height(18.dp))
+            HeroButton("Allow SMS access") { launcher.launch(PermissionHelper.SMS_PERMISSIONS) }
+        } else {
+            Text("Your phone blocked SMS access", style = MaterialTheme.typography.titleLarge, color = white)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Phones protect SMS for apps installed outside the Play Store. Allow it once in Settings:",
+                style = MaterialTheme.typography.bodyMedium, color = white.copy(alpha = 0.85f),
+            )
+            Spacer(Modifier.height(12.dp))
+            val steps = if (PermissionHelper.isXiaomi) listOf(
+                "Tap Open SMS permission below",
+                "Set SMS (Read SMS) to Allow",
+                "Greyed out? Tap Open App info, then ⋮ (top-right) → Allow restricted settings, and try again",
+            ) else listOf(
+                "Tap Open App info below",
+                "Tap ⋮ (top-right) → Allow restricted settings, if you see it",
+                "Permissions → SMS → Allow",
+            )
+            steps.forEachIndexed { i, step ->
+                Row(Modifier.padding(vertical = 3.dp)) {
+                    Text("${i + 1}.", color = white, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.width(22.dp))
+                    Text(step, color = white, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (PermissionHelper.isXiaomi) {
+                    HeroButton("Open SMS permission") { PermissionHelper.openSmsSettings(context) }
+                }
+                HeroButton("Open App info", subtle = PermissionHelper.isXiaomi) { PermissionHelper.openAppInfo(context) }
+            }
+            Spacer(Modifier.height(14.dp))
+            Text(
+                "Meanwhile: open any bank SMS → Share → FinTrack to add it by hand.",
+                style = MaterialTheme.typography.bodySmall, color = white.copy(alpha = 0.8f),
+            )
         }
     }
+}
+
+@Composable
+private fun HeroButton(text: String, subtle: Boolean = false, onClick: () -> Unit) {
+    Text(
+        text,
+        style = MaterialTheme.typography.labelLarge,
+        color = if (subtle) Color.White else Fin.colors.heroStart,
+        modifier = Modifier
+            .clip(PillShape)
+            .background(if (subtle) Color.White.copy(alpha = 0.18f) else Color.White)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 18.dp, vertical = 12.dp),
+    )
 }

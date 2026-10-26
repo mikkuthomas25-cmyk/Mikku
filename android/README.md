@@ -25,6 +25,25 @@ a GitHub Release.
 Every build is signed with the same key (`app/fintrack-debug.keystore`), so a new APK
 installs over the old one and keeps your data.
 
+## If the phone blocks SMS access
+
+Android protects SMS for apps installed outside a store (Android 15+ "restricted settings";
+Xiaomi HyperOS/MIUI applies its own block). If the permission dialog fails or does nothing,
+the Home screen switches to a guide with buttons that open the right settings page:
+
+- **Xiaomi / Redmi / POCO:** *Open SMS permission* → set **SMS** to **Allow**. If it's greyed
+  out: *Open App info* → **⋮** (top-right) → **Allow restricted settings** → try again.
+  Also turn on **Profile → Autostart**, or HyperOS stops FinTrack from catching new SMS in
+  the background.
+- **Other phones:** *Open App info* → **⋮** → **Allow restricted settings** (if shown) →
+  **Permissions → SMS → Allow**.
+
+Without SMS access the app still works: open any bank SMS → **Share → FinTrack**, and the
+transaction is added. Cash spends can be added with the **+** button in Activity.
+
+On Google Play the sideloading restriction doesn't apply. Play allows SMS access for
+*SMS-based money management* apps after its Permissions Declaration review (see below).
+
 ## Turn on Google and email login (one-time, about 10 minutes)
 
 Login runs through Firebase Authentication, which is free for this use. Until you set it
@@ -90,7 +109,10 @@ blue-to-violet gradient for the one thing that matters on each screen. Navigatio
 pill with four destinations (Home, Activity, Insights, Profile). Edits and new entries open as
 bottom sheets, so you never lose your place. Light and dark themes follow the phone's setting.
 
-## Why it won't be on the Play Store as-is
+## Publishing on Google Play
 
-Google Play only lets default SMS apps, and a few approved exceptions, read SMS. Personal
-finance trackers are not normally approved, so FinTrack is distributed as an APK.
+Play restricts SMS permissions, but lists **SMS-based money management** (apps that track and
+manage budget) as a permitted exception for READ_SMS / RECEIVE_SMS. Publishing needs a Play
+developer account, a privacy policy, and a Permissions Declaration Form explaining that reading
+transaction SMS is FinTrack's core function. Google reviews this manually, and approval is not
+guaranteed. Until then FinTrack is distributed as an APK.

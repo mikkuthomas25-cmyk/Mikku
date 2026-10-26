@@ -23,7 +23,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import com.fintrack.app.BuildConfig
+import com.fintrack.app.sms.PermissionHelper
 
 @Composable
 fun ProfileScreen(vm: FinTrackViewModel) {
@@ -44,7 +46,20 @@ fun ProfileScreen(vm: FinTrackViewModel) {
             }
         }
         item {
+            val context = LocalContext.current
             GlassCard(Modifier.fillMaxWidth(), padding = 6.dp) {
+                SettingRow(
+                    "SMS access",
+                    if (vm.hasSmsPermission) "Allowed · new bank SMS are added automatically"
+                    else "Blocked · tap to allow it in Settings",
+                    danger = !vm.hasSmsPermission,
+                ) { PermissionHelper.openSmsSettings(context) }
+                if (PermissionHelper.isXiaomi) {
+                    SettingRow(
+                        "Autostart",
+                        "Turn on so Xiaomi doesn't stop FinTrack catching SMS in the background",
+                    ) { PermissionHelper.openAutostartSettings(context) }
+                }
                 SettingRow(
                     "Rescan messages",
                     if (vm.hasSmsPermission) "Re-read the last 6 months of bank SMS" else "Allow SMS access on Home first",
