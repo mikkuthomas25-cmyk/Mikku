@@ -5,10 +5,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.ui.Modifier
 import com.fintrack.app.ui.FinTrackTheme
 import com.fintrack.app.ui.FinTrackViewModel
 import com.fintrack.app.ui.LoginScreen
@@ -22,9 +18,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             FinTrackTheme {
-                Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    if (vm.account == null) LoginScreen(vm) else MainScreen(vm)
-                }
+                // Each screen draws its own glossy backdrop.
+                if (vm.account == null) LoginScreen(vm) else MainScreen(vm)
             }
         }
     }
