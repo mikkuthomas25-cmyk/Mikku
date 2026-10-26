@@ -23,9 +23,18 @@ data class ParsedTxn(
  * payment requests, due reminders, failed payments) returns null.
  */
 object SmsParser {
+    /** Bump when parsing improves: the app then re-reads old SMS once to pick up what it missed. */
+    const val VERSION = 2
+
     private val I = RegexOption.IGNORE_CASE
 
     private val AMOUNT = Regex("""(?:rs\.?|inr|₹)\s*([\d,]+(?:\.\d{1,2})?)""", I)
+    // "debited by 20.0", "credited with Rs.500", "Sent Rs.120": the amount right after the verb.
+    // Preferred over the first Rs/INR in the text, which is sometimes the balance.
+    private val AMOUNT_AFTER_VERB = Regex(
+        """\b(?:debited|credited|deducted|spent|paid|sent|received|withdrawn)\s+(?:by|for|with|of)?\s*(?:rs\.?|inr|₹)?\s*([\d,]*\d(?:\.\d{1,2})?)(?![\d/-])""",
+        I,
+    )
 
     private const val DEBIT_WORDS = "debited|spent|sent|paid|withdrawn|withdrawal|purchase|debit(?:ed)?|txn of|transferred to"
     private const val CREDIT_WORDS = "credited|received|deposited|refund(?:ed)?|reversed|cashback of"
@@ -45,13 +54,17 @@ object SmsParser {
         """(?:a/c|acct|account|card)\s*(?:no\.?)?\s*(?:(?:ending\s*(?:with|in)?\s*)[x*]*|[x*]+)\s*(\d{3,6})""", I,
     )
     private val REF = Regex(
-        """(?:upi\s*ref(?:erence)?|ref(?:erence)?|utr|rrn|txn\s*id)\s*(?:no\.?|num(?:ber)?|#)?\s*[:.\-]?\s*([A-Za-z0-9]{6,})""", I,
+        """\b(?:upi\s*ref(?:erence)?|ref(?:erence)?|utr|rrn|txn\s*id)\s*(?:no\.?|num(?:ber)?|#)?\s*[:.\-]?\s*([A-Za-z0-9]{6,})""", I,
     )
 
-    private const val STOP = """(?=\s+on\b|\s+ref\b|\s+upi\b|\s+avl\b|\s+avail|\s+bal\b|\s+via\b|\s+using\b|\s+not\s+you|\s+if\s+not|[.,;()]|\s*-\s|$)"""
+    private const val STOP = """(?=\s+on\b|\s+ref|\s+upi\b|\s+avl\b|\s+avail|\s+bal\b|\s+via\b|\s+using\b|\s+not\s+you|\s+if\s+not|[.,;()]|\s*-\s|$)"""
     private const val NAME = """([A-Za-z0-9][\w .&'*/@\-]{1,40}?)"""
     private val ATM = Regex("""\batm\b.{0,30}?(?:wdl|withdrawa?l|cash)|(?:cash\s+)?withdrawn\s+at\s+atm|\bat\s+atm\b""", I)
     private val MERCHANT_PATTERNS = listOf(
+        // "UPI/P2M/412345678901/MERCHANT NAME/..." (Axis and others)
+        Regex("""\bUPI/P2[AM]/\d+/([^/\n]{2,40})""", I),
+        // ICICI: "...debited for Rs 20.00 on 26-Oct-26; MERCHANT credited."
+        Regex(""";\s*([A-Za-z0-9][\w .&'*/@\-]{1,40}?)\s+credited\b""", I),
         Regex("""\b(?:to|from)\s+(?:vpa\s+)?([\w.\-]+@[a-z][\w\-]*)""", I),
         Regex("""\bat\s+$NAME$STOP""", I),
         Regex("""\bto\s+$NAME$STOP""", I),
@@ -72,7 +85,7 @@ object SmsParser {
 
     fun parse(body: String, receivedOn: LocalDate = LocalDate.now()): ParsedTxn? {
         if (body.isBlank() || NOISE.containsMatchIn(body)) return null
-        val amt = AMOUNT.find(body) ?: return null
+        val amt = AMOUNT_AFTER_VERB.find(body) ?: AMOUNT.find(body) ?: return null
         val debit = DEBIT.find(body)
         val credit = CREDIT.find(body)
         if (debit == null && credit == null) return null
@@ -98,7 +111,18 @@ object SmsParser {
 
     /** Loose check: is an unparsed SMS worth handing to the AI fallback? */
     fun looksFinancial(body: String): Boolean =
-        AMOUNT.containsMatchIn(body) && !NOISE.containsMatchIn(body) && LOOKS_BANKISH.containsMatchIn(body)
+        (AMOUNT.containsMatchIn(body) || AMOUNT_AFTER_VERB.containsMatchIn(body)) &&
+            !NOISE.containsMatchIn(body) && LOOKS_BANKISH.containsMatchIn(body)
+
+    /**
+     * Hides account, card, reference and phone numbers and UPI IDs, so a message can be shared
+     * to improve the parser without revealing personal details. Amounts and wording stay.
+     */
+    fun redact(body: String): String = body
+        .replace(Regex("""[\w.\-]+@([a-z][\w\-]*)""", I), "•••@$1")
+        .replace(Regex("""(?<=[x*])\d{3,}""", I), "••••")
+        .replace(Regex("""(?<=ending\s(?:with\s|in\s)?)\d{3,}""", I), "••••")
+        .replace(Regex("""(?<!\d|\d[.,])\d{6,}(?!\d|[.,]\d)"""), "••••••")
 
     fun hash(body: String): String {
         val normalized = body.trim().lowercase().replace(Regex("""\s+"""), " ")

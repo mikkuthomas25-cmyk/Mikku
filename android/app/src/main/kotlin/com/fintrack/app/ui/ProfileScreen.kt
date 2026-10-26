@@ -10,7 +10,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,6 +36,8 @@ import com.fintrack.app.sms.PermissionHelper
 fun ProfileScreen(vm: FinTrackViewModel) {
     val c = Fin.colors
     var key by remember { mutableStateOf(vm.prefs.claudeApiKey) }
+    var showMissed by remember { mutableStateOf(false) }
+    if (showMissed) MissedSheet(vm) { showMissed = false }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = ScreenPadding, verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { Text("Profile", style = MaterialTheme.typography.headlineMedium, color = c.ink) }
         item {
@@ -60,6 +67,11 @@ fun ProfileScreen(vm: FinTrackViewModel) {
                         "Turn on so Xiaomi doesn't stop FinTrack catching SMS in the background",
                     ) { PermissionHelper.openAutostartSettings(context) }
                 }
+                SettingRow(
+                    "Missed messages",
+                    "Bank SMS FinTrack couldn't read. Review them or share them to improve it",
+                    enabled = vm.hasSmsPermission,
+                ) { vm.loadMissed(); showMissed = true }
                 SettingRow(
                     "Rescan messages",
                     if (vm.hasSmsPermission) "Re-read the last 6 months of bank SMS" else "Allow SMS access on Home first",
@@ -110,5 +122,55 @@ private fun SettingRow(title: String, subtitle: String, enabled: Boolean = true,
             Faint(subtitle)
         }
         Text("›", style = MaterialTheme.typography.titleLarge, color = if (enabled) c.inkFaint else Color.Transparent)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MissedSheet(vm: FinTrackViewModel, onDismiss: () -> Unit) {
+    val c = Fin.colors
+    val context = LocalContext.current
+    val missed = vm.missed
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.surface) {
+        LazyColumn(
+            Modifier.padding(horizontal = 24.dp),
+            contentPadding = PaddingValues(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item {
+                Text("Missed messages", style = MaterialTheme.typography.titleLarge, color = c.ink)
+                Spacer(Modifier.height(4.dp))
+                Faint(
+                    when {
+                        missed == null -> "Looking through the last 6 months…"
+                        missed.isEmpty() -> "Nothing missed. Every bank-looking SMS was read."
+                        else -> "${missed.size} bank-looking SMS couldn't be read. Share them so the reader can learn " +
+                            "your banks' formats. Account, card, reference and phone numbers are hidden first."
+                    },
+                )
+            }
+            if (!missed.isNullOrEmpty()) {
+                item {
+                    GradientButton("Share for fixing", onClick = {
+                        val text = missed.take(60).joinToString("\n\n---\n\n") { m ->
+                            "[${m.sender.take(12)}] " + com.fintrack.core.SmsParser.redact(m.body)
+                        }
+                        PermissionHelper.shareText(context, "FinTrack: messages it couldn't read", text)
+                    }, modifier = Modifier.fillMaxWidth())
+                }
+                items(missed.take(100)) { m ->
+                    GlassCard(Modifier.fillMaxWidth(), padding = 14.dp) {
+                        Text(
+                            m.sender + "  ·  " + java.time.Instant.ofEpochMilli(m.millis)
+                                .atZone(java.time.ZoneId.systemDefault()).toLocalDate().short(),
+                            style = MaterialTheme.typography.labelMedium, color = c.inkSoft,
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(m.body, style = MaterialTheme.typography.bodySmall, color = c.ink, maxLines = 6)
+                    }
+                }
+            }
+        }
     }
 }

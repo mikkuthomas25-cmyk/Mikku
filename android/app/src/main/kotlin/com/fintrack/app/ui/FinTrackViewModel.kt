@@ -16,6 +16,7 @@ import com.fintrack.core.Categorizer
 import com.fintrack.core.SmsParser
 import com.fintrack.core.ClaudeAi
 import com.fintrack.core.Direction
+import com.fintrack.core.MissedSms
 import com.fintrack.core.MonthSummary
 import com.fintrack.core.Summaries
 import com.fintrack.core.Txn
@@ -54,6 +55,8 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
     var busy by mutableStateOf(false); private set
     var message by mutableStateOf<String?>(null)
     var insights by mutableStateOf<String?>(null); private set
+    /** Bank-looking SMS the parser couldn't read; null until loaded. */
+    var missed by mutableStateOf<List<MissedSms>?>(null); private set
 
     val filteredTxns: List<Txn>
         get() {
@@ -180,6 +183,13 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
     }
 
     fun delete(txn: Txn) = io { it.delete(txn.id) }
+
+    fun loadMissed() {
+        missed = null
+        viewModelScope.launch {
+            missed = withContext(Dispatchers.IO) { SmsImporter.findMissed(app) }
+        }
+    }
 
     /**
      * Adds a bank SMS the user shared into the app (Messages > Share > FinTrack).

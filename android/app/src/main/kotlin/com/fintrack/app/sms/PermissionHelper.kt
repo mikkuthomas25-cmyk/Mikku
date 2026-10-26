@@ -50,6 +50,16 @@ object PermissionHelper {
         openAppInfo(context)
     }
 
+    /** Opens the share sheet (WhatsApp, Gmail, …) with plain text. */
+    fun shareText(context: Context, subject: String, text: String) {
+        val send = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, subject)
+            putExtra(Intent.EXTRA_TEXT, text)
+        }
+        tryStart(context, Intent.createChooser(send, subject))
+    }
+
     private fun tryStart(context: Context, intent: Intent): Boolean = try {
         context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         true
