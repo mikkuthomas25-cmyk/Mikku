@@ -14,13 +14,27 @@ data class Txn(
     val source: String = "sms",
     val raw: String? = null,
     val categorySource: String = CategorySource.KEYWORD,
-)
+    val ref: String? = null,
+    /** Set by [FlowAnalyzer]; null means not analysed yet ([Flow.basic] applies). */
+    val flow: Flow? = null,
+) {
+    val effectiveFlow: Flow get() = flow ?: Flow.basic(this)
+
+    /** What this transaction does to "spent": + for spending, − for a refund, 0 otherwise. */
+    val spendValue: Double get() = when (effectiveFlow) {
+        Flow.SPEND -> amount
+        Flow.REFUND -> -amount
+        else -> 0.0
+    }
+}
 
 data class Amount(val label: String, val amount: Double, val count: Int = 0)
 
 data class MonthSummary(
     val month: YearMonth,
+    /** Spending net of refunds. */
     val spent: Double,
+    /** Money in: income plus money received from people. */
     val received: Double,
     val todaySpent: Double,
     val avgPerDay: Double,
@@ -31,19 +45,21 @@ data class MonthSummary(
     val byDay: List<Pair<LocalDate, Double>>,
     val byCategory: List<Amount>,
     val topMerchants: List<Amount>,
+    /** The money-flow statement: each line is the total for that [Flow] this month. */
+    val byFlow: Map<Flow, Double> = emptyMap(),
 ) {
-    val net get() = received - spent
+    /** Left over = money in − spent − invested − sent to people. Own transfers and duplicates don't count. */
+    val net get() = received - spent - (byFlow[Flow.INVESTED] ?: 0.0) - (byFlow[Flow.TO_PEOPLE] ?: 0.0)
 }
 
 object Summaries {
     const val SMALL_PAYMENT = 200.0
 
     fun build(month: YearMonth, monthTxns: List<Txn>, prevMonthTxns: List<Txn>, today: LocalDate = LocalDate.now()): MonthSummary {
-        val counted = monthTxns.filter { it.category !in Categorizer.EXCLUDED_FROM_TOTALS }
-        val debits = counted.filter { it.direction == Direction.DEBIT }
-        val spent = debits.sumOf { it.amount }
+        val spends = monthTxns.filter { it.effectiveFlow == Flow.SPEND }
+        val spent = monthTxns.sumOf { it.spendValue }.coerceAtLeast(0.0)
 
-        val perDay = debits.groupBy { it.date }.mapValues { (_, v) -> v.sumOf { it.amount } }
+        val perDay = monthTxns.groupBy { it.date }.mapValues { (_, v) -> v.sumOf { it.spendValue }.coerceAtLeast(0.0) }
         val byDay = (1..month.lengthOfMonth()).map { d -> month.atDay(d).let { it to (perDay[it] ?: 0.0) } }
 
         val daysElapsed = when {
@@ -51,28 +67,30 @@ object Summaries {
             YearMonth.from(today) == month -> today.dayOfMonth
             else -> month.lengthOfMonth()
         }
-        val small = debits.filter { it.amount <= SMALL_PAYMENT }
+        val small = spends.filter { it.amount <= SMALL_PAYMENT }
+        val byFlow = monthTxns.groupBy { it.effectiveFlow }.mapValues { (_, v) -> v.sumOf { it.amount } }
 
         return MonthSummary(
             month = month,
             spent = spent,
-            received = counted.filter { it.direction == Direction.CREDIT }.sumOf { it.amount },
+            received = monthTxns.filter { it.effectiveFlow.countsAsMoneyIn }.sumOf { it.amount },
             todaySpent = perDay[today] ?: 0.0,
             avgPerDay = if (daysElapsed > 0) spent / daysElapsed else 0.0,
-            prevMonthSpent = prevMonthTxns
-                .filter { it.direction == Direction.DEBIT && it.category !in Categorizer.EXCLUDED_FROM_TOTALS }
-                .sumOf { it.amount },
-            txnCount = counted.size,
+            prevMonthSpent = prevMonthTxns.sumOf { it.spendValue }.coerceAtLeast(0.0),
+            txnCount = monthTxns.count { it.effectiveFlow.counted },
             smallPaymentsCount = small.size,
             smallPaymentsTotal = small.sumOf { it.amount },
             byDay = byDay,
-            byCategory = debits.groupBy { it.category }
-                .map { (c, v) -> Amount(c, v.sumOf { it.amount }, v.size) }
+            // Refunds reduce the category they came back to.
+            byCategory = monthTxns.filter { it.spendValue != 0.0 }.groupBy { it.category }
+                .map { (c, v) -> Amount(c, v.sumOf { it.spendValue }, v.count { it.effectiveFlow == Flow.SPEND }) }
+                .filter { it.amount > 0.005 }
                 .sortedByDescending { it.amount },
-            topMerchants = debits.groupBy { it.merchant }
+            topMerchants = spends.groupBy { it.merchant }
                 .map { (m, v) -> Amount(m, v.sumOf { it.amount }, v.size) }
                 .sortedByDescending { it.amount }
                 .take(10),
+            byFlow = byFlow,
         )
     }
 }

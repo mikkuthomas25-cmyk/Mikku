@@ -24,7 +24,7 @@ data class ParsedTxn(
  */
 object SmsParser {
     /** Bump when parsing improves: the app then re-reads old SMS once to pick up what it missed. */
-    const val VERSION = 2
+    const val VERSION = 3
 
     private val I = RegexOption.IGNORE_CASE
 
@@ -81,10 +81,21 @@ object SmsParser {
     private val DATE_TEXT = Regex("""\b(\d{1,2})[-\s]?([A-Za-z]{3})[a-z]*[-\s,]*(\d{2,4})\b""")
     private val DATE_NUMERIC = Regex("""\b(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})\b""")
 
+    // "Rs 500 for failed txn has been reversed/refunded/credited back": money coming back.
+    private val REVERSAL = Regex("""\b(reversed|refunded|credited\s+back|reversal)\b""", I)
+    // "Avl Bal Rs 12,345.67", "Available balance: INR 9,000", "Bal Rs.500" (not card limits).
+    private val BALANCE = Regex(
+        """\b(?:avl\.?|avail(?:able)?\.?|a/c|clear)?\s*bal(?:ance)?\.?\s*(?:is|:|-)?\s*(?:rs\.?|inr|₹)\s*(-?[\d,]+(?:\.\d{1,2})?)""",
+        I,
+    )
+
+    /** The account balance an SMS reports after the transaction, if any. */
+    fun balance(body: String): Double? = BALANCE.find(body)?.groupValues?.get(1)?.replace(",", "")?.toDoubleOrNull()
+
     private val LOOKS_BANKISH = Regex("""a/c|acct|account|card|upi|bank""", I)
 
     fun parse(body: String, receivedOn: LocalDate = LocalDate.now()): ParsedTxn? {
-        if (body.isBlank() || NOISE.containsMatchIn(body)) return null
+        if (body.isBlank() || (NOISE.containsMatchIn(body) && !REVERSAL.containsMatchIn(body))) return null
         val amt = AMOUNT_AFTER_VERB.find(body) ?: AMOUNT.find(body) ?: return null
         val debit = DEBIT.find(body)
         val credit = CREDIT.find(body)

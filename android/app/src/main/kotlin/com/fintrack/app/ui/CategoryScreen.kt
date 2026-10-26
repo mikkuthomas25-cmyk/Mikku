@@ -45,8 +45,8 @@ fun CategoryScreen(vm: FinTrackViewModel, category: String, onBack: () -> Unit) 
     val m = vm.month
     val today = LocalDate.now()
     val isCurrent = YearMonth.from(today) == m
-    val inCat = vm.txns.filter { it.category == category && it.direction == Direction.DEBIT }
-    val spent = inCat.sumOf { it.amount }
+    val inCat = vm.txns.filter { it.category == category && it.spendValue != 0.0 }
+    val spent = inCat.sumOf { it.spendValue }.coerceAtLeast(0.0)
     val share = vm.summary?.spent?.takeIf { it > 0 }?.let { spent / it }
     val typical = Patterns.typicalMonthly(vm.history, m, category)
     val forecast = if (isCurrent) Patterns.forecast(vm.history, m, today, category) else null
@@ -55,9 +55,10 @@ fun CategoryScreen(vm: FinTrackViewModel, category: String, onBack: () -> Unit) 
     } ?: listOf(m))
     val trend = Patterns.monthlyTotals(vm.history, months, category)
     val unusual = Patterns.unusual(vm.history, m).filter { it.txn.category == category }
-    val merchants = inCat.groupBy { it.merchant }.map { (name, v) -> Amount(name, v.sumOf { it.amount }, v.size) }
+    val merchants = inCat.groupBy { it.merchant }.map { (name, v) -> Amount(name, v.sumOf { it.spendValue }, v.size) }
+        .filter { it.amount > 0 }
         .sortedByDescending { it.amount }
-    val perDay = inCat.groupBy { it.date }.mapValues { (_, v) -> v.sumOf { it.amount } }
+    val perDay = inCat.groupBy { it.date }.mapValues { (_, v) -> v.sumOf { it.spendValue }.coerceAtLeast(0.0) }
     val days = (1..m.lengthOfMonth()).map { m.atDay(it) to (perDay[m.atDay(it)] ?: 0.0) }
     var editing by remember { mutableStateOf<Txn?>(null) }
 

@@ -18,7 +18,13 @@ import com.fintrack.app.statement.StatementImporter
 import com.fintrack.core.Categorizer
 import com.fintrack.core.CategoryLearner
 import com.fintrack.core.CategorySource
+import com.fintrack.core.AccountCheck
 import com.fintrack.core.Direction
+import com.fintrack.core.Flow
+import com.fintrack.core.FlowAnalyzer
+import com.fintrack.core.FlowDecision
+import com.fintrack.core.Reconciliation
+import com.fintrack.core.ReviewItem
 import com.fintrack.core.MissedSms
 import com.fintrack.core.MonthSummary
 import com.fintrack.core.SmsParser
@@ -45,6 +51,7 @@ sealed interface TxnFilter {
     data class Day(val date: LocalDate) : TxnFilter
     data class Category(val name: String) : TxnFilter
     data class Merchant(val name: String) : TxnFilter
+    data class OfFlow(val flow: Flow) : TxnFilter
 }
 
 class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
@@ -69,6 +76,12 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
     var hasSmsPermission by mutableStateOf(SmsImporter.hasPermission(app)); private set
     var busy by mutableStateOf(false); private set
     var message by mutableStateOf<String?>(null)
+    /** Why each transaction has its flow (shown when you open it). */
+    var flowDecisions by mutableStateOf<Map<Long, FlowDecision>>(emptyMap()); private set
+    /** Questions for the user ("Shop or person?", "Same payment twice?"). */
+    var review by mutableStateOf<List<ReviewItem>>(emptyList()); private set
+    /** Per-account check that captured transactions explain how the bank balance moved. */
+    var accountChecks by mutableStateOf<List<AccountCheck>>(emptyList()); private set
     /** What the on-device learner knows; shown on the Insights screen. */
     var learning by mutableStateOf<LearningStats?>(null); private set
     /** Bank statement import: one report per file, and the file currently waiting for a password. */
@@ -85,13 +98,14 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
                 val byFilter = when (val f = filter) {
                     null -> true
                     is TxnFilter.Day -> t.date == f.date
-                    is TxnFilter.Category -> t.category == f.name && t.direction == Direction.DEBIT
-                    is TxnFilter.Merchant -> t.merchant == f.name && t.direction == Direction.DEBIT
+                    is TxnFilter.Category -> t.category == f.name && t.spendValue != 0.0
+                    is TxnFilter.Merchant -> t.merchant == f.name && t.effectiveFlow == Flow.SPEND
+                    is TxnFilter.OfFlow -> t.effectiveFlow == f.flow
                 }
                 val byKind = when (kind) {
                     Kind.All -> true
-                    Kind.Spent -> t.direction == Direction.DEBIT
-                    Kind.Received -> t.direction == Direction.CREDIT
+                    Kind.Spent -> t.effectiveFlow == Flow.SPEND
+                    Kind.Received -> t.effectiveFlow.countsAsMoneyIn
                 }
                 byFilter && byKind && (q.isEmpty() || q in t.merchant.lowercase() || q in t.category.lowercase())
             }
@@ -184,10 +198,21 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
         val s = store ?: return
         viewModelScope.launch {
             val m = month
-            val all = withContext(Dispatchers.IO) { s.range(m.minusMonths(HISTORY_MONTHS).atDay(1), m.atEndOfMonth()) }
+            val (all, analysis) = withContext(Dispatchers.IO) {
+                // A few days past month-end so a transfer or duplicate straddling it is still paired.
+                val raw = s.range(m.minusMonths(HISTORY_MONTHS).atDay(1), m.atEndOfMonth().plusDays(3))
+                val a = FlowAnalyzer.analyze(raw, s.userFlows(), s.payeeFlows(), s.reviewDone())
+                raw.map { t ->
+                    val d = a.decisions[t.id]
+                    t.copy(flow = d?.flow ?: Flow.basic(t), category = d?.category ?: t.category)
+                }.filter { it.date <= m.atEndOfMonth() } to a
+            }
             val current = all.filter { YearMonth.from(it.date) == m }
             history = all
             txns = current
+            flowDecisions = analysis.decisions
+            review = analysis.review
+            accountChecks = Reconciliation.byAccount(all)
             summary = Summaries.build(m, current, all.filter { YearMonth.from(it.date) == m.minusMonths(1) })
         }
     }
@@ -247,6 +272,24 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
             }
             refresh()
         }
+    }
+
+    // ------------------------------------------------------------------ money flows
+
+    /** Sets what a transaction is (spending, own transfer, duplicate, …); null returns it to automatic. */
+    fun setFlow(txn: Txn, flow: Flow?, forPayee: Boolean) = io {
+        it.setUserFlow(txn.id, flow)
+        if (forPayee && flow != null && flow in PAYEE_FLOWS) it.setPayeeFlow(txn.merchant, flow)
+    }
+
+    fun answerShopOrPerson(item: ReviewItem.ShopOrPerson, isShop: Boolean) = io {
+        it.setPayeeFlow(item.payee, if (isShop) Flow.SPEND else Flow.TO_PEOPLE)
+        it.markReviewDone(item.key)
+    }
+
+    fun answerDuplicate(item: ReviewItem.PossibleDuplicate, isDuplicate: Boolean) = io {
+        if (isDuplicate) it.setUserFlow(item.duplicate.id, Flow.DUPLICATE)
+        it.markReviewDone(item.key)
     }
 
     // ------------------------------------------------------------------ bank statements
@@ -336,6 +379,8 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
 
     companion object {
         const val HISTORY_MONTHS = 6L
+        /** Flows that make sense as a standing answer for a payee. */
+        val PAYEE_FLOWS = setOf(Flow.SPEND, Flow.TO_PEOPLE, Flow.FROM_PEOPLE, Flow.INVESTED, Flow.INCOME)
     }
 
     override fun onCleared() {

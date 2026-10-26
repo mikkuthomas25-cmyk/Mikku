@@ -30,7 +30,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import com.fintrack.app.sms.PermissionHelper
 import androidx.compose.ui.unit.dp
+import com.fintrack.core.Flow
 import com.fintrack.core.MonthSummary
+import com.fintrack.core.ReviewItem
 import com.fintrack.core.Patterns
 import java.time.LocalDate
 import java.time.LocalTime
@@ -52,7 +54,8 @@ fun HomeScreen(vm: FinTrackViewModel, openActivity: () -> Unit, openProfile: () 
         if (!vm.hasSmsPermission) item { PermissionHero(vm) }
         if (s == null) return@LazyColumn
 
-        item { SpendHero(s) }
+        item { MoneyFlowHero(s) { flow -> vm.filter = TxnFilter.OfFlow(flow); openActivity() } }
+        if (vm.review.isNotEmpty()) item { ReviewCard(vm) }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 MiniStat("Today", s.todaySpent, Modifier.weight(1f))
@@ -159,30 +162,88 @@ private fun Greeting(name: String, onAvatar: () -> Unit) {
     }
 }
 
+/**
+ * The money-flow statement for the month, read like a spreadsheet: money in, minus what was
+ * spent, invested and sent to people, equals what's left. Tapping a line lists its transactions.
+ */
 @Composable
-private fun SpendHero(s: MonthSummary) {
+private fun MoneyFlowHero(s: MonthSummary, open: (Flow) -> Unit) {
     val white = Color.White
     val change = if (s.prevMonthSpent > 0) (s.spent - s.prevMonthSpent) / s.prevMonthSpent else null
     HeroTile(Modifier.fillMaxWidth()) {
-        Text("Spent in ${s.month.name()}", style = MaterialTheme.typography.bodyMedium, color = white.copy(alpha = 0.8f))
-        AnimatedRupees(s.spent, MaterialTheme.typography.displaySmall, white, Modifier.padding(top = 4.dp))
-        Spacer(Modifier.height(10.dp))
-        Text(
-            when {
-                change == null -> "${s.txnCount} transactions"
-                change >= 0 -> "▲ ${"%.0f".format(abs(change * 100))}% vs ${s.month.minusMonths(1).name()}"
-                else -> "▼ ${"%.0f".format(abs(change * 100))}% vs ${s.month.minusMonths(1).name()}"
-            },
-            style = MaterialTheme.typography.labelMedium,
-            color = white,
-            modifier = Modifier.clip(TileShape).background(white.copy(alpha = 0.18f)).padding(horizontal = 12.dp, vertical = 6.dp),
-        )
-        Spacer(Modifier.height(20.dp))
-        HorizontalDivider(color = white.copy(alpha = 0.2f))
+        Text("LEFT OVER IN ${s.month.name().uppercase()}", style = CapsLabel, color = white.copy(alpha = 0.8f))
+        AnimatedRupees(s.net, MaterialTheme.typography.displaySmall, white, Modifier.padding(top = 4.dp))
         Spacer(Modifier.height(16.dp))
-        Row {
-            Stat("Received", rupees(s.received))
-            Stat(if (s.net >= 0) "Saved" else "Overspent", rupees(abs(s.net)))
+        FlowLine("Money in", s.received, "") { open(Flow.INCOME) }
+        FlowLine("Spent", s.spent, "−", note = change?.let { "${if (it >= 0) "▲" else "▼"} ${"%.0f".format(abs(it * 100))}% vs ${s.month.minusMonths(1).name()}" }) { open(Flow.SPEND) }
+        s.byFlow[Flow.INVESTED]?.takeIf { it > 0 }?.let { FlowLine("Invested / saved", it, "−") { open(Flow.INVESTED) } }
+        s.byFlow[Flow.TO_PEOPLE]?.takeIf { it > 0 }?.let { FlowLine("Sent to people", it, "−") { open(Flow.TO_PEOPLE) } }
+        HorizontalDivider(color = white.copy(alpha = 0.35f), modifier = Modifier.padding(vertical = 6.dp))
+        FlowLine("Left over", s.net, "=", bold = true) {}
+        val own = s.byFlow[Flow.OWN_TRANSFER] ?: 0.0
+        val dup = s.byFlow[Flow.DUPLICATE] ?: 0.0
+        if (own > 0 || dup > 0) {
+            Spacer(Modifier.height(10.dp))
+            Text(
+                "Not counted: " + listOfNotNull(
+                    own.takeIf { it > 0 }?.let { "between your accounts ${rupees(it / 2)}" },
+                    dup.takeIf { it > 0 }?.let { "duplicates ${rupees(it)}" },
+                ).joinToString("  ·  "),
+                style = MaterialTheme.typography.bodySmall, color = white.copy(alpha = 0.8f),
+                modifier = Modifier.clickable { open(if (own > 0) Flow.OWN_TRANSFER else Flow.DUPLICATE) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun FlowLine(label: String, amount: Double, sign: String, note: String? = null, bold: Boolean = false, onClick: () -> Unit) {
+    val white = Color.White
+    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(sign, style = MaterialTheme.typography.titleMedium, color = white, modifier = Modifier.width(18.dp))
+        Column(Modifier.weight(1f)) {
+            Text(label, style = if (bold) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge, color = white)
+            if (note != null) Text(note, style = MaterialTheme.typography.labelSmall, color = white.copy(alpha = 0.75f))
+        }
+        Text(rupees(amount), style = (if (bold) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge).merge(MoneyStyle), color = white)
+    }
+}
+
+/** One-tap questions whose answers fix the numbers and teach the model. */
+@Composable
+private fun ReviewCard(vm: FinTrackViewModel) {
+    val c = Fin.colors
+    Tile(Modifier.fillMaxWidth()) {
+        SectionTitle("Needs your input · ${vm.review.size}")
+        Spacer(Modifier.height(4.dp))
+        Faint("Each answer fixes your totals and teaches FinTrack for next time.")
+        vm.review.take(3).forEach { item ->
+            Spacer(Modifier.height(14.dp))
+            when (item) {
+                is ReviewItem.ShopOrPerson -> {
+                    Text(
+                        "You paid ${item.payee} ${item.count}× (${rupees(item.total)}) to a personal UPI ID. Is this a shop or a person?",
+                        style = MaterialTheme.typography.bodyLarge, color = c.ink,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        PopChip("Shop · spending", selected = true) { vm.answerShopOrPerson(item, isShop = true) }
+                        PopChip("Person", selected = false) { vm.answerShopOrPerson(item, isShop = false) }
+                    }
+                }
+                is ReviewItem.PossibleDuplicate -> {
+                    Text(
+                        "Same payment reported twice? ${rupees(item.keep.amount)} · ${item.keep.merchant} on ${item.keep.date.short()}" +
+                            " and ${item.duplicate.merchant} on ${item.duplicate.date.short()}.",
+                        style = MaterialTheme.typography.bodyLarge, color = c.ink,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        PopChip("Yes · count once", selected = true) { vm.answerDuplicate(item, isDuplicate = true) }
+                        PopChip("No · both real", selected = false) { vm.answerDuplicate(item, isDuplicate = false) }
+                    }
+                }
+            }
         }
     }
 }

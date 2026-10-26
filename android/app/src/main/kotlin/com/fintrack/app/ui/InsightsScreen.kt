@@ -37,6 +37,7 @@ fun InsightsScreen(vm: FinTrackViewModel, openCategory: (String) -> Unit) {
         }
         if (s != null && s.txnCount > 0) item { QuickFacts(s) }
         item { TrendCard(vm) }
+        if (vm.accountChecks.isNotEmpty()) item { AccountChecksCard(vm.accountChecks) }
         val unusual = Patterns.unusual(vm.history, vm.month)
         if (unusual.isNotEmpty()) {
             item {
@@ -134,5 +135,43 @@ private fun TrendCard(vm: FinTrackViewModel) {
         SectionTitle("Month by month")
         Spacer(Modifier.height(14.dp))
         MonthlyBars(Patterns.monthlyTotals(vm.history, months), m, Patterns.typicalMonthly(vm.history, m))
+    }
+}
+
+/**
+ * Bank balance check per account: the balances in bank SMS must be explained by the captured
+ * transactions. A gap means a missed transaction (or a duplicate still counted).
+ */
+@Composable
+private fun AccountChecksCard(checks: List<com.fintrack.core.AccountCheck>) {
+    val c = Fin.colors
+    Tile(Modifier.fillMaxWidth()) {
+        SectionTitle("Bank balance check")
+        Spacer(Modifier.height(4.dp))
+        Faint("Your bank SMS include your balance. FinTrack checks its transactions explain every change.")
+        checks.forEach { a ->
+            Spacer(Modifier.height(14.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("A/c ••${a.account}", style = MaterialTheme.typography.titleSmall, color = c.ink, modifier = Modifier.weight(1f))
+                Text(rupees(a.latestBalance), style = MaterialTheme.typography.titleSmall.merge(MoneyStyle), color = c.ink)
+            }
+            Faint("Balance as of ${a.latestDate.short()}")
+            Spacer(Modifier.height(4.dp))
+            if (a.ok) {
+                Text(
+                    if (a.checkedSteps > 0) "✓  ALL ${a.checkedSteps} BALANCE CHANGES EXPLAINED" else "NOT ENOUGH BALANCE SMS YET",
+                    style = CapsLabel, color = if (a.checkedSteps > 0) c.gain else c.inkFaint,
+                )
+            } else {
+                a.gaps.take(3).forEach { g ->
+                    Text(
+                        "⚠  ${rupees(abs(g.unexplained))} " + (if (g.missedIncome) "arrived" else "left") +
+                            " between ${g.from.short()} and ${g.to.short()} that FinTrack didn't see" +
+                            (if (g.missedIncome) "" else " (a missed payment, or a duplicate still counted)"),
+                        style = MaterialTheme.typography.bodySmall, color = c.loss,
+                    )
+                }
+            }
+        }
     }
 }

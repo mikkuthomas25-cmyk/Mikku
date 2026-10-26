@@ -87,6 +87,27 @@ Categories are learned on the phone. Nothing is sent anywhere, and no API key is
   sorted itself, and its accuracy on your own corrections (5-fold cross-validation, once
   you've made 10 or more).
 
+## Money flows: getting the totals right
+
+Every transaction gets a **type** as well as a category (`core/.../Flow.kt`). Only spending
+(minus refunds) counts as "spent", and Home shows the month as a statement:
+**money in − spent − invested − sent to people = left over**. Money moved between your own
+accounts and duplicates are listed separately as *not counted*.
+
+How the type is decided, strongest evidence first:
+1. **Your answers:** a type you set on a transaction, or for a payee.
+2. **Proof from the data:**
+   - *Duplicates:* the same reference twice, or the same amount reported by different senders (bank SMS + UPI app) on the same day. Two identical SMS from the same bank are two real payments.
+   - *Own transfers:* a debit from one of your accounts matched by the same amount arriving in a different one of your accounts within 2 days; card-bill payments.
+   - *Refunds and reversals:* money back from a merchant you paid, which reduces that category's spending.
+3. **Built-in signals:** UPI to personal IDs (P2A, `@ok…`) means money to or from people; the Investments category means invested.
+4. **The flow model:** a second on-device Naive Bayes model learns types from your answers. It only acts when confident, and never guesses own transfers or duplicates.
+5. **Questions instead of guesses:** uncertain duplicates, and payees you pay often via personal UPI IDs ("shop or person?"), appear in **Needs your input** on Home. One tap answers, fixes the totals and teaches the model.
+
+**Bank balance check (Insights):** bank SMS usually include the balance. For each account,
+the balance must move by exactly the transactions captured in between. A gap pinpoints a
+missed payment or a duplicate still counted, with dates.
+
 ## Bank statements
 
 **Profile → Import bank statements** takes one or more statement files at once: PDFs (including

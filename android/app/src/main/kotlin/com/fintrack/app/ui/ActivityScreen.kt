@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.sp
 import com.fintrack.core.Categorizer
 import com.fintrack.core.CategorySource
 import com.fintrack.core.Direction
+import com.fintrack.core.Flow
 import com.fintrack.core.Txn
 import java.time.LocalDate
 import java.time.YearMonth
@@ -88,6 +89,7 @@ fun ActivityScreen(vm: FinTrackViewModel) {
                                     is TxnFilter.Day -> f.date.long()
                                     is TxnFilter.Category -> f.name
                                     is TxnFilter.Merchant -> f.name
+                                    is TxnFilter.OfFlow -> f.flow.label
                                 } + "  ✕",
                                 selected = true,
                             ) { vm.filter = null }
@@ -175,16 +177,30 @@ internal fun TxnRow(t: Txn, onClick: () -> Unit) {
                     t.category + if (t.categorySource == CategorySource.LEARNED) " ✦" else "",
                     t.account?.let { "••$it" },
                     "cash".takeIf { t.source == "manual" },
+                    "statement".takeIf { t.source == "statement" },
                 ).joinToString("  ·  "),
                 maxLines = 1,
             )
+            // Anything that isn't plain spending or income says what it is.
+            val flow = t.effectiveFlow
+            if (flow != Flow.SPEND && flow != Flow.INCOME) {
+                Text(
+                    (if (flow.counted) flow.label else "Not counted · ${flow.label}").uppercase(),
+                    style = CapsLabel, fontSize = 9.sp, color = if (flow.counted) c.accent else c.inkFaint,
+                    modifier = Modifier.padding(top = 3.dp),
+                )
+            }
         }
         Spacer(Modifier.width(10.dp))
         val credit = t.direction == Direction.CREDIT
         Text(
             (if (credit) "+" else "−") + rupees(t.amount),
             style = MaterialTheme.typography.titleSmall.merge(MoneyStyle),
-            color = if (credit) c.gain else c.ink,
+            color = when {
+                !t.effectiveFlow.counted -> c.inkFaint
+                credit -> c.gain
+                else -> c.ink
+            },
         )
     }
 }
@@ -202,6 +218,8 @@ internal fun EditSheet(txn: Txn, onDismiss: () -> Unit, vm: FinTrackViewModel) {
     val c = Fin.colors
     var category by remember { mutableStateOf(txn.category) }
     var always by remember { mutableStateOf(true) }
+    var flow by remember { mutableStateOf(txn.effectiveFlow) }
+    val decision = vm.flowDecisions[txn.id]
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = MaterialTheme.colorScheme.surface) {
         Column(
@@ -225,7 +243,12 @@ internal fun EditSheet(txn: Txn, onDismiss: () -> Unit, vm: FinTrackViewModel) {
                 Text(it, style = MaterialTheme.typography.bodySmall, color = c.inkSoft,
                     modifier = Modifier.fillMaxWidth().clip(TileShape).background(c.track.copy(alpha = 0.5f)).padding(14.dp))
             }
-            Text("Category", style = MaterialTheme.typography.titleSmall, color = c.ink)
+            Text("TYPE", style = CapsLabel, color = c.inkSoft)
+            decision?.reason?.takeIf { it.isNotBlank() }?.let { Faint("Why: $it") }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                flowsFor(txn.direction).forEach { f -> PopChip(f.label, f == flow) { flow = f } }
+            }
+            Text("CATEGORY", style = CapsLabel, color = c.inkSoft)
             if (txn.categorySource == CategorySource.LEARNED) {
                 Faint("✦ FinTrack learned this from your past categories. Pick the right one and it learns from that too.")
             }
@@ -235,11 +258,15 @@ internal fun EditSheet(txn: Txn, onDismiss: () -> Unit, vm: FinTrackViewModel) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("Always use for ${txn.merchant}", style = MaterialTheme.typography.bodyLarge, color = c.ink)
-                    Faint("Future payments here get this category too")
+                    Faint("Future payments here get this category and type too")
                 }
                 Switch(always, { always = it }, colors = SwitchDefaults.colors(checkedTrackColor = c.accent))
             }
-            PopButton("Save", onClick = { vm.setCategory(txn, category, always); onDismiss() }, Modifier.fillMaxWidth())
+            PopButton("Save", onClick = {
+                if (category != txn.category) vm.setCategory(txn, category, always)
+                if (flow != txn.effectiveFlow) vm.setFlow(txn, flow, forPayee = always)
+                onDismiss()
+            }, Modifier.fillMaxWidth())
             TextButton(onClick = { vm.delete(txn); onDismiss() }, modifier = Modifier.fillMaxWidth()) {
                 Text("Delete transaction", color = c.loss)
             }
@@ -294,4 +321,11 @@ private fun AddSheet(onDismiss: () -> Unit, onSave: (LocalDate, Double, Directio
             )
         }
     }
+}
+
+/** The types that make sense for money going out or coming in. */
+private fun flowsFor(direction: Direction): List<Flow> = if (direction == Direction.DEBIT) {
+    listOf(Flow.SPEND, Flow.INVESTED, Flow.TO_PEOPLE, Flow.OWN_TRANSFER, Flow.DUPLICATE)
+} else {
+    listOf(Flow.INCOME, Flow.REFUND, Flow.FROM_PEOPLE, Flow.OWN_TRANSFER, Flow.DUPLICATE)
 }

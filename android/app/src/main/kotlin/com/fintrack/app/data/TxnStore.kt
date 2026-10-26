@@ -6,6 +6,8 @@ import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import com.fintrack.core.Direction
+import com.fintrack.core.Flow
+import com.fintrack.core.FlowAnalyzer
 import com.fintrack.core.ParsedTxn
 import com.fintrack.core.StatementRow
 import com.fintrack.core.Txn
@@ -13,7 +15,7 @@ import java.time.LocalDate
 import java.time.YearMonth
 
 /** On-device SQLite storage. One database file per signed-in account. */
-class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbName, null, 2) {
+class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbName, null, 3) {
 
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
@@ -29,7 +31,8 @@ class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbN
                 ref TEXT,
                 source TEXT NOT NULL,
                 raw TEXT,
-                cat_source TEXT NOT NULL DEFAULT 'keyword'
+                cat_source TEXT NOT NULL DEFAULT 'keyword',
+                user_flow TEXT
             )""",
         )
         db.execSQL("CREATE INDEX idx_txn_date ON transactions (txn_date)")
@@ -37,6 +40,13 @@ class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbN
         db.execSQL("CREATE UNIQUE INDEX idx_txn_ref ON transactions (ref, direction, amount) WHERE ref IS NOT NULL")
         db.execSQL("CREATE TABLE merchant_rules (merchant TEXT PRIMARY KEY, category TEXT NOT NULL)")
         db.execSQL("CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT)")
+        createV3Tables(db)
+    }
+
+    /** The user's answers: "this payee is a shop / a person", and questions already answered. */
+    private fun createV3Tables(db: SQLiteDatabase) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS payee_flow (payee TEXT PRIMARY KEY, flow TEXT NOT NULL)")
+        db.execSQL("CREATE TABLE IF NOT EXISTS review_done (key TEXT PRIMARY KEY)")
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -44,6 +54,11 @@ class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbN
             // v2: remember where each category came from, so the learner trains only on trusted labels.
             db.execSQL("ALTER TABLE transactions ADD COLUMN cat_source TEXT NOT NULL DEFAULT 'keyword'")
             db.execSQL("UPDATE transactions SET cat_source='rule' WHERE lower(merchant) IN (SELECT merchant FROM merchant_rules)")
+        }
+        if (oldVersion < 3) {
+            // v3: money-flow types (spending, own transfer, duplicate, …) the user sets, plus their answers.
+            db.execSQL("ALTER TABLE transactions ADD COLUMN user_flow TEXT")
+            createV3Tables(db)
         }
     }
 
@@ -146,6 +161,32 @@ class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbN
         return writableDatabase.insertWithOnConflict("transactions", null, values, SQLiteDatabase.CONFLICT_IGNORE) != -1L
     }
 
+    /** Flow types the user set on individual transactions. */
+    fun userFlows(): Map<Long, Flow> = readableDatabase.rawQuery("SELECT id, user_flow FROM transactions WHERE user_flow IS NOT NULL", null)
+        .use { c -> buildMap { while (c.moveToNext()) runCatching { Flow.valueOf(c.getString(1)) }.getOrNull()?.let { put(c.getLong(0), it) } } }
+
+    fun setUserFlow(id: Long, flow: Flow?) {
+        writableDatabase.execSQL("UPDATE transactions SET user_flow=? WHERE id=?", arrayOf(flow?.name, id))
+    }
+
+    /** The user's per-payee answers, keyed by [FlowAnalyzer.norm] of the payee name. */
+    fun payeeFlows(): Map<String, Flow> = readableDatabase.rawQuery("SELECT payee, flow FROM payee_flow", null)
+        .use { c -> buildMap { while (c.moveToNext()) runCatching { Flow.valueOf(c.getString(1)) }.getOrNull()?.let { put(c.getString(0), it) } } }
+
+    fun setPayeeFlow(payee: String, flow: Flow) {
+        writableDatabase.insertWithOnConflict("payee_flow", null, ContentValues().apply {
+            put("payee", FlowAnalyzer.norm(payee))
+            put("flow", flow.name)
+        }, SQLiteDatabase.CONFLICT_REPLACE)
+    }
+
+    fun reviewDone(): Set<String> = readableDatabase.rawQuery("SELECT key FROM review_done", null)
+        .use { c -> buildSet { while (c.moveToNext()) add(c.getString(0)) } }
+
+    fun markReviewDone(key: String) {
+        writableDatabase.insertWithOnConflict("review_done", null, ContentValues().apply { put("key", key) }, SQLiteDatabase.CONFLICT_IGNORE)
+    }
+
     /** Every transaction (training data for the on-device learner). */
     fun all(): List<Txn> = readableDatabase.rawQuery("SELECT * FROM transactions", null)
         .use { c -> generateSequence { if (c.moveToNext()) c.toTxn() else null }.toList() }
@@ -191,5 +232,6 @@ class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbN
         source = getString(getColumnIndexOrThrow("source")),
         raw = getString(getColumnIndexOrThrow("raw")),
         categorySource = getString(getColumnIndexOrThrow("cat_source")),
+        ref = getString(getColumnIndexOrThrow("ref")),
     )
 }

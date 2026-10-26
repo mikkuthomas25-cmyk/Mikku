@@ -17,15 +17,14 @@ data class Unusual(val txn: Txn, val typicalAmount: Double) {
  * unusually large payment in each category. Pure statistics, computed on the phone.
  */
 object Patterns {
-    /** Spends that count towards totals, optionally limited to one category. */
+    /** Transactions that move "spent" (spending, and refunds which reduce it), optionally for one category. */
     private fun spends(txns: List<Txn>, category: String?) = txns.filter {
-        it.direction == Direction.DEBIT && it.category !in Categorizer.EXCLUDED_FROM_TOTALS &&
-            (category == null || it.category == category)
+        it.spendValue != 0.0 && (category == null || it.category == category)
     }
 
     fun monthlyTotals(history: List<Txn>, months: List<YearMonth>, category: String? = null): List<Pair<YearMonth, Double>> {
         val byMonth = spends(history, category).groupBy { YearMonth.from(it.date) }
-        return months.map { m -> m to (byMonth[m]?.sumOf { it.amount } ?: 0.0) }
+        return months.map { m -> m to (byMonth[m]?.sumOf { it.spendValue } ?: 0.0).coerceAtLeast(0.0) }
     }
 
     /** Months before [current] that have any transactions at all (so a quiet month counts as 0, a missing one doesn't). */
@@ -49,16 +48,17 @@ object Patterns {
     fun forecast(history: List<Txn>, current: YearMonth, today: LocalDate, category: String? = null): Forecast? {
         if (YearMonth.from(today) != current) return null
         val day = today.dayOfMonth
-        val soFar = spends(history, category).filter { YearMonth.from(it.date) == current && it.date.dayOfMonth <= day }.sumOf { it.amount }
+        val soFar = spends(history, category).filter { YearMonth.from(it.date) == current && it.date.dayOfMonth <= day }
+            .sumOf { it.spendValue }.coerceAtLeast(0.0)
 
         val past = pastMonthsWithData(history, current, 6)
         val fractions = past.mapNotNull { m ->
             val monthSpends = spends(history, category).filter { YearMonth.from(it.date) == m }
-            val total = monthSpends.sumOf { it.amount }
+            val total = monthSpends.sumOf { it.spendValue }
             if (total <= 0) return@mapNotNull null
             // Compare like for like when the past month is shorter than today's date.
             val cutoff = minOf(day, m.lengthOfMonth())
-            monthSpends.filter { it.date.dayOfMonth <= cutoff }.sumOf { it.amount } / total
+            (monthSpends.filter { it.date.dayOfMonth <= cutoff }.sumOf { it.spendValue } / total).coerceIn(0.0, 1.0)
         }
         if (fractions.size >= 2) {
             val typicalFraction = median(fractions)
@@ -77,8 +77,9 @@ object Patterns {
      * Needs at least [minPeers] earlier payments in the category.
      */
     fun unusual(history: List<Txn>, current: YearMonth, minPeers: Int = 5): List<Unusual> {
-        val before = spends(history, null).filter { YearMonth.from(it.date) < current }.groupBy { it.category }
-        return spends(history, null).filter { YearMonth.from(it.date) == current }.mapNotNull { t ->
+        val purchases = history.filter { it.effectiveFlow == Flow.SPEND }
+        val before = purchases.filter { YearMonth.from(it.date) < current }.groupBy { it.category }
+        return purchases.filter { YearMonth.from(it.date) == current }.mapNotNull { t ->
             val peers = before[t.category]?.map { it.amount } ?: return@mapNotNull null
             if (peers.size < minPeers) return@mapNotNull null
             val med = median(peers)
@@ -92,9 +93,9 @@ object Patterns {
     /** Running total per day of [month] (index 0 = day 1), up to [untilDay] when given. */
     fun cumulative(txns: List<Txn>, month: YearMonth, untilDay: Int? = null, category: String? = null): List<Double> {
         val perDay = spends(txns, category).filter { YearMonth.from(it.date) == month }
-            .groupBy { it.date.dayOfMonth }.mapValues { (_, v) -> v.sumOf { it.amount } }
+            .groupBy { it.date.dayOfMonth }.mapValues { (_, v) -> v.sumOf { it.spendValue } }
         var running = 0.0
-        return (1..(untilDay ?: month.lengthOfMonth())).map { d -> running += perDay[d] ?: 0.0; running }
+        return (1..(untilDay ?: month.lengthOfMonth())).map { d -> running = (running + (perDay[d] ?: 0.0)).coerceAtLeast(0.0); running }
     }
 
     fun median(values: List<Double>): Double {
