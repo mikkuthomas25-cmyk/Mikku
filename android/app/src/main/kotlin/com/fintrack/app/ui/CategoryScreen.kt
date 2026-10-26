@@ -76,7 +76,7 @@ fun CategoryScreen(vm: FinTrackViewModel, category: String, onBack: () -> Unit) 
         }
         item { MonthSwitcher(m.label(), m < YearMonth.now(), { vm.changeMonth(-1) }, { vm.changeMonth(1) }) }
         item {
-            HeroCard(Modifier.fillMaxWidth()) {
+            HeroTile(Modifier.fillMaxWidth()) {
                 Text("$category in ${m.name()}", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.8f))
                 AnimatedRupees(spent, MaterialTheme.typography.displaySmall, Color.White, Modifier.padding(top = 4.dp))
                 Spacer(Modifier.height(16.dp))
@@ -102,14 +102,14 @@ fun CategoryScreen(vm: FinTrackViewModel, category: String, onBack: () -> Unit) 
             }
         }
         item {
-            GlassCard(Modifier.fillMaxWidth()) {
+            Tile(Modifier.fillMaxWidth()) {
                 SectionTitle("Last ${trend.size} months")
                 Spacer(Modifier.height(14.dp))
                 MonthlyBars(trend, m, typical, color)
             }
         }
         item {
-            GlassCard(Modifier.fillMaxWidth()) {
+            Tile(Modifier.fillMaxWidth()) {
                 SectionTitle("Day by day")
                 Spacer(Modifier.height(14.dp))
                 DailyBars(days, if (spent > 0) spent / (if (isCurrent) today.dayOfMonth else m.lengthOfMonth()) else 0.0,
@@ -118,7 +118,7 @@ fun CategoryScreen(vm: FinTrackViewModel, category: String, onBack: () -> Unit) 
         }
         if (unusual.isNotEmpty()) {
             item {
-                GlassCard(Modifier.fillMaxWidth()) {
+                Tile(Modifier.fillMaxWidth()) {
                     SectionTitle("Unusual this month")
                     Spacer(Modifier.height(4.dp))
                     Faint("Much bigger than what you normally pay in $category")
@@ -138,7 +138,7 @@ fun CategoryScreen(vm: FinTrackViewModel, category: String, onBack: () -> Unit) 
         }
         if (merchants.isNotEmpty()) {
             item {
-                GlassCard(Modifier.fillMaxWidth()) {
+                Tile(Modifier.fillMaxWidth()) {
                     SectionTitle("Where in $category")
                     Spacer(Modifier.height(16.dp))
                     RankedList(merchants.take(8), spent, leadingAvatar = true, onClick = {})
@@ -146,7 +146,7 @@ fun CategoryScreen(vm: FinTrackViewModel, category: String, onBack: () -> Unit) 
             }
         }
         item {
-            GlassCard(Modifier.fillMaxWidth(), padding = 6.dp) {
+            Tile(Modifier.fillMaxWidth(), padding = 6.dp) {
                 if (inCat.isEmpty()) {
                     Faint("No $category spending in ${m.name()}.", Modifier.padding(12.dp))
                 }

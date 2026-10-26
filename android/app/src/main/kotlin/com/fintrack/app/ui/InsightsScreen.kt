@@ -40,14 +40,14 @@ fun InsightsScreen(vm: FinTrackViewModel, openCategory: (String) -> Unit) {
         val unusual = Patterns.unusual(vm.history, vm.month)
         if (unusual.isNotEmpty()) {
             item {
-                GlassCard(Modifier.fillMaxWidth()) {
+                Tile(Modifier.fillMaxWidth()) {
                     SectionTitle("Unusual spends")
                     Spacer(Modifier.height(4.dp))
                     Faint("Much bigger than what you normally pay in that category. Learned from your history.")
                     Spacer(Modifier.height(10.dp))
                     unusual.take(6).forEach { u ->
                         Row(
-                            Modifier.fillMaxWidth().clip(CardShape).clickable { openCategory(u.txn.category) }.padding(vertical = 8.dp),
+                            Modifier.fillMaxWidth().clip(TileShape).clickable { openCategory(u.txn.category) }.padding(vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(Modifier.weight(1f)) {
@@ -82,7 +82,7 @@ private fun QuickFacts(s: MonthSummary) {
         }
         add("Saved" to if (s.net >= 0) rupees(s.net) else "Overspent by ${rupees(-s.net)}")
     }
-    GlassCard(Modifier.fillMaxWidth()) {
+    Tile(Modifier.fillMaxWidth()) {
         SectionTitle("At a glance")
         Spacer(Modifier.height(8.dp))
         facts.forEachIndexed { i, (label, value) ->
@@ -99,7 +99,7 @@ private fun QuickFacts(s: MonthSummary) {
 @Composable
 private fun LearningCard(stats: LearningStats?) {
     val white = Color.White
-    HeroCard(Modifier.fillMaxWidth()) {
+    HeroTile(Modifier.fillMaxWidth()) {
         Text("✦  Smart categories", style = MaterialTheme.typography.titleLarge, color = white)
         Spacer(Modifier.height(6.dp))
         Text(
@@ -130,7 +130,7 @@ private fun TrendCard(vm: FinTrackViewModel) {
     val m = vm.month
     val first = vm.history.minOfOrNull { YearMonth.from(it.date) } ?: return
     val months = generateSequence(maxOf(first, m.minusMonths(5))) { it.plusMonths(1) }.takeWhile { it <= m }.toList()
-    GlassCard(Modifier.fillMaxWidth()) {
+    Tile(Modifier.fillMaxWidth()) {
         SectionTitle("Month by month")
         Spacer(Modifier.height(14.dp))
         MonthlyBars(Patterns.monthlyTotals(vm.history, months), m, Patterns.typicalMonthly(vm.history, m))

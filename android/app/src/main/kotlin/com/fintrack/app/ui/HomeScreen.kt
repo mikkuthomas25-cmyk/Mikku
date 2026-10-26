@@ -61,7 +61,7 @@ fun HomeScreen(vm: FinTrackViewModel, openActivity: () -> Unit, openProfile: () 
         }
         item { PaceCard(vm, s) }
         item {
-            GlassCard(Modifier.fillMaxWidth()) {
+            Tile(Modifier.fillMaxWidth()) {
                 SectionTitle("Where it went")
                 Spacer(Modifier.height(4.dp))
                 Faint("Tap a category to see everything in it")
@@ -70,7 +70,7 @@ fun HomeScreen(vm: FinTrackViewModel, openActivity: () -> Unit, openProfile: () 
             }
         }
         item {
-            GlassCard(Modifier.fillMaxWidth()) {
+            Tile(Modifier.fillMaxWidth()) {
                 SectionTitle("Daily spending")
                 Spacer(Modifier.height(14.dp))
                 val sel = (vm.filter as? TxnFilter.Day)?.date
@@ -79,7 +79,7 @@ fun HomeScreen(vm: FinTrackViewModel, openActivity: () -> Unit, openProfile: () 
                 if (sel != null) {
                     val amount = s.byDay.firstOrNull { it.first == sel }?.second ?: 0.0
                     Row(
-                        Modifier.fillMaxWidth().clip(PillShape).clickable(onClick = openActivity).padding(vertical = 4.dp),
+                        Modifier.fillMaxWidth().clip(TileShape).clickable(onClick = openActivity).padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text("${sel.long()}  ·  ${rupees(amount)}", style = MaterialTheme.typography.titleSmall.merge(MoneyStyle),
@@ -92,7 +92,7 @@ fun HomeScreen(vm: FinTrackViewModel, openActivity: () -> Unit, openProfile: () 
             }
         }
         item {
-            GlassCard(Modifier.fillMaxWidth()) {
+            Tile(Modifier.fillMaxWidth()) {
                 SectionTitle("Top merchants")
                 Spacer(Modifier.height(16.dp))
                 RankedList(s.topMerchants.take(5), s.spent, leadingAvatar = true, onClick = {
@@ -114,7 +114,7 @@ private fun PaceCard(vm: FinTrackViewModel, s: MonthSummary) {
     val thisMonth = Patterns.cumulative(vm.history, m, untilDay = if (isCurrent) today.dayOfMonth else null)
     val lastMonth = Patterns.cumulative(vm.history, m.minusMonths(1))
     val forecast = if (isCurrent) Patterns.forecast(vm.history, m, today) else null
-    GlassCard(Modifier.fillMaxWidth()) {
+    Tile(Modifier.fillMaxWidth()) {
         SectionTitle("Spending pace")
         Spacer(Modifier.height(4.dp))
         Text(
@@ -163,7 +163,7 @@ private fun Greeting(name: String, onAvatar: () -> Unit) {
 private fun SpendHero(s: MonthSummary) {
     val white = Color.White
     val change = if (s.prevMonthSpent > 0) (s.spent - s.prevMonthSpent) / s.prevMonthSpent else null
-    HeroCard(Modifier.fillMaxWidth()) {
+    HeroTile(Modifier.fillMaxWidth()) {
         Text("Spent in ${s.month.name()}", style = MaterialTheme.typography.bodyMedium, color = white.copy(alpha = 0.8f))
         AnimatedRupees(s.spent, MaterialTheme.typography.displaySmall, white, Modifier.padding(top = 4.dp))
         Spacer(Modifier.height(10.dp))
@@ -175,7 +175,7 @@ private fun SpendHero(s: MonthSummary) {
             },
             style = MaterialTheme.typography.labelMedium,
             color = white,
-            modifier = Modifier.clip(PillShape).background(white.copy(alpha = 0.18f)).padding(horizontal = 12.dp, vertical = 6.dp),
+            modifier = Modifier.clip(TileShape).background(white.copy(alpha = 0.18f)).padding(horizontal = 12.dp, vertical = 6.dp),
         )
         Spacer(Modifier.height(20.dp))
         HorizontalDivider(color = white.copy(alpha = 0.2f))
@@ -189,7 +189,7 @@ private fun SpendHero(s: MonthSummary) {
 
 @Composable
 private fun MiniStat(label: String, value: Double, modifier: Modifier) {
-    GlassCard(modifier) {
+    Tile(modifier) {
         Text(label, style = MaterialTheme.typography.labelMedium, color = Fin.colors.inkSoft)
         AnimatedRupees(value, MaterialTheme.typography.titleLarge, Fin.colors.ink, Modifier.padding(top = 4.dp))
     }
@@ -205,7 +205,7 @@ private fun PermissionHero(vm: FinTrackViewModel) {
         blocked = !vm.hasSmsPermission
     }
     val white = Color.White
-    HeroCard(Modifier.fillMaxWidth()) {
+    HeroTile(Modifier.fillMaxWidth()) {
         if (!blocked) {
             Text("Connect your messages", style = MaterialTheme.typography.titleLarge, color = white)
             Spacer(Modifier.height(8.dp))
@@ -260,9 +260,9 @@ private fun HeroButton(text: String, subtle: Boolean = false, onClick: () -> Uni
     Text(
         text,
         style = MaterialTheme.typography.labelLarge,
-        color = if (subtle) Color.White else Fin.colors.heroStart,
+        color = if (subtle) Color.White else Fin.colors.accent,
         modifier = Modifier
-            .clip(PillShape)
+            .clip(TileShape)
             .background(if (subtle) Color.White.copy(alpha = 0.18f) else Color.White)
             .clickable(onClick = onClick)
             .padding(horizontal = 18.dp, vertical = 12.dp),

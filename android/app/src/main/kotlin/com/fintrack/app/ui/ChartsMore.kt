@@ -156,7 +156,7 @@ fun CategoryDonut(categories: List<Amount>, total: Double, onOpen: (String) -> U
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             categories.forEach { cat ->
                 Row(
-                    Modifier.fillMaxWidth().clip(CardShape).clickable { onOpen(cat.label) }.padding(vertical = 9.dp, horizontal = 4.dp),
+                    Modifier.fillMaxWidth().clip(TileShape).clickable { onOpen(cat.label) }.padding(vertical = 9.dp, horizontal = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Box(Modifier.size(12.dp).clip(CircleShape).background(categoryColor(cat.label)))
@@ -186,7 +186,7 @@ fun PaceChart(thisMonth: List<Double>, lastMonth: List<Double>, daysInMonth: Int
     var selected by remember(thisMonth) { mutableStateOf<Int?>(null) }
     val top = niceCeil(listOfNotNull(thisMonth.maxOrNull(), lastMonth.maxOrNull(), forecastEnd).maxOrNull() ?: 1.0)
     val padL = 44.dp
-    val primary = c.heroStart
+    val primary = c.accent
 
     Column {
         Canvas(
@@ -271,7 +271,7 @@ private val MONTH_SHORT = DateTimeFormatter.ofPattern("MMM")
 
 /** One bar per month, the selected month highlighted, a dashed line at the user's typical month. */
 @Composable
-fun MonthlyBars(months: List<Pair<YearMonth, Double>>, highlight: YearMonth, typical: Double?, color: Color = Fin.colors.heroStart) {
+fun MonthlyBars(months: List<Pair<YearMonth, Double>>, highlight: YearMonth, typical: Double?, color: Color = Fin.colors.accent) {
     val c = Fin.colors
     val measurer = rememberTextMeasurer()
     val axis = TextStyle(fontSize = 10.sp, color = c.inkFaint)
@@ -295,7 +295,7 @@ fun MonthlyBars(months: List<Pair<YearMonth, Double>>, highlight: YearMonth, typ
                 val isSel = m == highlight
                 if (h > 0) {
                     drawRoundRect(color.copy(alpha = if (isSel) 1f else 0.35f), Offset(x, plotBottom - h), Size(bw, h),
-                        CornerRadius(4.dp.toPx()))
+                        CornerRadius(1.dp.toPx()))
                 }
                 val label = measurer.measure(m.format(MONTH_SHORT), axis)
                 drawText(label, topLeft = Offset(x + bw / 2 - label.size.width / 2, size.height - label.size.height))

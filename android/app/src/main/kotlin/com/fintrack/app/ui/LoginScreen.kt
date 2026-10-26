@@ -62,7 +62,7 @@ fun LoginScreen(vm: FinTrackViewModel) {
         vm.message?.let { snackbar.showSnackbar(it); vm.message = null }
     }
 
-    GlossyBackground {
+    AppBackground {
         Column(
             Modifier
                 .fillMaxSize()
@@ -83,17 +83,17 @@ fun LoginScreen(vm: FinTrackViewModel) {
 
             Column(Modifier.widthIn(max = 440.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 if (!vm.auth.configured) {
-                    GlassCard(Modifier.fillMaxWidth()) {
+                    Tile(Modifier.fillMaxWidth()) {
                         Text("Try it on this phone", style = MaterialTheme.typography.titleMedium, color = c.ink)
                         Spacer(Modifier.height(4.dp))
                         Faint("Google and email sign-in switch on once Firebase is connected (see android/README.md).")
                         Spacer(Modifier.height(14.dp))
-                        GradientButton("Continue without account", vm::continueWithoutAccount, Modifier.fillMaxWidth())
+                        PopButton("Continue without account", vm::continueWithoutAccount, Modifier.fillMaxWidth())
                     }
                 }
 
-                GlassCard(Modifier.fillMaxWidth(), padding = 20.dp) {
-                    GlassPillButton(
+                Tile(Modifier.fillMaxWidth(), padding = 20.dp) {
+                    PopOutlineButton(
                         "Continue with Google", onClick = { vm.signInWithGoogle(activity) },
                         modifier = Modifier.fillMaxWidth(), enabled = ready,
                         leading = { Text("G", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Color(0xFF4285F4)) },
@@ -103,12 +103,12 @@ fun LoginScreen(vm: FinTrackViewModel) {
                         Text("  or with email  ", style = MaterialTheme.typography.labelMedium, color = c.inkFaint)
                         HorizontalDivider(Modifier.weight(1f), color = c.track)
                     }
-                    FinTextField(email, { email = it }, "Email", keyboardType = KeyboardType.Email, enabled = ready)
+                    PopTextField(email, { email = it }, "Email", keyboardType = KeyboardType.Email, enabled = ready)
                     Spacer(Modifier.height(12.dp))
-                    FinTextField(password, { password = it }, "Password", password = true,
+                    PopTextField(password, { password = it }, "Password", password = true,
                         keyboardType = KeyboardType.Password, enabled = ready)
                     Spacer(Modifier.height(18.dp))
-                    GradientButton(
+                    PopButton(
                         when {
                             vm.busy -> "Please wait…"
                             creating -> "Create account"
@@ -138,31 +138,17 @@ fun LoginScreen(vm: FinTrackViewModel) {
     }
 }
 
-/** Glossy app tile: three rising bars on the brand gradient. */
+/** App mark: three rising bars on an accent plunk tile. */
 @Composable
 private fun AppMark() {
     val c = Fin.colors
-    val shape = RoundedCornerShape(26.dp)
-    Box(
-        Modifier
-            .size(84.dp)
-            .shadow(24.dp, shape, ambientColor = c.heroStart, spotColor = c.heroEnd)
-            .clip(shape)
-            .background(Brush.linearGradient(listOf(c.heroStart, c.heroEnd)))
-            .drawWithContent {
-                drawContent()
-                drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.3f), 0.5f to Color.Transparent))
-            },
-        contentAlignment = Alignment.Center,
-    ) {
-        Canvas(Modifier.size(40.dp)) {
+    Plunk(c.accent, c.accentEdgeRight, c.accentEdgeBottom, faceModifier = Modifier.size(84.dp), depth = 6.dp) {
+        Canvas(Modifier.size(40.dp).align(Alignment.Center)) {
             val bw = size.width / 4.6f
             val gap = (size.width - bw * 3) / 2
             listOf(0.45f, 0.7f, 1f).forEachIndexed { i, h ->
                 val barH = size.height * h
-                drawRoundRect(
-                    Color.White, Offset(i * (bw + gap), size.height - barH), Size(bw, barH), CornerRadius(bw / 2.5f),
-                )
+                drawRect(Color.White, Offset(i * (bw + gap), size.height - barH), Size(bw, barH))
             }
         }
     }

@@ -83,7 +83,7 @@ fun ActivityScreen(vm: FinTrackViewModel) {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     vm.filter?.let { f ->
                         item {
-                            FinChip(
+                            PopChip(
                                 when (f) {
                                     is TxnFilter.Day -> f.date.long()
                                     is TxnFilter.Category -> f.name
@@ -93,12 +93,12 @@ fun ActivityScreen(vm: FinTrackViewModel) {
                             ) { vm.filter = null }
                         }
                     }
-                    items(Kind.entries) { k -> FinChip(k.name, vm.kind == k) { vm.kind = k } }
+                    items(Kind.entries) { k -> PopChip(k.name, vm.kind == k) { vm.kind = k } }
                 }
             }
             if (rows.isEmpty()) {
                 item {
-                    GlassCard(Modifier.fillMaxWidth()) {
+                    Tile(Modifier.fillMaxWidth()) {
                         Text("Nothing here", style = MaterialTheme.typography.titleMedium, color = c.ink)
                         Faint(
                             if (vm.hasSmsPermission) "No transactions match. Try another month or clear the filters."
@@ -116,7 +116,7 @@ fun ActivityScreen(vm: FinTrackViewModel) {
                     }
                 }
                 item(key = "d$date") {
-                    GlassCard(Modifier.fillMaxWidth(), padding = 6.dp) {
+                    Tile(Modifier.fillMaxWidth(), padding = 6.dp) {
                         dayRows.forEachIndexed { i, t ->
                             TxnRow(t) { editing = t }
                             if (i < dayRows.lastIndex) HorizontalDivider(Modifier.padding(start = 66.dp, end = 12.dp), color = c.track)
@@ -139,7 +139,7 @@ fun ActivityScreen(vm: FinTrackViewModel) {
 @Composable
 private fun SearchBar(query: String, onChange: (String) -> Unit) {
     val c = Fin.colors
-    GlassCard(Modifier.fillMaxWidth(), shape = PillShape, padding = 0.dp) {
+    Tile(Modifier.fillMaxWidth(), shape = TileShape, padding = 0.dp) {
         Row(Modifier.height(50.dp).padding(horizontal = 18.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Filled.Search, null, tint = c.inkFaint, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(10.dp))
@@ -148,7 +148,7 @@ private fun SearchBar(query: String, onChange: (String) -> Unit) {
                 androidx.compose.foundation.text.BasicTextField(
                     value = query, onValueChange = onChange, singleLine = true,
                     textStyle = MaterialTheme.typography.bodyLarge.copy(color = c.ink),
-                    cursorBrush = androidx.compose.ui.graphics.SolidColor(c.heroStart),
+                    cursorBrush = androidx.compose.ui.graphics.SolidColor(c.accent),
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -163,7 +163,7 @@ private fun SearchBar(query: String, onChange: (String) -> Unit) {
 internal fun TxnRow(t: Txn, onClick: () -> Unit) {
     val c = Fin.colors
     Row(
-        Modifier.fillMaxWidth().clip(CardShape).clickable(onClick = onClick).padding(horizontal = 10.dp, vertical = 12.dp),
+        Modifier.fillMaxWidth().clip(TileShape).clickable(onClick = onClick).padding(horizontal = 10.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Avatar(t.merchant)
@@ -192,15 +192,9 @@ internal fun TxnRow(t: Txn, onClick: () -> Unit) {
 @Composable
 private fun AddButton(modifier: Modifier, onClick: () -> Unit) {
     val c = Fin.colors
-    Box(
-        modifier
-            .size(58.dp)
-            .shadow(16.dp, CircleShape, ambientColor = c.heroStart, spotColor = c.heroEnd)
-            .clip(CircleShape)
-            .background(Brush.linearGradient(listOf(c.heroStart, c.heroEnd)))
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) { Icon(Icons.Filled.Add, "Add cash spend", tint = Color.White, modifier = Modifier.size(26.dp)) }
+    Plunk(Color.White, c.buttonEdgeRight, c.buttonEdgeBottom, modifier, faceModifier = Modifier.size(56.dp), depth = 5.dp, onClick = onClick) {
+        Icon(Icons.Filled.Add, "Add cash spend", tint = Color.Black, modifier = Modifier.size(28.dp).align(Alignment.Center))
+    }
 }
 
 @Composable
@@ -229,23 +223,23 @@ internal fun EditSheet(txn: Txn, onDismiss: () -> Unit, vm: FinTrackViewModel) {
             }
             txn.raw?.let {
                 Text(it, style = MaterialTheme.typography.bodySmall, color = c.inkSoft,
-                    modifier = Modifier.fillMaxWidth().clip(CardShape).background(c.track.copy(alpha = 0.5f)).padding(14.dp))
+                    modifier = Modifier.fillMaxWidth().clip(TileShape).background(c.track.copy(alpha = 0.5f)).padding(14.dp))
             }
             Text("Category", style = MaterialTheme.typography.titleSmall, color = c.ink)
             if (txn.categorySource == CategorySource.LEARNED) {
                 Faint("✦ FinTrack learned this from your past categories. Pick the right one and it learns from that too.")
             }
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Categorizer.CATEGORIES.forEach { cat -> FinChip(cat, cat == category) { category = cat } }
+                Categorizer.CATEGORIES.forEach { cat -> PopChip(cat, cat == category) { category = cat } }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("Always use for ${txn.merchant}", style = MaterialTheme.typography.bodyLarge, color = c.ink)
                     Faint("Future payments here get this category too")
                 }
-                Switch(always, { always = it }, colors = SwitchDefaults.colors(checkedTrackColor = c.heroStart))
+                Switch(always, { always = it }, colors = SwitchDefaults.colors(checkedTrackColor = c.accent))
             }
-            GradientButton("Save", onClick = { vm.setCategory(txn, category, always); onDismiss() }, Modifier.fillMaxWidth())
+            PopButton("Save", onClick = { vm.setCategory(txn, category, always); onDismiss() }, Modifier.fillMaxWidth())
             TextButton(onClick = { vm.delete(txn); onDismiss() }, modifier = Modifier.fillMaxWidth()) {
                 Text("Delete transaction", color = c.loss)
             }
@@ -268,8 +262,8 @@ private fun AddSheet(onDismiss: () -> Unit, onSave: (LocalDate, Double, Directio
         Column(Modifier.padding(horizontal = 24.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text("Add cash", style = MaterialTheme.typography.titleLarge, color = c.ink)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FinChip("Spent", direction == Direction.DEBIT) { direction = Direction.DEBIT }
-                FinChip("Received", direction == Direction.CREDIT) { direction = Direction.CREDIT }
+                PopChip("Spent", direction == Direction.DEBIT) { direction = Direction.DEBIT }
+                PopChip("Received", direction == Direction.CREDIT) { direction = Direction.CREDIT }
             }
             // Big amount entry, the focus of this sheet.
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -281,7 +275,7 @@ private fun AddSheet(onDismiss: () -> Unit, onSave: (LocalDate, Double, Directio
                     singleLine = true,
                     textStyle = TextStyle(fontSize = 40.sp, color = c.ink).merge(MoneyStyle),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    cursorBrush = androidx.compose.ui.graphics.SolidColor(c.heroStart),
+                    cursorBrush = androidx.compose.ui.graphics.SolidColor(c.accent),
                     modifier = Modifier.weight(1f),
                     decorationBox = { inner ->
                         if (amount.isEmpty()) Text("0", fontSize = 40.sp, color = c.track)
@@ -289,12 +283,12 @@ private fun AddSheet(onDismiss: () -> Unit, onSave: (LocalDate, Double, Directio
                     },
                 )
             }
-            FinTextField(what, { what = it }, "What for")
-            FinChip("${date.relative()}  ▾", selected = false) {
+            PopTextField(what, { what = it }, "What for")
+            PopChip("${date.relative()}  ▾", selected = false) {
                 DatePickerDialog(context, { _, y, m, d -> date = LocalDate.of(y, m + 1, d) },
                     date.year, date.monthValue - 1, date.dayOfMonth).show()
             }
-            GradientButton(
+            PopButton(
                 "Save", onClick = { onSave(date, value!!, direction, what) }, Modifier.fillMaxWidth(),
                 enabled = value != null && value > 0 && what.isNotBlank(),
             )

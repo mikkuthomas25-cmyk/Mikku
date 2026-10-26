@@ -89,17 +89,17 @@ fun DailyBars(
         val slot = (size.width - l) / days.size
         val bw = (slot * 0.6f).coerceIn(3.dp.toPx(), 12.dp.toPx())
         val brush = if (color != null) Brush.verticalGradient(listOf(color, color))
-        else Brush.verticalGradient(listOf(c.heroEnd, c.heroStart), startY = plotTop, endY = plotBottom)
+        else Brush.verticalGradient(listOf(c.accent, c.accent), startY = plotTop, endY = plotBottom)
 
         days.forEachIndexed { i, (date, amount) ->
             val x = l + i * slot + (slot - bw) / 2
             val h = (plotH * (amount / top).toFloat() * grow.value).coerceAtLeast(if (amount > 0) 3.dp.toPx() else 0f)
             if (h > 0) {
                 val dim = selected != null && selected != date
-                drawRoundRect(brush, Offset(x, plotBottom - h), Size(bw, h), CornerRadius(bw / 2), alpha = if (dim) 0.3f else 1f)
+                drawRoundRect(brush, Offset(x, plotBottom - h), Size(bw, h), CornerRadius(1.dp.toPx()), alpha = if (dim) 0.3f else 1f)
             }
             if (date == today) {
-                drawCircle(c.heroStart, 2.5.dp.toPx(), Offset(x + bw / 2, plotBottom + 4.dp.toPx()))
+                drawCircle(c.accent, 2.5.dp.toPx(), Offset(x + bw / 2, plotBottom + 4.dp.toPx()))
             }
             val d = date.dayOfMonth
             if (d == 1 || d % 7 == 0) {
@@ -130,7 +130,7 @@ fun RankedList(items: List<Amount>, total: Double, onClick: (String) -> Unit, le
         items.forEach { item ->
             val frac by animateFloatAsState((item.amount / top).toFloat(), tween(600), label = "rank")
             Row(
-                Modifier.fillMaxWidth().clip(CardShape).clickable { onClick(item.label) },
+                Modifier.fillMaxWidth().clip(TileShape).clickable { onClick(item.label) },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (leadingAvatar) {
@@ -147,7 +147,7 @@ fun RankedList(items: List<Amount>, total: Double, onClick: (String) -> Unit, le
                         Canvas(Modifier.weight(1f).height(4.dp)) {
                             drawRoundRect(c.track, cornerRadius = CornerRadius(size.height))
                             drawRoundRect(
-                                Brush.horizontalGradient(listOf(c.heroStart, c.heroEnd)),
+                                Brush.horizontalGradient(listOf(c.accent, c.accent)),
                                 size = Size(size.width * frac, size.height), cornerRadius = CornerRadius(size.height),
                             )
                         }

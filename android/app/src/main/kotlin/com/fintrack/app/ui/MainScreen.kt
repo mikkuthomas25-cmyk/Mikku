@@ -58,7 +58,7 @@ fun MainScreen(vm: FinTrackViewModel, startTab: Int = 0) {
         vm.message?.let { snackbar.showSnackbar(it); vm.message = null }
     }
 
-    GlossyBackground {
+    AppBackground {
         AnimatedContent(
             targetState = tab to category,
             transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(150)) },
@@ -75,14 +75,14 @@ fun MainScreen(vm: FinTrackViewModel, startTab: Int = 0) {
         }
         if (vm.busy) {
             LinearProgressIndicator(
-                Modifier.fillMaxWidth().statusBarsPadding().height(2.dp),
-                color = Fin.colors.heroStart, trackColor = Color.Transparent,
+                Modifier.fillMaxWidth().statusBarsPadding().height(3.dp),
+                color = Fin.colors.accent, trackColor = Color.Transparent,
             )
         }
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 88.dp))
-        FloatingNavBar(
+        PopNavBar(
             NAV, tab, { category = null; tab = it },
-            Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 14.dp),
+            Modifier.align(Alignment.BottomCenter),
         )
     }
 }

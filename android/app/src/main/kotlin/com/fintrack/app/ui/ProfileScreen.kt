@@ -40,7 +40,7 @@ fun ProfileScreen(vm: FinTrackViewModel) {
     LazyColumn(Modifier.fillMaxSize(), contentPadding = ScreenPadding, verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { Text("Profile", style = MaterialTheme.typography.headlineMedium, color = c.ink) }
         item {
-            GlassCard(Modifier.fillMaxWidth()) {
+            Tile(Modifier.fillMaxWidth()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Avatar(vm.account ?: "", size = 56.dp, gradient = true)
                     Spacer(Modifier.width(16.dp))
@@ -53,7 +53,7 @@ fun ProfileScreen(vm: FinTrackViewModel) {
         }
         item {
             val context = LocalContext.current
-            GlassCard(Modifier.fillMaxWidth(), padding = 6.dp) {
+            Tile(Modifier.fillMaxWidth(), padding = 6.dp) {
                 SettingRow(
                     "SMS access",
                     if (vm.hasSmsPermission) "Allowed · new bank SMS are added automatically"
@@ -79,7 +79,7 @@ fun ProfileScreen(vm: FinTrackViewModel) {
             }
         }
         item {
-            GlassCard(Modifier.fillMaxWidth(), padding = 6.dp) {
+            Tile(Modifier.fillMaxWidth(), padding = 6.dp) {
                 SettingRow("Sign out", "You can sign back in any time", danger = true) { vm.signOut() }
             }
         }
@@ -94,7 +94,7 @@ fun ProfileScreen(vm: FinTrackViewModel) {
 private fun SettingRow(title: String, subtitle: String, enabled: Boolean = true, danger: Boolean = false, onClick: () -> Unit) {
     val c = Fin.colors
     Row(
-        Modifier.fillMaxWidth().clip(CardShape).clickable(enabled = enabled, onClick = onClick).padding(14.dp),
+        Modifier.fillMaxWidth().clip(TileShape).clickable(enabled = enabled, onClick = onClick).padding(14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
@@ -137,7 +137,7 @@ private fun MissedSheet(vm: FinTrackViewModel, onDismiss: () -> Unit) {
             }
             if (!missed.isNullOrEmpty()) {
                 item {
-                    GradientButton("Share for fixing", onClick = {
+                    PopButton("Share for fixing", onClick = {
                         val text = missed.take(60).joinToString("\n\n---\n\n") { m ->
                             "[${m.sender.take(12)}] " + com.fintrack.core.SmsParser.redact(m.body)
                         }
@@ -145,7 +145,7 @@ private fun MissedSheet(vm: FinTrackViewModel, onDismiss: () -> Unit) {
                     }, modifier = Modifier.fillMaxWidth())
                 }
                 items(missed.take(100)) { m ->
-                    GlassCard(Modifier.fillMaxWidth(), padding = 14.dp) {
+                    Tile(Modifier.fillMaxWidth(), padding = 14.dp) {
                         Text(
                             m.sender + "  ·  " + java.time.Instant.ofEpochMilli(m.millis)
                                 .atZone(java.time.ZoneId.systemDefault()).toLocalDate().short(),

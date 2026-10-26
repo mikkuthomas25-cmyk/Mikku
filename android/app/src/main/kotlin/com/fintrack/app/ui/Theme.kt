@@ -1,17 +1,14 @@
 package com.fintrack.app.ui
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
@@ -21,63 +18,49 @@ import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-/** Design tokens beyond Material's scheme: the gloss gradient, glass fills, money colors. */
+/**
+ * Design tokens, in the spirit of the NeoPOP design system: a near-black canvas, flat dark
+ * tiles with hairline borders, white primary actions, one bright accent, and hard 3D edges on
+ * anything you can press.
+ */
 @Immutable
 data class FinColors(
     val background: Color,
-    val glowA: Color,          // soft background wash, top-left
-    val glowB: Color,          // soft background wash, top-right
-    val glass: Color,          // translucent card fill
-    val glassEdgeTop: Color,   // card rim highlight
-    val glassEdgeBottom: Color,
-    val heroStart: Color,
-    val heroEnd: Color,
+    val surface: Color,        // tiles
+    val surfaceRaised: Color,  // inputs, avatars
+    val border: Color,         // tile hairlines
+    val accent: Color,         // the one bright colour: hero tiles, primary data series
+    val accentEdgeRight: Color,
+    val accentEdgeBottom: Color,
     val ink: Color,
     val inkSoft: Color,
     val inkFaint: Color,
-    val track: Color,
+    val track: Color,          // gridlines, empty bars
     val gain: Color,
     val loss: Color,
-    val accentSoft: Color,     // avatar / chip tint
+    val buttonEdgeRight: Color,  // white button's 3D edges
+    val buttonEdgeBottom: Color,
 )
 
-private val LightFin = FinColors(
-    background = Color(0xFFF3F5FB),
-    glowA = Color(0x553B82F6),
-    glowB = Color(0x447C3AED),
-    glass = Color(0xD9FFFFFF),
-    glassEdgeTop = Color(0xFFFFFFFF),
-    glassEdgeBottom = Color(0x1A3B4A6B),
-    heroStart = Color(0xFF2563EB),
-    heroEnd = Color(0xFF6D28D9),
-    ink = Color(0xFF0F172A),
-    inkSoft = Color(0xFF475569),
-    inkFaint = Color(0xFF94A3B8),
-    track = Color(0xFFE6EAF3),
-    gain = Color(0xFF15803D),
-    loss = Color(0xFFDC2626),
-    accentSoft = Color(0xFFE3EBFF),
+private val Pop = FinColors(
+    background = Color(0xFF0D0D0D),
+    surface = Color(0xFF161616),
+    surfaceRaised = Color(0xFF222222),
+    border = Color(0xFF2A2A2A),
+    accent = Color(0xFF7A5CFA),
+    accentEdgeRight = Color(0xFF5A3FD6),
+    accentEdgeBottom = Color(0xFF4430A8),
+    ink = Color(0xFFFFFFFF),
+    inkSoft = Color(0xFFB3B3B3),
+    inkFaint = Color(0xFF737373),
+    track = Color(0xFF262626),
+    gain = Color(0xFF3DDC97),
+    loss = Color(0xFFFF6B6B),
+    buttonEdgeRight = Color(0xFFA6A6A6),
+    buttonEdgeBottom = Color(0xFF6E6E6E),
 )
 
-private val DarkFin = FinColors(
-    background = Color(0xFF0A0E17),
-    glowA = Color(0x402563EB),
-    glowB = Color(0x387C3AED),
-    glass = Color(0x14FFFFFF),
-    glassEdgeTop = Color(0x33FFFFFF),
-    glassEdgeBottom = Color(0x0AFFFFFF),
-    heroStart = Color(0xFF2563EB),
-    heroEnd = Color(0xFF7C3AED),
-    ink = Color(0xFFF1F5F9),
-    inkSoft = Color(0xFFB4BFD0),
-    inkFaint = Color(0xFF6B7891),
-    track = Color(0x1FFFFFFF),
-    gain = Color(0xFF4ADE80),
-    loss = Color(0xFFF87171),
-    accentSoft = Color(0x293B82F6),
-)
-
-private val LocalFin = staticCompositionLocalOf { LightFin }
+private val LocalFin = staticCompositionLocalOf { Pop }
 
 object Fin {
     val colors: FinColors
@@ -87,36 +70,35 @@ object Fin {
 /** Tabular figures keep amounts from jiggling as they change. */
 val MoneyStyle = TextStyle(fontFeatureSettings = "tnum")
 
-private val FinTypography = Typography().run {
+/** Small uppercase label with tracking: NeoPOP's signature caption. */
+val CapsLabel = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.6.sp)
+
+private val PopTypography = Typography().run {
     copy(
-        displaySmall = displaySmall.copy(fontWeight = FontWeight.SemiBold, letterSpacing = (-0.5).sp),
-        headlineMedium = headlineMedium.copy(fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp),
-        titleLarge = titleLarge.copy(fontWeight = FontWeight.SemiBold),
-        titleMedium = titleMedium.copy(fontWeight = FontWeight.SemiBold),
-        labelLarge = labelLarge.copy(fontWeight = FontWeight.SemiBold),
+        displaySmall = displaySmall.copy(fontWeight = FontWeight.Black, letterSpacing = (-1).sp),
+        headlineMedium = headlineMedium.copy(fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp),
+        titleLarge = titleLarge.copy(fontWeight = FontWeight.ExtraBold),
+        titleMedium = titleMedium.copy(fontWeight = FontWeight.Bold),
+        titleSmall = titleSmall.copy(fontWeight = FontWeight.Bold),
+        labelLarge = labelLarge.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp),
+        labelMedium = labelMedium.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.8.sp),
     )
 }
 
+/** Always dark: the NeoPOP look is built for a black canvas. */
 @Composable
-fun FinTrackTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
-    val fin = if (dark) DarkFin else LightFin
-    val scheme = if (dark) {
-        darkColorScheme(
-            primary = Color(0xFF60A5FA), onPrimary = Color(0xFF0A0E17),
-            background = fin.background, surface = Color(0xFF121826), onSurface = fin.ink,
-            onSurfaceVariant = fin.inkSoft, surfaceVariant = Color(0xFF1C2333), outlineVariant = Color(0x1FFFFFFF),
-            error = fin.loss, surfaceContainerLow = Color(0xFF121826), surfaceContainer = Color(0xFF151C2B),
-        )
-    } else {
-        lightColorScheme(
-            primary = Color(0xFF2563EB), onPrimary = Color.White,
-            background = fin.background, surface = Color.White, onSurface = fin.ink,
-            onSurfaceVariant = fin.inkSoft, surfaceVariant = Color(0xFFEFF2F8), outlineVariant = Color(0xFFE2E8F0),
-            error = fin.loss, surfaceContainerLow = Color.White, surfaceContainer = Color(0xFFF8FAFD),
-        )
-    }
-    CompositionLocalProvider(LocalFin provides fin) {
-        MaterialTheme(colorScheme = scheme, typography = FinTypography, content = content)
+fun FinTrackTheme(content: @Composable () -> Unit) {
+    val c = Pop
+    val scheme = darkColorScheme(
+        primary = Color.White, onPrimary = Color.Black,
+        background = c.background, onBackground = c.ink,
+        surface = c.surface, onSurface = c.ink, onSurfaceVariant = c.inkSoft,
+        surfaceVariant = c.surfaceRaised, outlineVariant = c.border, outline = c.border,
+        surfaceContainerLow = c.surface, surfaceContainer = c.surface, surfaceContainerHigh = c.surfaceRaised,
+        error = c.loss,
+    )
+    CompositionLocalProvider(LocalFin provides c) {
+        MaterialTheme(colorScheme = scheme, typography = PopTypography, content = content)
     }
 }
 
@@ -140,16 +122,13 @@ fun LocalDate.relative(today: LocalDate = LocalDate.now()): String = when (this)
 
 /**
  * One fixed colour per main spending category, so "Food" is the same blue in every chart.
- * Validated for colour-blind separation in light and dark; categories beyond these seven share a
- * neutral grey and are always shown with their name, never by colour alone.
+ * Validated for colour-blind separation on a dark surface; categories beyond these seven share
+ * a neutral grey and are always shown with their name, never by colour alone.
  */
 private val CATEGORY_SLOTS = listOf("Food & Dining", "Shopping", "Groceries", "Bills & Utilities", "Rent", "Health", "Transport")
-private val CATEGORY_LIGHT = listOf(0xFF2A78D6, 0xFFEB6834, 0xFF1BAF7A, 0xFFEDA100, 0xFFE87BA4, 0xFF008300, 0xFF6250D6)
-private val CATEGORY_DARK = listOf(0xFF3987E5, 0xFFD95926, 0xFF199E70, 0xFFC98500, 0xFFD55181, 0xFF008300, 0xFF9085E9)
+private val CATEGORY_COLORS = listOf(0xFF3987E5, 0xFFD95926, 0xFF199E70, 0xFFC98500, 0xFFD55181, 0xFF008300, 0xFF9085E9)
 
-@Composable
 fun categoryColor(category: String): Color {
     val i = CATEGORY_SLOTS.indexOf(category)
-    val dark = Fin.colors.background.luminance() < 0.5f
-    return if (i < 0) Color(0xFF8A94A6) else Color((if (dark) CATEGORY_DARK else CATEGORY_LIGHT)[i])
+    return if (i < 0) Color(0xFF8A8A8A) else Color(CATEGORY_COLORS[i])
 }
