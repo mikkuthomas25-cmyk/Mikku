@@ -31,12 +31,14 @@ import androidx.compose.ui.platform.LocalContext
 import com.fintrack.app.sms.PermissionHelper
 import androidx.compose.ui.unit.dp
 import com.fintrack.core.MonthSummary
+import com.fintrack.core.Patterns
+import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth
 import kotlin.math.abs
 
 @Composable
-fun HomeScreen(vm: FinTrackViewModel, openActivity: () -> Unit, openProfile: () -> Unit) {
+fun HomeScreen(vm: FinTrackViewModel, openActivity: () -> Unit, openProfile: () -> Unit, openCategory: (String) -> Unit) {
     val s = vm.summary
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -57,9 +59,19 @@ fun HomeScreen(vm: FinTrackViewModel, openActivity: () -> Unit, openProfile: () 
                 MiniStat("Daily average", s.avgPerDay, Modifier.weight(1f))
             }
         }
+        item { PaceCard(vm, s) }
         item {
             GlassCard(Modifier.fillMaxWidth()) {
-                SectionTitle("Daily rhythm")
+                SectionTitle("Where it went")
+                Spacer(Modifier.height(4.dp))
+                Faint("Tap a category to see everything in it")
+                Spacer(Modifier.height(16.dp))
+                CategoryDonut(s.byCategory, s.spent, onOpen = openCategory)
+            }
+        }
+        item {
+            GlassCard(Modifier.fillMaxWidth()) {
+                SectionTitle("Daily spending")
                 Spacer(Modifier.height(14.dp))
                 val sel = (vm.filter as? TxnFilter.Day)?.date
                 DailyBars(s.byDay, s.avgPerDay, sel, onSelect = { vm.filter = it?.let(TxnFilter::Day) })
@@ -75,23 +87,8 @@ fun HomeScreen(vm: FinTrackViewModel, openActivity: () -> Unit, openProfile: () 
                         Text("View  ›", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                     }
                 } else {
-                    Faint("Tap a bar to see that day  ·  dashed line = daily average")
+                    Faint("Tap a bar to see that day  ·  dashed line = your daily average  ·  dot = today")
                 }
-            }
-        }
-        item {
-            var all by rememberSaveable { mutableStateOf(false) }
-            GlassCard(Modifier.fillMaxWidth()) {
-                SectionTitle(
-                    "Categories",
-                    action = if (s.byCategory.size > 5) (if (all) "Less" else "See all") else null,
-                    onAction = { all = !all },
-                )
-                Spacer(Modifier.height(16.dp))
-                RankedList(if (all) s.byCategory else s.byCategory.take(5), s.spent, onClick = {
-                    vm.filter = TxnFilter.Category(it)
-                    openActivity()
-                })
             }
         }
         item {
@@ -104,6 +101,45 @@ fun HomeScreen(vm: FinTrackViewModel, openActivity: () -> Unit, openProfile: () 
                 })
             }
         }
+    }
+}
+
+/** "Am I spending faster than usual?": running total vs last month, plus the learned forecast. */
+@Composable
+private fun PaceCard(vm: FinTrackViewModel, s: MonthSummary) {
+    val c = Fin.colors
+    val m = vm.month
+    val today = LocalDate.now()
+    val isCurrent = YearMonth.from(today) == m
+    val thisMonth = Patterns.cumulative(vm.history, m, untilDay = if (isCurrent) today.dayOfMonth else null)
+    val lastMonth = Patterns.cumulative(vm.history, m.minusMonths(1))
+    val forecast = if (isCurrent) Patterns.forecast(vm.history, m, today) else null
+    GlassCard(Modifier.fillMaxWidth()) {
+        SectionTitle("Spending pace")
+        Spacer(Modifier.height(4.dp))
+        Text(
+            when {
+                forecast != null && forecast.basedOnMonths >= 2 ->
+                    "On track for ${rupees(forecast.projected)} by month-end, based on how your last ${forecast.basedOnMonths} months went."
+                forecast != null -> "At this pace: about ${rupees(forecast.projected)} by month-end."
+                isCurrent -> "A forecast appears after a week of data."
+                else -> "${rupees(s.spent)} spent in ${m.name()}."
+            },
+            style = MaterialTheme.typography.bodyMedium, color = c.inkSoft,
+        )
+        if (isCurrent && lastMonth.isNotEmpty() && thisMonth.isNotEmpty()) {
+            val sameDayLast = lastMonth.getOrNull(thisMonth.size - 1) ?: lastMonth.last()
+            val diff = thisMonth.last() - sameDayLast
+            if (sameDayLast > 0) {
+                Text(
+                    "${if (diff > 0) "▲" else "▼"} ${rupees(kotlin.math.abs(diff))} ${if (diff > 0) "more" else "less"} than by this day last month",
+                    style = MaterialTheme.typography.labelLarge, color = if (diff > 0) c.loss else c.gain,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+        }
+        Spacer(Modifier.height(14.dp))
+        PaceChart(thisMonth, lastMonth, m.lengthOfMonth(), forecast?.projected)
     }
 }
 

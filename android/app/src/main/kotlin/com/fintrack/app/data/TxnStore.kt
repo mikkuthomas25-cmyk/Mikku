@@ -82,6 +82,12 @@ class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbN
         arrayOf(month.atDay(1).toString(), month.atEndOfMonth().toString()),
     ).use { c -> generateSequence { if (c.moveToNext()) c.toTxn() else null }.toList() }
 
+    /** Transactions from [start] to [end] inclusive, newest first. */
+    fun range(start: LocalDate, end: LocalDate): List<Txn> = readableDatabase.rawQuery(
+        "SELECT * FROM transactions WHERE txn_date BETWEEN ? AND ? ORDER BY txn_date DESC, id DESC",
+        arrayOf(start.toString(), end.toString()),
+    ).use { c -> generateSequence { if (c.moveToNext()) c.toTxn() else null }.toList() }
+
     fun rules(): Map<String, String> = readableDatabase.rawQuery("SELECT merchant, category FROM merchant_rules", null)
         .use { c -> buildMap { while (c.moveToNext()) put(c.getString(0), c.getString(1)) } }
 

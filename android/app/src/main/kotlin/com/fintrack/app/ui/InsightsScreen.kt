@@ -18,11 +18,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.fintrack.core.MonthSummary
+import com.fintrack.core.Patterns
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
 import java.time.YearMonth
 import kotlin.math.abs
 
 @Composable
-fun InsightsScreen(vm: FinTrackViewModel) {
+fun InsightsScreen(vm: FinTrackViewModel, openCategory: (String) -> Unit) {
     val c = Fin.colors
     val s = vm.summary
     LazyColumn(Modifier.fillMaxSize(), contentPadding = ScreenPadding, verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -33,6 +36,30 @@ fun InsightsScreen(vm: FinTrackViewModel) {
             }
         }
         if (s != null && s.txnCount > 0) item { QuickFacts(s) }
+        item { TrendCard(vm) }
+        val unusual = Patterns.unusual(vm.history, vm.month)
+        if (unusual.isNotEmpty()) {
+            item {
+                GlassCard(Modifier.fillMaxWidth()) {
+                    SectionTitle("Unusual spends")
+                    Spacer(Modifier.height(4.dp))
+                    Faint("Much bigger than what you normally pay in that category. Learned from your history.")
+                    Spacer(Modifier.height(10.dp))
+                    unusual.take(6).forEach { u ->
+                        Row(
+                            Modifier.fillMaxWidth().clip(CardShape).clickable { openCategory(u.txn.category) }.padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(u.txn.merchant, style = MaterialTheme.typography.bodyLarge, color = c.ink, maxLines = 1)
+                                Faint("${u.txn.category}  ·  ${u.txn.date.short()}  ·  usually ~${rupees(u.typicalAmount)}")
+                            }
+                            Text(rupees(u.txn.amount), style = MaterialTheme.typography.titleSmall.merge(MoneyStyle), color = c.loss)
+                        }
+                    }
+                }
+            }
+        }
         item { LearningCard(vm.learning) }
     }
 }
@@ -94,5 +121,18 @@ private fun LearningCard(stats: LearningStats?) {
                 style = MaterialTheme.typography.bodySmall, color = white.copy(alpha = 0.8f),
             )
         }
+    }
+}
+
+/** Total spending for the last six months, with the learned "usual month" line. */
+@Composable
+private fun TrendCard(vm: FinTrackViewModel) {
+    val m = vm.month
+    val first = vm.history.minOfOrNull { YearMonth.from(it.date) } ?: return
+    val months = generateSequence(maxOf(first, m.minusMonths(5))) { it.plusMonths(1) }.takeWhile { it <= m }.toList()
+    GlassCard(Modifier.fillMaxWidth()) {
+        SectionTitle("Month by month")
+        Spacer(Modifier.height(14.dp))
+        MonthlyBars(Patterns.monthlyTotals(vm.history, months), m, Patterns.typicalMonthly(vm.history, m))
     }
 }

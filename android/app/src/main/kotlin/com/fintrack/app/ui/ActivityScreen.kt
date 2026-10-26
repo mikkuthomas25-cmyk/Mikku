@@ -160,7 +160,7 @@ private fun SearchBar(query: String, onChange: (String) -> Unit) {
 }
 
 @Composable
-private fun TxnRow(t: Txn, onClick: () -> Unit) {
+internal fun TxnRow(t: Txn, onClick: () -> Unit) {
     val c = Fin.colors
     Row(
         Modifier.fillMaxWidth().clip(CardShape).clickable(onClick = onClick).padding(horizontal = 10.dp, vertical = 12.dp),
@@ -204,7 +204,7 @@ private fun AddButton(modifier: Modifier, onClick: () -> Unit) {
 }
 
 @Composable
-private fun EditSheet(txn: Txn, onDismiss: () -> Unit, vm: FinTrackViewModel) {
+internal fun EditSheet(txn: Txn, onDismiss: () -> Unit, vm: FinTrackViewModel) {
     val c = Fin.colors
     var category by remember { mutableStateOf(txn.category) }
     var always by remember { mutableStateOf(true) }

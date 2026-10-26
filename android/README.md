@@ -87,6 +87,29 @@ Categories are learned on the phone. Nothing is sent anywhere, and no API key is
   sorted itself, and its accuracy on your own corrections (5-fold cross-validation, once
   you've made 10 or more).
 
+## Charts and learned spending patterns
+
+Each chart answers one question:
+
+| Where | Chart | Question it answers |
+|---|---|---|
+| Home | **Spending pace**: this month's running total vs last month (dashed), dotted line to the forecast | Am I spending faster than usual? |
+| Home | **Where it went**: donut plus a labelled list | Which categories take my money? *Tap one to open it.* |
+| Home | **Daily spending**: bar per day, ₹ axis, dashed daily average, dot for today | Which days were heavy? |
+| Category page | Total, share, *usual* and month-end forecast; 6-month trend; day by day; top merchants; unusual spends; all its payments | Everything about Food (or any category) |
+| Insights | **Month by month** for 6 months with your usual level; **Unusual spends** | Am I improving? What stood out? |
+
+Learned on the phone from your own history (`core/.../Patterns.kt`):
+- **Usual month:** the median of past months, overall and per category (needs 2 months of history).
+- **Month-end forecast:** uses how much of a month's spending has usually happened by today's
+  date, so rent on the 1st doesn't inflate it. Falls back to a straight-line pace after a week
+  when there's no history yet.
+- **Unusual spends:** at least 2.5× (and ₹500 over) your usual payment in that category, and
+  a statistical outlier (median/MAD z-score ≥ 3.5). Needs 5 earlier payments in the category.
+
+Category colours are fixed (Food is always the same blue) and checked for colour-blind
+separation; categories are always labelled, never shown by colour alone.
+
 ## Build it yourself
 
 You need Android Studio (or JDK 17 and the Android SDK).
@@ -107,7 +130,7 @@ To get login in a local build, put `google-services.json` in `android/app/`.
 | `app/data` | SQLite storage on the phone, settings |
 | `app/sms` | Inbox scan (history + catch-up when the app opens) and a live SMS receiver |
 | `app/auth` | Firebase Auth: Google via Credential Manager, email/password |
-| `app/ui` | Jetpack Compose UI: `Glass.kt` (design system: glossy backdrop, frosted cards, gradient hero, floating nav), `HomeScreen`, `ActivityScreen`, `InsightsScreen`, `ProfileScreen`, `LoginScreen` |
+| `app/ui` | Jetpack Compose UI: `Glass.kt` (design system), `Charts.kt` / `ChartsMore.kt` (daily bars, donut, pace line, monthly bars), `HomeScreen`, `CategoryScreen`, `ActivityScreen`, `InsightsScreen`, `ProfileScreen`, `LoginScreen` |
 
 ## Design
 

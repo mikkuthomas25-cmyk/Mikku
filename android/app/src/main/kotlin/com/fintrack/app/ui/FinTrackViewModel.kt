@@ -52,6 +52,8 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
     var month by mutableStateOf(YearMonth.now()); private set
     var summary by mutableStateOf<MonthSummary?>(null); private set
     var txns by mutableStateOf<List<Txn>>(emptyList()); private set
+    /** The selected month plus the 6 before it: what the charts and pattern learning look at. */
+    var history by mutableStateOf<List<Txn>>(emptyList()); private set
     var filter by mutableStateOf<TxnFilter?>(null)
     var query by mutableStateOf("")
     var kind by mutableStateOf(Kind.All)
@@ -169,9 +171,11 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
         val s = store ?: return
         viewModelScope.launch {
             val m = month
-            val (current, previous) = withContext(Dispatchers.IO) { s.month(m) to s.month(m.minusMonths(1)) }
+            val all = withContext(Dispatchers.IO) { s.range(m.minusMonths(HISTORY_MONTHS).atDay(1), m.atEndOfMonth()) }
+            val current = all.filter { YearMonth.from(it.date) == m }
+            history = all
             txns = current
-            summary = Summaries.build(m, current, previous)
+            summary = Summaries.build(m, current, all.filter { YearMonth.from(it.date) == m.minusMonths(1) })
         }
     }
 
@@ -257,6 +261,10 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
             autoSorted = after.count { it.categorySource == CategorySource.LEARNED },
             accuracy = CategoryLearner.estimateAccuracy(after),
         )
+    }
+
+    companion object {
+        const val HISTORY_MONTHS = 6L
     }
 
     override fun onCleared() {

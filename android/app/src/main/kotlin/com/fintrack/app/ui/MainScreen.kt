@@ -25,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -46,8 +47,11 @@ val ScreenPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 12.dp, botto
 @Composable
 fun MainScreen(vm: FinTrackViewModel, startTab: Int = 0) {
     var tab by rememberSaveable { mutableIntStateOf(startTab) }
+    // Category drill-down (e.g. Food) shown over the current tab.
+    var category by rememberSaveable { mutableStateOf<String?>(null) }
+    val openCategory: (String) -> Unit = { category = it }
     // Back from any tab returns Home before leaving the app.
-    BackHandler(enabled = tab != 0) { tab = 0 }
+    BackHandler(enabled = tab != 0 && category == null) { tab = 0 }
 
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(vm.message) {
@@ -56,15 +60,16 @@ fun MainScreen(vm: FinTrackViewModel, startTab: Int = 0) {
 
     GlossyBackground {
         AnimatedContent(
-            targetState = tab,
+            targetState = tab to category,
             transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(150)) },
             label = "tab",
             modifier = Modifier.fillMaxSize().statusBarsPadding(),
-        ) { t ->
-            when (t) {
-                0 -> HomeScreen(vm, openActivity = { tab = 1 }, openProfile = { tab = 3 })
-                1 -> ActivityScreen(vm)
-                2 -> InsightsScreen(vm)
+        ) { (t, cat) ->
+            when {
+                cat != null -> CategoryScreen(vm, cat, onBack = { category = null })
+                t == 0 -> HomeScreen(vm, openActivity = { tab = 1 }, openProfile = { tab = 3 }, openCategory = openCategory)
+                t == 1 -> ActivityScreen(vm)
+                t == 2 -> InsightsScreen(vm, openCategory)
                 else -> ProfileScreen(vm)
             }
         }
@@ -76,7 +81,7 @@ fun MainScreen(vm: FinTrackViewModel, startTab: Int = 0) {
         }
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 88.dp))
         FloatingNavBar(
-            NAV, tab, { tab = it },
+            NAV, tab, { category = null; tab = it },
             Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 14.dp),
         )
     }

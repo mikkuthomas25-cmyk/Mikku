@@ -41,8 +41,8 @@ import com.fintrack.core.Amount
 import java.time.LocalDate
 
 /**
- * One gradient bar per day. Tap a bar to select the day; tap again to clear.
- * A dashed line marks the daily average.
+ * One bar per day with a ₹ axis. Tap a bar to select that day (tap again to clear).
+ * A dashed line marks the daily average; today's bar is outlined.
  */
 @Composable
 fun DailyBars(
@@ -51,44 +51,55 @@ fun DailyBars(
     selected: LocalDate?,
     onSelect: (LocalDate?) -> Unit,
     modifier: Modifier = Modifier,
+    color: Color? = null,
 ) {
     val c = Fin.colors
     val measurer = rememberTextMeasurer()
     val axisStyle = TextStyle(fontSize = 10.sp, color = c.inkFaint)
-    val max = days.maxOfOrNull { it.second }?.coerceAtLeast(1.0) ?: 1.0
-    // Bars grow in when the month changes.
+    val top = niceCeil(days.maxOfOrNull { it.second } ?: 0.0)
+    val today = LocalDate.now()
     val grow = remember(days) { Animatable(0f) }
     LaunchedEffect(days) { grow.animateTo(1f, tween(600, easing = FastOutSlowInEasing)) }
+    val left = 44.dp
 
     Canvas(
         modifier
             .fillMaxWidth()
-            .height(150.dp)
+            .height(160.dp)
             .pointerInput(days, selected) {
                 detectTapGestures { pos ->
-                    val slot = size.width.toFloat() / days.size
-                    val day = days.getOrNull((pos.x / slot).toInt())?.first
+                    val l = left.toPx()
+                    val slot = (size.width - l) / days.size
+                    val day = days.getOrNull(((pos.x - l) / slot).toInt())?.first
                     onSelect(if (day == null || day == selected) null else day)
                 }
             },
     ) {
+        val l = left.toPx()
         val padB = 18.dp.toPx()
-        val plotH = size.height - padB
-        val slot = size.width / days.size
-        val bw = (slot * 0.56f).coerceIn(3.dp.toPx(), 12.dp.toPx())
-        val gradient = Brush.verticalGradient(listOf(c.heroEnd, c.heroStart), startY = 0f, endY = plotH)
+        val plotTop = 6.dp.toPx()
+        val plotBottom = size.height - padB
+        val plotH = plotBottom - plotTop
+        for (f in listOf(0.0, 0.5, 1.0)) {
+            val y = plotBottom - plotH * f.toFloat()
+            drawLine(c.track, Offset(l, y), Offset(size.width, y), strokeWidth = 1.dp.toPx())
+            val m = measurer.measure(shortRupees(top * f), axisStyle)
+            drawText(m, topLeft = Offset(l - m.size.width - 6.dp.toPx(), y - m.size.height / 2))
+        }
+        val slot = (size.width - l) / days.size
+        val bw = (slot * 0.6f).coerceIn(3.dp.toPx(), 12.dp.toPx())
+        val brush = if (color != null) Brush.verticalGradient(listOf(color, color))
+        else Brush.verticalGradient(listOf(c.heroEnd, c.heroStart), startY = plotTop, endY = plotBottom)
 
         days.forEachIndexed { i, (date, amount) ->
-            val x = i * slot + (slot - bw) / 2
-            val h = (plotH * (amount / max).toFloat() * grow.value).coerceAtLeast(if (amount > 0) 3.dp.toPx() else 0f)
-            // Faint full-height track keeps the rhythm of the month visible on quiet days.
-            drawRoundRect(c.track, Offset(x, 0f), Size(bw, plotH), CornerRadius(bw / 2))
+            val x = l + i * slot + (slot - bw) / 2
+            val h = (plotH * (amount / top).toFloat() * grow.value).coerceAtLeast(if (amount > 0) 3.dp.toPx() else 0f)
             if (h > 0) {
                 val dim = selected != null && selected != date
-                drawRoundRect(
-                    gradient, Offset(x, plotH - h), Size(bw, h), CornerRadius(bw / 2),
-                    alpha = if (dim) 0.3f else 1f,
-                )
+                drawRoundRect(brush, Offset(x, plotBottom - h), Size(bw, h), CornerRadius(bw / 2), alpha = if (dim) 0.3f else 1f)
+            }
+            if (date == today) {
+                drawCircle(c.heroStart, 2.5.dp.toPx(), Offset(x + bw / 2, plotBottom + 4.dp.toPx()))
             }
             val d = date.dayOfMonth
             if (d == 1 || d % 7 == 0) {
@@ -97,9 +108,9 @@ fun DailyBars(
             }
         }
         if (average > 0) {
-            val y = plotH - plotH * (average / max).toFloat()
+            val y = plotBottom - plotH * (average / top).toFloat()
             drawLine(
-                c.inkFaint, Offset(0f, y), Offset(size.width, y), strokeWidth = 1.dp.toPx(),
+                c.inkSoft, Offset(l, y), Offset(size.width, y), strokeWidth = 1.dp.toPx(),
                 pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 5.dp.toPx())),
             )
         }

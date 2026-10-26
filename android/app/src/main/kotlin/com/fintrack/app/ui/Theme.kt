@@ -11,6 +11,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
@@ -135,4 +136,20 @@ fun LocalDate.relative(today: LocalDate = LocalDate.now()): String = when (this)
     today -> "Today"
     today.minusDays(1) -> "Yesterday"
     else -> format(DateTimeFormatter.ofPattern("EEE, d MMM"))
+}
+
+/**
+ * One fixed colour per main spending category, so "Food" is the same blue in every chart.
+ * Validated for colour-blind separation in light and dark; categories beyond these seven share a
+ * neutral grey and are always shown with their name, never by colour alone.
+ */
+private val CATEGORY_SLOTS = listOf("Food & Dining", "Shopping", "Groceries", "Bills & Utilities", "Rent", "Health", "Transport")
+private val CATEGORY_LIGHT = listOf(0xFF2A78D6, 0xFFEB6834, 0xFF1BAF7A, 0xFFEDA100, 0xFFE87BA4, 0xFF008300, 0xFF6250D6)
+private val CATEGORY_DARK = listOf(0xFF3987E5, 0xFFD95926, 0xFF199E70, 0xFFC98500, 0xFFD55181, 0xFF008300, 0xFF9085E9)
+
+@Composable
+fun categoryColor(category: String): Color {
+    val i = CATEGORY_SLOTS.indexOf(category)
+    val dark = Fin.colors.background.luminance() < 0.5f
+    return if (i < 0) Color(0xFF8A94A6) else Color((if (dark) CATEGORY_DARK else CATEGORY_LIGHT)[i])
 }
