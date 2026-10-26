@@ -1,0 +1,6 @@
+<resources>
+    <style name="Theme.FinTrack" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+    </style>
+    <color name="ic_launcher_background">#2A78D6</color>
+</resources>
