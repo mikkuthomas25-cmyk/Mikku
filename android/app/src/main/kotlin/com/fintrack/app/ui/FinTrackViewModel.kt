@@ -14,7 +14,8 @@ import com.fintrack.app.data.TxnStore
 import com.fintrack.app.sms.SmsImporter
 import com.fintrack.core.Categorizer
 import com.fintrack.core.SmsParser
-import com.fintrack.core.ClaudeAi
+import com.fintrack.core.CategoryLearner
+import com.fintrack.core.CategorySource
 import com.fintrack.core.Direction
 import com.fintrack.core.MissedSms
 import com.fintrack.core.MonthSummary
@@ -27,6 +28,9 @@ import java.time.LocalDate
 import java.time.YearMonth
 
 enum class Kind { All, Spent, Received }
+
+/** [taught]: categories the user set; [autoSorted]: transactions the model categorized; [accuracy]: on the user's own corrections, when there are enough. */
+data class LearningStats(val taught: Int, val autoSorted: Int, val accuracy: Double?)
 
 sealed interface TxnFilter {
     data class Day(val date: LocalDate) : TxnFilter
@@ -54,7 +58,8 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
     var hasSmsPermission by mutableStateOf(SmsImporter.hasPermission(app)); private set
     var busy by mutableStateOf(false); private set
     var message by mutableStateOf<String?>(null)
-    var insights by mutableStateOf<String?>(null); private set
+    /** What the on-device learner knows; shown on the Insights screen. */
+    var learning by mutableStateOf<LearningStats?>(null); private set
     /** Bank-looking SMS the parser couldn't read; null until loaded. */
     var missed by mutableStateOf<List<MissedSms>?>(null); private set
 
@@ -132,7 +137,7 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
         account = null
         txns = emptyList()
         summary = null
-        insights = null
+        learning = null
     }
 
     // ------------------------------------------------------------------ data
@@ -152,11 +157,11 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
         val s = store ?: return
         viewModelScope.launch {
             busy = true
-            val added = withContext(Dispatchers.IO) { SmsImporter.scanInbox(app, s, full) }
+            val (added, stats) = withContext(Dispatchers.IO) { SmsImporter.scanInbox(app, s, full) to relearn(s) }
+            learning = stats
             if (full) message = "Found $added transactions in your messages."
             refresh()
             busy = false
-            if (added > 0) aiCategorize()
         }
     }
 
@@ -174,7 +179,6 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
         month = month.plusMonths(delta)
         filter = null
         query = ""
-        insights = null
         refresh()
     }
 
@@ -198,9 +202,10 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
     fun addShared(text: String) {
         val s = store ?: run { pendingShared = text; return }
         viewModelScope.launch {
-            val added = withContext(Dispatchers.IO) {
-                SmsParser.parse(text)?.takeIf { SmsImporter.ingest(s, text, System.currentTimeMillis(), "shared") }
+            val (added, stats) = withContext(Dispatchers.IO) {
+                SmsParser.parse(text)?.takeIf { SmsImporter.ingest(s, text, System.currentTimeMillis(), "shared") } to relearn(s)
             }
+            learning = stats
             message = when {
                 added != null -> "Added ${rupees(added.amount)} · ${added.merchant}"
                 SmsParser.parse(text) != null -> "Already added."
@@ -211,60 +216,47 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
     }
 
     fun addManual(date: LocalDate, amount: Double, direction: Direction, merchant: String) = io {
-        val category = Categorizer.categorize(merchant, direction, it.rules())
-        it.addManual(date, amount, direction, merchant.trim(), category)
+        val (category, source) = Categorizer.categorizeWithSource(merchant.trim(), direction, it.rules())
+        it.addManual(date, amount, direction, merchant.trim(), category, source)
     }
 
+    /** Runs a change, lets the model learn from it, then redraws. */
     private fun io(block: (TxnStore) -> Unit) {
         val s = store ?: return
         viewModelScope.launch {
-            withContext(Dispatchers.IO) { block(s) }
+            learning = withContext(Dispatchers.IO) {
+                block(s)
+                relearn(s)
+            }
             refresh()
         }
     }
 
-    // ------------------------------------------------------------------ AI
+    // ------------------------------------------------------------------ on-device learning
 
-    val aiEnabled get() = prefs.claudeApiKey.isNotBlank()
-
-    /** Sends only merchant names of payments the keyword rules couldn't place. */
-    private fun aiCategorize() {
-        val s = store ?: return
-        val key = prefs.claudeApiKey.ifBlank { return }
-        viewModelScope.launch {
-            val changed = withContext(Dispatchers.IO) {
-                runCatching {
-                    val merchants = s.otherMerchants().take(100)
-                    ClaudeAi(key).categorizeMerchants(merchants).onEach { (m, c) -> s.fillOtherCategory(m, c) }
-                }.getOrDefault(emptyMap())
+    /**
+     * Retrains the on-device model on the user's history and re-sorts the rows it may change
+     * (its own earlier guesses and "Other"/default fallbacks). The user's choices are never touched.
+     * Runs on a background thread; takes milliseconds for a few thousand transactions.
+     */
+    private fun relearn(s: TxnStore): LearningStats {
+        val all = s.all()
+        val learner = CategoryLearner(all)
+        s.transaction {
+            for (t in all) {
+                if (!CategoryLearner.isLearnable(t)) continue
+                val guess = learner.suggest(t)
+                val category = guess?.category ?: Categorizer.keywordCategory(t.merchant, t.direction)
+                val source = if (guess != null) CategorySource.LEARNED else CategorySource.KEYWORD
+                if (category != t.category || source != t.categorySource) s.setLearned(t.id, category, source)
             }
-            if (changed.isNotEmpty()) refresh()
         }
-    }
-
-    fun generateInsights() {
-        val s = summary ?: return
-        val key = prefs.claudeApiKey.ifBlank {
-            insights = "Add your Claude API key in Settings to turn on AI insights."
-            return
-        }
-        viewModelScope.launch {
-            busy = true
-            insights = withContext(Dispatchers.IO) {
-                try {
-                    ClaudeAi(key).monthlyInsights(s)
-                } catch (e: Exception) {
-                    "Couldn't reach Claude: ${e.javaClass.simpleName}. Check your internet connection and API key."
-                }
-            }
-            busy = false
-        }
-    }
-
-    fun saveApiKey(key: String) {
-        prefs.claudeApiKey = key
-        message = if (key.isBlank()) "API key removed." else "API key saved."
-        if (key.isNotBlank()) aiCategorize()
+        val after = s.all()
+        return LearningStats(
+            taught = learner.userTaught,
+            autoSorted = after.count { it.categorySource == CategorySource.LEARNED },
+            accuracy = CategoryLearner.estimateAccuracy(after),
+        )
     }
 
     override fun onCleared() {

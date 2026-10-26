@@ -12,7 +12,7 @@ import java.time.LocalDate
 import java.time.YearMonth
 
 /** On-device SQLite storage. One database file per signed-in account. */
-class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbName, null, 1) {
+class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbName, null, 2) {
 
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
@@ -27,7 +27,8 @@ class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbN
                 account TEXT,
                 ref TEXT,
                 source TEXT NOT NULL,
-                raw TEXT
+                raw TEXT,
+                cat_source TEXT NOT NULL DEFAULT 'keyword'
             )""",
         )
         db.execSQL("CREATE INDEX idx_txn_date ON transactions (txn_date)")
@@ -37,10 +38,16 @@ class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbN
         db.execSQL("CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT)")
     }
 
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        if (oldVersion < 2) {
+            // v2: remember where each category came from, so the learner trains only on trusted labels.
+            db.execSQL("ALTER TABLE transactions ADD COLUMN cat_source TEXT NOT NULL DEFAULT 'keyword'")
+            db.execSQL("UPDATE transactions SET cat_source='rule' WHERE lower(merchant) IN (SELECT merchant FROM merchant_rules)")
+        }
+    }
 
     /** Returns the new row id, or null if this transaction is already stored. */
-    fun insert(p: ParsedTxn, category: String, source: String, raw: String): Long? {
+    fun insert(p: ParsedTxn, category: String, catSource: String, source: String, raw: String): Long? {
         val values = ContentValues().apply {
             put("sms_hash", p.smsHash)
             put("txn_date", p.date.toString())
@@ -52,12 +59,13 @@ class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbN
             put("ref", p.ref)
             put("source", source)
             put("raw", raw)
+            put("cat_source", catSource)
         }
         val id = writableDatabase.insertWithOnConflict("transactions", null, values, SQLiteDatabase.CONFLICT_IGNORE)
         return id.takeIf { it != -1L }
     }
 
-    fun addManual(date: LocalDate, amount: Double, direction: Direction, merchant: String, category: String) {
+    fun addManual(date: LocalDate, amount: Double, direction: Direction, merchant: String, category: String, catSource: String) {
         writableDatabase.insert("transactions", null, ContentValues().apply {
             put("txn_date", date.toString())
             put("amount", amount)
@@ -65,6 +73,7 @@ class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbN
             put("merchant", merchant)
             put("category", category)
             put("source", "manual")
+            put("cat_source", catSource)
         })
     }
 
@@ -85,26 +94,32 @@ class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbN
                 put("category", category)
             }, SQLiteDatabase.CONFLICT_REPLACE)
             db.execSQL(
-                "UPDATE transactions SET category=? WHERE lower(merchant)=? AND direction=?",
+                "UPDATE transactions SET category=?, cat_source='rule' WHERE lower(merchant)=? AND direction=?",
                 arrayOf(category, txn.merchant.lowercase(), txn.direction.name),
             )
-        } else {
-            db.execSQL("UPDATE transactions SET category=? WHERE id=?", arrayOf(category, txn.id))
+        }
+        db.execSQL("UPDATE transactions SET category=?, cat_source='user' WHERE id=?", arrayOf(category, txn.id))
+    }
+
+    /** Every transaction (training data for the on-device learner). */
+    fun all(): List<Txn> = readableDatabase.rawQuery("SELECT * FROM transactions", null)
+        .use { c -> generateSequence { if (c.moveToNext()) c.toTxn() else null }.toList() }
+
+    /** Runs [block] in one database transaction (much faster for many small updates). */
+    fun <T> transaction(block: () -> T): T {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            return block().also { db.setTransactionSuccessful() }
+        } finally {
+            db.endTransaction()
         }
     }
 
-    /** AI suggestions only fill in "Other"; they never override the user's own choices. */
-    fun fillOtherCategory(merchant: String, category: String) {
-        writableDatabase.execSQL(
-            "UPDATE transactions SET category=? WHERE merchant=? AND category='Other'",
-            arrayOf(category, merchant),
-        )
+    /** Records the learner's verdict for a row it is allowed to change. */
+    fun setLearned(id: Long, category: String, catSource: String) {
+        writableDatabase.execSQL("UPDATE transactions SET category=?, cat_source=? WHERE id=?", arrayOf(category, catSource, id))
     }
-
-    fun otherMerchants(): List<String> = readableDatabase.rawQuery(
-        "SELECT DISTINCT merchant FROM transactions WHERE category='Other' AND direction='DEBIT' AND merchant != 'Unknown'",
-        null,
-    ).use { c -> buildList { while (c.moveToNext()) add(c.getString(0)) } }
 
     fun delete(id: Long) {
         writableDatabase.delete("transactions", "id=?", arrayOf(id.toString()))
@@ -130,5 +145,6 @@ class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbN
         account = getString(getColumnIndexOrThrow("account")),
         source = getString(getColumnIndexOrThrow("source")),
         raw = getString(getColumnIndexOrThrow("raw")),
+        categorySource = getString(getColumnIndexOrThrow("cat_source")),
     )
 }

@@ -13,6 +13,7 @@ data class Txn(
     val account: String? = null,
     val source: String = "sms",
     val raw: String? = null,
+    val categorySource: String = CategorySource.KEYWORD,
 )
 
 data class Amount(val label: String, val amount: Double, val count: Int = 0)
@@ -32,20 +33,6 @@ data class MonthSummary(
     val topMerchants: List<Amount>,
 ) {
     val net get() = received - spent
-
-    /** Aggregates only: this is all the AI insights feature ever sends. */
-    fun toPromptText(): String = buildString {
-        appendLine("Month: $month")
-        appendLine("Total spent: ₹%.0f (previous month: ₹%.0f)".format(spent, prevMonthSpent))
-        appendLine("Total received: ₹%.0f".format(received))
-        appendLine("Transactions: $txnCount; payments of ₹200 or less: $smallPaymentsCount totalling ₹%.0f"
-            .format(smallPaymentsTotal))
-        appendLine("Average spend per day so far: ₹%.0f".format(avgPerDay))
-        appendLine("By category:")
-        byCategory.forEach { appendLine("- ${it.label}: ₹%.0f".format(it.amount)) }
-        appendLine("Top merchants:")
-        topMerchants.forEach { appendLine("- ${it.label}: ₹%.0f across ${it.count} payments".format(it.amount)) }
-    }
 }
 
 object Summaries {

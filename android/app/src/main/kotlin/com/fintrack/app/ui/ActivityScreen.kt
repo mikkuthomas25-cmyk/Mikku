@@ -57,6 +57,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fintrack.core.Categorizer
+import com.fintrack.core.CategorySource
 import com.fintrack.core.Direction
 import com.fintrack.core.Txn
 import java.time.LocalDate
@@ -169,7 +170,14 @@ private fun TxnRow(t: Txn, onClick: () -> Unit) {
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(t.merchant, style = MaterialTheme.typography.bodyLarge, color = c.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Faint(listOfNotNull(t.category, t.account?.let { "••$it" }, "cash".takeIf { t.source == "manual" }).joinToString("  ·  "), maxLines = 1)
+            Faint(
+                listOfNotNull(
+                    t.category + if (t.categorySource == CategorySource.LEARNED) " ✦" else "",
+                    t.account?.let { "••$it" },
+                    "cash".takeIf { t.source == "manual" },
+                ).joinToString("  ·  "),
+                maxLines = 1,
+            )
         }
         Spacer(Modifier.width(10.dp))
         val credit = t.direction == Direction.CREDIT
@@ -224,6 +232,9 @@ private fun EditSheet(txn: Txn, onDismiss: () -> Unit, vm: FinTrackViewModel) {
                     modifier = Modifier.fillMaxWidth().clip(CardShape).background(c.track.copy(alpha = 0.5f)).padding(14.dp))
             }
             Text("Category", style = MaterialTheme.typography.titleSmall, color = c.ink)
+            if (txn.categorySource == CategorySource.LEARNED) {
+                Faint("✦ FinTrack learned this from your past categories. Pick the right one and it learns from that too.")
+            }
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Categorizer.CATEGORIES.forEach { cat -> FinChip(cat, cat == category) { category = cat } }
             }

@@ -82,7 +82,7 @@ object SmsImporter {
     fun ingest(store: TxnStore, body: String, millis: Long, source: String, rules: Map<String, String> = store.rules()): Boolean {
         val received = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
         val parsed = SmsParser.parse(body, received) ?: return false
-        val category = Categorizer.categorize(parsed.merchant, parsed.direction, rules)
-        return store.insert(parsed, category, source, body) != null
+        val (category, catSource) = Categorizer.categorizeWithSource(parsed.merchant, parsed.direction, rules)
+        return store.insert(parsed, category, catSource, source, body) != null
     }
 }

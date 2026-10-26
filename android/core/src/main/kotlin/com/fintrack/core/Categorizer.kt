@@ -13,7 +13,8 @@ object Categorizer {
      */
     val EXCLUDED_FROM_TOTALS = setOf("Self Transfer")
 
-    private val KEYWORDS: Map<String, List<String>> = linkedMapOf(
+    /** Built-in brand list; also the learner's starting knowledge. */
+    val KEYWORDS: Map<String, List<String>> = linkedMapOf(
         "Self Transfer" to listOf("credit card", "card payment", "cc payment", "cc bill", "card bill",
             "self transfer", "own account", "cred club", "cred"),
         "Food & Dining" to listOf("swiggy", "zomato", "eatsure", "domino", "pizza", "mcdonald", "kfc",
@@ -52,5 +53,9 @@ object Categorizer {
 
     /** [rules] maps a lowercased merchant name to the category the user picked for it before. */
     fun categorize(merchant: String, direction: Direction, rules: Map<String, String>): String =
-        rules[merchant.lowercase()] ?: keywordCategory(merchant, direction)
+        categorizeWithSource(merchant, direction, rules).first
+
+    /** Category plus where it came from: "rule" (the user's choice) or "keyword" (built-in list). */
+    fun categorizeWithSource(merchant: String, direction: Direction, rules: Map<String, String>): Pair<String, String> =
+        rules[merchant.lowercase()]?.let { it to CategorySource.RULE } ?: (keywordCategory(merchant, direction) to CategorySource.KEYWORD)
 }

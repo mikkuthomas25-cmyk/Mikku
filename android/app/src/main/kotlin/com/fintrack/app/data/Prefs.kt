@@ -19,9 +19,10 @@ class Prefs(context: Context) {
         get() = sp.getString("active_email", null)
         set(v) = sp.edit().putString("active_email", v).apply()
 
-    var claudeApiKey: String
-        get() = sp.getString("claude_api_key", "") ?: ""
-        set(v) = sp.edit().putString("claude_api_key", v.trim()).apply()
+    init {
+        // Earlier versions could store a Claude API key; categorizing is now on-device only.
+        if (sp.contains("claude_api_key")) sp.edit().remove("claude_api_key").apply()
+    }
 
     companion object {
         const val LOCAL_DB = "fintrack_local.db"

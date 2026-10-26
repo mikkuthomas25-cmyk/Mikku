@@ -2,8 +2,8 @@
 
 The Android app reads your bank transaction SMS on the phone and shows where your money
 goes: daily spend, categories, top merchants and month-over-month change. You can sign in
-with Google or with an email and password. Claude can optionally sort unknown merchants
-and write a monthly analysis.
+with Google or with an email and password. A small machine-learning model on the phone learns
+your categories from your own corrections.
 
 Everything is stored **on the phone** (one database per signed-in account). Messages are
 never uploaded.
@@ -69,16 +69,23 @@ up, the app shows **Continue without account** so you can use it straight away.
 Accounts created with email get a verification email. "Forgot password?" sends a reset
 link.
 
-## AI features (optional)
+## Smart categories (on-device machine learning)
 
-In the app, go to **Settings → AI** and paste a Claude API key from
-https://console.anthropic.com.
-- Merchants the built-in rules can't place get categorized automatically. Only merchant
-  names are sent.
-- **AI insights** sends only that month's totals by category and merchant, never your SMS.
+Categories are learned on the phone. Nothing is sent anywhere, and no API key is needed.
 
-The key is stored only on your phone. Anyone with the phone unlocked could use it, so
-set a spending limit on the key in the Anthropic console.
+- **Model:** multinomial Naive Bayes (`core/.../Learner.kt`). It learns from the merchant
+  name (words and 3-letter fragments, so "SWIGGY*INSTAMART" resembles "Swiggy"), the amount
+  range, the day of the month, and SMS clues such as UPI P2A (to a person) vs P2M (to a merchant).
+- **Training data:** the built-in brand list, transactions that list categorized, and every
+  category you set yourself (weighted 5×). The model's own guesses are never trained on, so a
+  wrong guess can't reinforce itself.
+- **Who wins:** your "always use this for X" rules → the built-in brand list → the model
+  (only when it's at least 60% sure *and* the name looks like something it learned) → Other.
+  Learned categories show a ✦ in Activity.
+- **When it retrains:** after every SMS scan and every correction (milliseconds).
+- **Insights → Smart categories** shows how many categories you've taught, how many it
+  sorted itself, and its accuracy on your own corrections (5-fold cross-validation, once
+  you've made 10 or more).
 
 ## Build it yourself
 
@@ -96,7 +103,7 @@ To get login in a local build, put `google-services.json` in `android/app/`.
 
 | Module | What it does |
 |---|---|
-| `core/` | Pure Kotlin, unit-tested: SMS parser, categories, monthly summary, Claude client |
+| `core/` | Pure Kotlin, unit-tested: SMS parser, categories, monthly summary, on-device category learner |
 | `app/data` | SQLite storage on the phone, settings |
 | `app/sms` | Inbox scan (history + catch-up when the app opens) and a live SMS receiver |
 | `app/auth` | Firebase Auth: Google via Credential Manager, email/password |

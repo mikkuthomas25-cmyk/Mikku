@@ -1,7 +1,5 @@
 package com.fintrack.app.ui
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,7 +15,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.fintrack.core.MonthSummary
@@ -36,39 +33,7 @@ fun InsightsScreen(vm: FinTrackViewModel) {
             }
         }
         if (s != null && s.txnCount > 0) item { QuickFacts(s) }
-        item {
-            HeroCard(Modifier.fillMaxWidth()) {
-                Text("✦  Ask Claude", style = MaterialTheme.typography.titleLarge, color = Color.White)
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    "A plain-language read of ${vm.month.name()}: where the money went and three realistic ways to save. " +
-                        "Only totals are shared, never your messages.",
-                    style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.85f),
-                )
-                Spacer(Modifier.height(18.dp))
-                val ready = !vm.busy && (s?.txnCount ?: 0) > 0
-                Text(
-                    if (vm.busy) "Thinking…" else "Analyse ${vm.month.name()}",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = if (ready) c.heroStart else c.inkFaint,
-                    modifier = Modifier.clip(PillShape).background(Color.White)
-                        .clickable(enabled = ready, onClick = vm::generateInsights)
-                        .padding(horizontal = 22.dp, vertical = 13.dp),
-                )
-                if (!vm.aiEnabled) {
-                    Spacer(Modifier.height(10.dp))
-                    Text("Add your Claude API key in Profile to turn this on.",
-                        style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.8f))
-                }
-            }
-        }
-        vm.insights?.let { text ->
-            item {
-                GlassCard(Modifier.fillMaxWidth()) {
-                    Text(text, style = MaterialTheme.typography.bodyLarge, color = c.ink)
-                }
-            }
-        }
+        item { LearningCard(vm.learning) }
     }
 }
 
@@ -99,6 +64,35 @@ private fun QuickFacts(s: MonthSummary) {
                 Text(value, style = MaterialTheme.typography.bodyLarge.merge(MoneyStyle), color = c.ink)
             }
             if (i < facts.lastIndex) HorizontalDivider(color = c.track)
+        }
+    }
+}
+
+/** What the on-device model has learned. Everything here is computed on the phone. */
+@Composable
+private fun LearningCard(stats: LearningStats?) {
+    val white = Color.White
+    HeroCard(Modifier.fillMaxWidth()) {
+        Text("✦  Smart categories", style = MaterialTheme.typography.titleLarge, color = white)
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "FinTrack learns your categories on this phone, with nothing sent anywhere. Each time you correct one, " +
+                "it applies the lesson to similar transactions.",
+            style = MaterialTheme.typography.bodyMedium, color = white.copy(alpha = 0.85f),
+        )
+        if (stats != null) {
+            Spacer(Modifier.height(18.dp))
+            Row {
+                Stat("Taught by you", "${stats.taught}")
+                Stat("Sorted by itself", "${stats.autoSorted}")
+                Stat("Accuracy", stats.accuracy?.let { "${"%.0f".format(it * 100)}%" } ?: "—")
+            }
+            Spacer(Modifier.height(12.dp))
+            Text(
+                if (stats.accuracy == null) "Correct at least 10 transactions in Activity to see how accurate it is on your spending."
+                else "Accuracy = how often it would have guessed your own corrections right without being told.",
+                style = MaterialTheme.typography.bodySmall, color = white.copy(alpha = 0.8f),
+            )
         }
     }
 }

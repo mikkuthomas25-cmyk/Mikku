@@ -35,7 +35,6 @@ import com.fintrack.app.sms.PermissionHelper
 @Composable
 fun ProfileScreen(vm: FinTrackViewModel) {
     val c = Fin.colors
-    var key by remember { mutableStateOf(vm.prefs.claudeApiKey) }
     var showMissed by remember { mutableStateOf(false) }
     if (showMissed) MissedSheet(vm) { showMissed = false }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = ScreenPadding, verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -77,20 +76,6 @@ fun ProfileScreen(vm: FinTrackViewModel) {
                     if (vm.hasSmsPermission) "Re-read the last 6 months of bank SMS" else "Allow SMS access on Home first",
                     enabled = vm.hasSmsPermission && !vm.busy,
                 ) { vm.scan(full = true) }
-            }
-        }
-        item {
-            GlassCard(Modifier.fillMaxWidth()) {
-                SectionTitle("✦  Claude AI")
-                Spacer(Modifier.height(6.dp))
-                Faint(
-                    "Paste an API key from console.anthropic.com to sort unknown merchants automatically and unlock " +
-                        "Insights. Only merchant names and monthly totals are sent. The key stays on this phone.",
-                )
-                Spacer(Modifier.height(14.dp))
-                FinTextField(key, { key = it }, "Claude API key", password = true)
-                Spacer(Modifier.height(12.dp))
-                GradientButton(if (vm.aiEnabled) "Update key" else "Save key", { vm.saveApiKey(key) }, Modifier.fillMaxWidth())
             }
         }
         item {
