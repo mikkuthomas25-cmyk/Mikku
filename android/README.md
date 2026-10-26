@@ -87,6 +87,27 @@ Categories are learned on the phone. Nothing is sent anywhere, and no API key is
   sorted itself, and its accuracy on your own corrections (5-fold cross-validation, once
   you've made 10 or more).
 
+## Bank statements
+
+**Profile → Import bank statements** takes one or more statement files at once: PDFs (including
+password-protected ones, where the password is used once and never stored) or CSV exports from
+net banking. Everything is read on the phone (`core/.../StatementParser.kt`, PdfBox-Android).
+
+- **Rows:** every line that starts with a date and ends with amounts is a transaction. The last
+  amount is the running balance; wrapped narrations are joined back together. Oldest-first and
+  newest-first statements both work.
+- **Mass balance:** each row must move the running balance by exactly its amount, which also
+  settles whether it's money in or out. The whole statement must satisfy
+  opening + money in − money out = closing. The report shows **✓ Balanced** or **⚠ Off by ₹X**,
+  plus the rows that broke the chain (those are the ones to check).
+- **No double counting:** a row that matches a transaction already captured from SMS (same UPI
+  reference, or same amount and direction within a day) is counted as already known. Each SMS
+  transaction can match only one row. Re-importing the same file adds nothing.
+- **Learning:** categories are re-learned after every import, and corrections on statement rows
+  teach the model like any other. The model never trains on its own guesses.
+- **Not yet supported:** scanned (photo/image) PDFs and Excel files. The app says so instead of
+  guessing.
+
 ## Charts and learned spending patterns
 
 Each chart answers one question:
@@ -126,9 +147,10 @@ To get login in a local build, put `google-services.json` in `android/app/`.
 
 | Module | What it does |
 |---|---|
-| `core/` | Pure Kotlin, unit-tested: SMS parser, categories, monthly summary, on-device category learner |
+| `core/` | Pure Kotlin, unit-tested: SMS and statement parsers, categories, summaries, spending patterns, on-device learner |
 | `app/data` | SQLite storage on the phone, settings |
 | `app/sms` | Inbox scan (history + catch-up when the app opens) and a live SMS receiver |
+| `app/statement` | Bank statement import: PDF/CSV text extraction, matching against SMS, insert |
 | `app/auth` | Firebase Auth: Google via Credential Manager, email/password |
 | `app/ui` | Jetpack Compose UI: `Pop.kt` (NeoPOP-style design system), `Charts.kt` / `ChartsMore.kt` (daily bars, donut, pace line, monthly bars), `HomeScreen`, `CategoryScreen`, `ActivityScreen`, `InsightsScreen`, `ProfileScreen`, `LoginScreen` |
 

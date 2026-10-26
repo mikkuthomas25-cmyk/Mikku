@@ -61,6 +61,8 @@ android {
                 "META-INF/DEPENDENCIES", "META-INF/LICENSE*", "META-INF/NOTICE*", "META-INF/INDEX.LIST",
                 "META-INF/AL2.0", "META-INF/LGPL2.1", "META-INF/*.md", "META-INF/versions/9/module-info.class",
                 "META-INF/versions/9/OSGI-INF/MANIFEST.MF",
+                // BouncyCastle (used by the PDF reader for encrypted statements) ships identically named jar signatures.
+                "META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA",
             )
         }
     }
@@ -87,4 +89,7 @@ dependencies {
     implementation("androidx.credentials:credentials:1.3.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+
+    // Reads bank statement PDFs (incl. password-protected) on the phone. Apache 2.0.
+    implementation("com.tom-roush:pdfbox-android:2.0.27.0")
 }

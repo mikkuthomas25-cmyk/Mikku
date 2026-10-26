@@ -7,6 +7,7 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import com.fintrack.core.Direction
 import com.fintrack.core.ParsedTxn
+import com.fintrack.core.StatementRow
 import com.fintrack.core.Txn
 import java.time.LocalDate
 import java.time.YearMonth
@@ -105,6 +106,44 @@ class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbN
             )
         }
         db.execSQL("UPDATE transactions SET category=?, cat_source='user' WHERE id=?", arrayOf(category, txn.id))
+    }
+
+    /**
+     * The existing transaction this statement row corresponds to, if any: same UPI/IMPS reference,
+     * or the same amount and direction within a day either side (SMS and statement dates can differ
+     * by a day), closest date first. [exclude] holds ids already matched in this import, so one SMS
+     * transaction can't stand in for two separate statement rows.
+     */
+    fun findMatch(date: LocalDate, amount: Double, direction: Direction, ref: String?, exclude: Set<Long>): Long? {
+        val notIn = if (exclude.isEmpty()) "" else " AND id NOT IN (${exclude.joinToString(",")})"
+        if (ref != null) {
+            readableDatabase.rawQuery(
+                "SELECT id FROM transactions WHERE (ref=? OR raw LIKE ?) AND direction=?$notIn LIMIT 1",
+                arrayOf(ref, "%$ref%", direction.name),
+            ).use { if (it.moveToFirst()) return it.getLong(0) }
+        }
+        return readableDatabase.rawQuery(
+            "SELECT id FROM transactions WHERE direction=? AND abs(amount-?)<0.005 AND txn_date BETWEEN ? AND ?$notIn " +
+                "ORDER BY abs(julianday(txn_date)-julianday(?)) LIMIT 1",
+            arrayOf(direction.name, amount.toString(), date.minusDays(1).toString(), date.plusDays(1).toString(), date.toString()),
+        ).use { if (it.moveToFirst()) it.getLong(0) else null }
+    }
+
+    /** Adds a statement row; false if this exact row was imported before. */
+    fun insertStatementRow(row: StatementRow, category: String, catSource: String): Boolean {
+        val values = ContentValues().apply {
+            put("sms_hash", row.key)
+            put("txn_date", row.date.toString())
+            put("amount", row.amount)
+            put("direction", row.direction.name)
+            put("merchant", row.merchant)
+            put("category", category)
+            put("ref", row.ref)
+            put("source", "statement")
+            put("raw", row.narration)
+            put("cat_source", catSource)
+        }
+        return writableDatabase.insertWithOnConflict("transactions", null, values, SQLiteDatabase.CONFLICT_IGNORE) != -1L
     }
 
     /** Every transaction (training data for the on-device learner). */

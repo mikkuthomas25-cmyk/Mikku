@@ -18,4 +18,6 @@ kotlin {
 dependencies {
     testImplementation(kotlin("test"))
     testImplementation("junit:junit:4.13.2")
+    // Desktop edition of the PDF library the app uses (same API): builds real statement PDFs in tests.
+    testImplementation("org.apache.pdfbox:pdfbox:2.0.37")
 }

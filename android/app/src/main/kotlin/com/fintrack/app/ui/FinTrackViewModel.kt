@@ -1,33 +1,42 @@
 package com.fintrack.app.ui
 
-import android.app.Activity
-import android.app.Application
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import android.app.Activity
+import android.app.Application
+import android.net.Uri
 import com.fintrack.app.auth.Account
 import com.fintrack.app.auth.AuthManager
 import com.fintrack.app.data.Prefs
 import com.fintrack.app.data.TxnStore
 import com.fintrack.app.sms.SmsImporter
+import com.fintrack.app.statement.PasswordRequired
+import com.fintrack.app.statement.StatementImporter
 import com.fintrack.core.Categorizer
-import com.fintrack.core.SmsParser
 import com.fintrack.core.CategoryLearner
 import com.fintrack.core.CategorySource
 import com.fintrack.core.Direction
 import com.fintrack.core.MissedSms
 import com.fintrack.core.MonthSummary
+import com.fintrack.core.SmsParser
+import com.fintrack.core.StatementResult
 import com.fintrack.core.Summaries
 import com.fintrack.core.Txn
+import java.time.LocalDate
+import java.time.YearMonth
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.time.LocalDate
-import java.time.YearMonth
 
 enum class Kind { All, Spent, Received }
+
+/** Result of importing one statement file; [result] is null when the file couldn't be read. */
+data class ImportReport(val fileName: String, val result: StatementResult?, val added: Int, val alreadyKnown: Int, val error: String?)
+
+data class PasswordAsk(val fileName: String, val wrongPassword: Boolean)
 
 /** [taught]: categories the user set; [autoSorted]: transactions the model categorized; [accuracy]: on the user's own corrections, when there are enough. */
 data class LearningStats(val taught: Int, val autoSorted: Int, val accuracy: Double?)
@@ -62,6 +71,10 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
     var message by mutableStateOf<String?>(null)
     /** What the on-device learner knows; shown on the Insights screen. */
     var learning by mutableStateOf<LearningStats?>(null); private set
+    /** Bank statement import: one report per file, and the file currently waiting for a password. */
+    var importReports by mutableStateOf<List<ImportReport>>(emptyList()); private set
+    var importing by mutableStateOf(false); private set
+    var passwordFor by mutableStateOf<PasswordAsk?>(null); private set
     /** Bank-looking SMS the parser couldn't read; null until loaded. */
     var missed by mutableStateOf<List<MissedSms>?>(null); private set
 
@@ -233,6 +246,64 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
                 relearn(s)
             }
             refresh()
+        }
+    }
+
+    // ------------------------------------------------------------------ bank statements
+
+    private val importQueue = ArrayDeque<Uri>()
+
+    /** Imports one or more statements (PDF or CSV), asking for passwords as needed. */
+    fun importStatements(uris: List<Uri>) {
+        if (uris.isEmpty()) return
+        importQueue.clear()
+        importQueue.addAll(uris)
+        importReports = emptyList()
+        processImports(password = null)
+    }
+
+    fun submitPassword(password: String) {
+        passwordFor = null
+        processImports(password)
+    }
+
+    /** Skips the protected file and carries on with the rest. */
+    fun skipPassword() {
+        val uri = importQueue.removeFirstOrNull() ?: return
+        importReports = importReports + ImportReport(StatementImporter.displayName(app, uri), null, 0, 0, "Skipped: password needed")
+        passwordFor = null
+        processImports(password = null)
+    }
+
+    private fun processImports(password: String?) {
+        val s = store ?: return
+        viewModelScope.launch {
+            importing = true
+            var pw = password
+            while (importQueue.isNotEmpty()) {
+                val uri = importQueue.first()
+                val step = withContext(Dispatchers.IO) {
+                    try {
+                        val o = StatementImporter.import(app, s, uri, pw)
+                        ImportReport(o.fileName, o.result, o.added, o.alreadyKnown, null)
+                    } catch (e: PasswordRequired) {
+                        e
+                    } catch (e: Exception) {
+                        ImportReport(StatementImporter.displayName(app, uri), null, 0, 0, "Couldn't read this file (${e.javaClass.simpleName}).")
+                    }
+                }
+                if (step is PasswordRequired) {
+                    passwordFor = PasswordAsk(StatementImporter.displayName(app, uri), step.wrongPassword)
+                    importing = false
+                    return@launch
+                }
+                importReports = importReports + (step as ImportReport)
+                importQueue.removeFirst()
+                pw = null
+            }
+            learning = withContext(Dispatchers.IO) { relearn(s) }
+            refresh()
+            importing = false
         }
     }
 
