@@ -76,6 +76,8 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
     var hasSmsPermission by mutableStateOf(SmsImporter.hasPermission(app)); private set
     var busy by mutableStateOf(false); private set
     var message by mutableStateOf<String?>(null)
+    /** Set together with [message] when the change can be undone from the snackbar. */
+    var undo by mutableStateOf<(() -> Unit)?>(null)
     /** Why each transaction has its flow (shown when you open it). */
     var flowDecisions by mutableStateOf<Map<Long, FlowDecision>>(emptyMap()); private set
     /** Questions for the user ("Shop or person?", "Same payment twice?"). */
@@ -280,6 +282,26 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
     fun setFlow(txn: Txn, flow: Flow?, forPayee: Boolean) = io {
         it.setUserFlow(txn.id, flow)
         if (forPayee && flow != null && flow in PAYEE_FLOWS) it.setPayeeFlow(txn.merchant, flow)
+    }
+
+    /**
+     * The one-tap fix: take a transaction out of the totals, or put it back. Remembers what it was,
+     * so the snackbar can undo it.
+     */
+    fun toggleCounted(t: Txn) {
+        val s = store ?: return
+        val next = if (t.effectiveFlow.counted) Flow.IGNORED else if (t.direction == Direction.DEBIT) Flow.SPEND else Flow.INCOME
+        viewModelScope.launch {
+            val previous = withContext(Dispatchers.IO) { s.userFlows()[t.id].also { s.setUserFlow(t.id, next) } }
+            refresh()
+            message = if (next == Flow.IGNORED) "Not counted: ${t.merchant} ${rupees(t.amount)}" else "Counted again: ${t.merchant}"
+            undo = { io { it.setUserFlow(t.id, previous) } }
+        }
+    }
+
+    /** Fixes an amount or name the reader got wrong. */
+    fun editDetails(t: Txn, merchant: String, amount: Double) = io {
+        it.updateDetails(t.id, merchant.trim().ifBlank { t.merchant }, amount)
     }
 
     fun answerShopOrPerson(item: ReviewItem.ShopOrPerson, isShop: Boolean) = io {

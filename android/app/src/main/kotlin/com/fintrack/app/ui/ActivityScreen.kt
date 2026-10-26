@@ -4,6 +4,7 @@ package com.fintrack.app.ui
 
 import android.app.DatePickerDialog
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -98,6 +99,21 @@ fun ActivityScreen(vm: FinTrackViewModel) {
                     items(Kind.entries) { k -> PopChip(k.name, vm.kind == k) { vm.kind = k } }
                 }
             }
+            item {
+                val f = vm.filter
+                if (f is TxnFilter.OfFlow) {
+                    Tile(Modifier.fillMaxWidth(), padding = 14.dp) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(f.flow.label.uppercase(), style = CapsLabel, color = c.inkSoft, modifier = Modifier.weight(1f))
+                            Text(rupees(rows.sumOf { it.amount }), style = MaterialTheme.typography.titleMedium.merge(MoneyStyle), color = c.ink)
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        Faint("Something here that shouldn't be? Untick it to leave it out of your totals.")
+                    }
+                } else if (rows.isNotEmpty()) {
+                    Faint("✓ = counted in your totals. Untick anything that shouldn't count.", Modifier.padding(horizontal = 6.dp))
+                }
+            }
             if (rows.isEmpty()) {
                 item {
                     Tile(Modifier.fillMaxWidth()) {
@@ -120,7 +136,7 @@ fun ActivityScreen(vm: FinTrackViewModel) {
                 item(key = "d$date") {
                     Tile(Modifier.fillMaxWidth(), padding = 6.dp) {
                         dayRows.forEachIndexed { i, t ->
-                            TxnRow(t) { editing = t }
+                            TxnRow(t, onToggleCounted = { vm.toggleCounted(t) }) { editing = t }
                             if (i < dayRows.lastIndex) HorizontalDivider(Modifier.padding(start = 66.dp, end = 12.dp), color = c.track)
                         }
                     }
@@ -162,7 +178,7 @@ private fun SearchBar(query: String, onChange: (String) -> Unit) {
 }
 
 @Composable
-internal fun TxnRow(t: Txn, onClick: () -> Unit) {
+internal fun TxnRow(t: Txn, onToggleCounted: (() -> Unit)? = null, onClick: () -> Unit) {
     val c = Fin.colors
     Row(
         Modifier.fillMaxWidth().clip(TileShape).clickable(onClick = onClick).padding(horizontal = 10.dp, vertical = 12.dp),
@@ -202,6 +218,26 @@ internal fun TxnRow(t: Txn, onClick: () -> Unit) {
                 else -> c.ink
             },
         )
+        if (onToggleCounted != null) {
+            Spacer(Modifier.width(12.dp))
+            CountedBox(t.effectiveFlow.counted, onToggleCounted)
+        }
+    }
+}
+
+/** The one-tap fix: ticked = counted in your totals; tap to exclude (or include again). */
+@Composable
+private fun CountedBox(counted: Boolean, onToggle: () -> Unit) {
+    val c = Fin.colors
+    Box(
+        Modifier
+            .size(26.dp)
+            .background(if (counted) Color.White else Color.Transparent)
+            .border(1.5.dp, if (counted) Color.White else c.inkFaint)
+            .clickable(onClick = onToggle),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (counted) Text("✓", color = Color.Black, style = MaterialTheme.typography.labelLarge)
     }
 }
 
@@ -219,6 +255,10 @@ internal fun EditSheet(txn: Txn, onDismiss: () -> Unit, vm: FinTrackViewModel) {
     var category by remember { mutableStateOf(txn.category) }
     var always by remember { mutableStateOf(true) }
     var flow by remember { mutableStateOf(txn.effectiveFlow) }
+    var moreTypes by remember { mutableStateOf(flow !in simpleFlows(txn.direction)) }
+    var fixing by remember { mutableStateOf(false) }
+    var name by remember { mutableStateOf(txn.merchant) }
+    var amountText by remember { mutableStateOf(if (txn.amount % 1.0 == 0.0) txn.amount.toLong().toString() else txn.amount.toString()) }
     val decision = vm.flowDecisions[txn.id]
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = MaterialTheme.colorScheme.surface) {
@@ -239,34 +279,61 @@ internal fun EditSheet(txn: Txn, onDismiss: () -> Unit, vm: FinTrackViewModel) {
                     color = if (txn.direction == Direction.CREDIT) c.gain else c.ink,
                 )
             }
-            txn.raw?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall, color = c.inkSoft,
-                    modifier = Modifier.fillMaxWidth().clip(TileShape).background(c.track.copy(alpha = 0.5f)).padding(14.dp))
+
+            // 1. The one decision that matters for the totals.
+            Text("COUNT THIS AS", style = CapsLabel, color = c.inkSoft)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                simpleFlows(txn.direction).forEach { f -> PopChip(choiceLabel(f), f == flow) { flow = f; moreTypes = false } }
+                PopChip("More…", moreTypes) { moreTypes = !moreTypes }
             }
-            Text("TYPE", style = CapsLabel, color = c.inkSoft)
-            decision?.reason?.takeIf { it.isNotBlank() }?.let { Faint("Why: $it") }
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                flowsFor(txn.direction).forEach { f -> PopChip(f.label, f == flow) { flow = f } }
+            if (moreTypes) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    flowsFor(txn.direction).filter { it !in simpleFlows(txn.direction) }.forEach { f -> PopChip(choiceLabel(f), f == flow) { flow = f } }
+                }
             }
-            Text("CATEGORY", style = CapsLabel, color = c.inkSoft)
-            if (txn.categorySource == CategorySource.LEARNED) {
-                Faint("✦ FinTrack learned this from your past categories. Pick the right one and it learns from that too.")
-            }
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Categorizer.CATEGORIES.forEach { cat -> PopChip(cat, cat == category) { category = cat } }
+            decision?.reason?.takeIf { it.isNotBlank() }?.let { Faint("FinTrack's reason: $it") }
+
+            // 2. Category, only where it matters (spending and refunds).
+            if (flow == Flow.SPEND || flow == Flow.REFUND) {
+                Text("CATEGORY", style = CapsLabel, color = c.inkSoft)
+                if (txn.categorySource == CategorySource.LEARNED) {
+                    Faint("✦ Learned from your past choices. Pick the right one and it learns from that too.")
+                }
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Categorizer.CATEGORIES.filter { it !in setOf("Income", "Self Transfer", "Transfers", "Investments") }
+                        .forEach { cat -> PopChip(cat, cat == category) { category = cat } }
+                }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Always use for ${txn.merchant}", style = MaterialTheme.typography.bodyLarge, color = c.ink)
-                    Faint("Future payments here get this category and type too")
+                    Text("Same for all of ${txn.merchant}", style = MaterialTheme.typography.bodyLarge, color = c.ink)
+                    Faint("Future payments here are treated the same way")
                 }
                 Switch(always, { always = it }, colors = SwitchDefaults.colors(checkedTrackColor = c.accent))
             }
+
+            // 3. Fix what the reader got wrong.
+            if (fixing) {
+                PopTextField(name, { name = it }, "Name")
+                PopTextField(amountText, { v -> amountText = v.filter { it.isDigit() || it == '.' }.take(12) }, "Amount (₹)",
+                    keyboardType = KeyboardType.Decimal)
+            } else {
+                Text("FIX AMOUNT OR NAME  →", style = CapsLabel, color = c.ink, modifier = Modifier.clickable { fixing = true })
+            }
+
             PopButton("Save", onClick = {
-                if (category != txn.category) vm.setCategory(txn, category, always)
+                if (category != txn.category && (flow == Flow.SPEND || flow == Flow.REFUND)) vm.setCategory(txn, category, always)
                 if (flow != txn.effectiveFlow) vm.setFlow(txn, flow, forPayee = always)
+                val newAmount = amountText.toDoubleOrNull()
+                if (fixing && newAmount != null && newAmount > 0 && (newAmount != txn.amount || name.trim() != txn.merchant)) {
+                    vm.editDetails(txn, name, newAmount)
+                }
                 onDismiss()
             }, Modifier.fillMaxWidth())
+            txn.raw?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = c.inkFaint,
+                    modifier = Modifier.fillMaxWidth().border(1.dp, c.border).padding(14.dp))
+            }
             TextButton(onClick = { vm.delete(txn); onDismiss() }, modifier = Modifier.fillMaxWidth()) {
                 Text("Delete transaction", color = c.loss)
             }
@@ -323,9 +390,15 @@ private fun AddSheet(onDismiss: () -> Unit, onSave: (LocalDate, Double, Directio
     }
 }
 
+private fun choiceLabel(f: Flow) = if (f == Flow.IGNORED) "Don't count" else f.label
+
+/** The everyday choices: Spending (or Income) and Don't count. */
+private fun simpleFlows(direction: Direction): List<Flow> =
+    listOf(if (direction == Direction.DEBIT) Flow.SPEND else Flow.INCOME, Flow.IGNORED)
+
 /** The types that make sense for money going out or coming in. */
 private fun flowsFor(direction: Direction): List<Flow> = if (direction == Direction.DEBIT) {
-    listOf(Flow.SPEND, Flow.INVESTED, Flow.TO_PEOPLE, Flow.OWN_TRANSFER, Flow.DUPLICATE)
+    listOf(Flow.SPEND, Flow.IGNORED, Flow.INVESTED, Flow.TO_PEOPLE, Flow.OWN_TRANSFER, Flow.DUPLICATE)
 } else {
-    listOf(Flow.INCOME, Flow.REFUND, Flow.FROM_PEOPLE, Flow.OWN_TRANSFER, Flow.DUPLICATE)
+    listOf(Flow.INCOME, Flow.IGNORED, Flow.REFUND, Flow.FROM_PEOPLE, Flow.OWN_TRANSFER, Flow.DUPLICATE)
 }

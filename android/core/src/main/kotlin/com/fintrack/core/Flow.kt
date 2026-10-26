@@ -15,10 +15,12 @@ enum class Flow(val label: String) {
     FROM_PEOPLE("Received from people"),
     OWN_TRANSFER("Between your accounts"),
     DUPLICATE("Duplicate"),
+    /** Excluded by the user ("don't count this"), whatever it is. */
+    IGNORED("Excluded by you"),
     ;
 
     val countsAsMoneyIn get() = this == INCOME || this == FROM_PEOPLE
-    val counted get() = this != OWN_TRANSFER && this != DUPLICATE
+    val counted get() = this != OWN_TRANSFER && this != DUPLICATE && this != IGNORED
 
     companion object {
         /** Simple fallback when no analysis has run: what every transaction was before flows existed. */
@@ -255,7 +257,7 @@ class FlowLearner(history: List<Txn>, userFlows: Map<Long, Flow>, payeeFlows: Ma
         val fits = when (flow) {
             Flow.SPEND, Flow.INVESTED, Flow.TO_PEOPLE -> t.direction == Direction.DEBIT
             Flow.INCOME, Flow.REFUND, Flow.FROM_PEOPLE -> t.direction == Direction.CREDIT
-            Flow.OWN_TRANSFER, Flow.DUPLICATE -> false  // only from proof or the user, never guessed
+            Flow.OWN_TRANSFER, Flow.DUPLICATE, Flow.IGNORED -> false  // only from proof or the user, never guessed
         }
         return flow.takeIf { fits }
     }

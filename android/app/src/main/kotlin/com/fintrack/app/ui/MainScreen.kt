@@ -19,7 +19,9 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -55,7 +57,12 @@ fun MainScreen(vm: FinTrackViewModel, startTab: Int = 0) {
 
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(vm.message) {
-        vm.message?.let { snackbar.showSnackbar(it); vm.message = null }
+        val text = vm.message ?: return@LaunchedEffect
+        val undo = vm.undo
+        vm.message = null
+        vm.undo = null
+        val result = snackbar.showSnackbar(text, actionLabel = if (undo != null) "UNDO" else null, duration = SnackbarDuration.Short)
+        if (result == SnackbarResult.ActionPerformed) undo?.invoke()
     }
 
     AppBackground {

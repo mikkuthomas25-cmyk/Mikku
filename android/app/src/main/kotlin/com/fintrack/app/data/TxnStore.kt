@@ -161,6 +161,11 @@ class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbN
         return writableDatabase.insertWithOnConflict("transactions", null, values, SQLiteDatabase.CONFLICT_IGNORE) != -1L
     }
 
+    /** Corrects a transaction the reader got wrong (amount or name). */
+    fun updateDetails(id: Long, merchant: String, amount: Double) {
+        writableDatabase.execSQL("UPDATE transactions SET merchant=?, amount=? WHERE id=?", arrayOf(merchant, amount, id))
+    }
+
     /** Flow types the user set on individual transactions. */
     fun userFlows(): Map<Long, Flow> = readableDatabase.rawQuery("SELECT id, user_flow FROM transactions WHERE user_flow IS NOT NULL", null)
         .use { c -> buildMap { while (c.moveToNext()) runCatching { Flow.valueOf(c.getString(1)) }.getOrNull()?.let { put(c.getLong(0), it) } } }

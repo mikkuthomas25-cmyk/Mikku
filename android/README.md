@@ -104,6 +104,13 @@ How the type is decided, strongest evidence first:
 4. **The flow model:** a second on-device Naive Bayes model learns types from your answers. It only acts when confident, and never guesses own transfers or duplicates.
 5. **Questions instead of guesses:** uncertain duplicates, and payees you pay often via personal UPI IDs ("shop or person?"), appear in **Needs your input** on Home. One tap answers, fixes the totals and teaches the model.
 
+**You decide, in one tap.** Every transaction in Activity, and in every section opened from
+the money-flow statement, has a ✓ box: untick it and it leaves your totals (with Undo); tick
+it to bring it back. Opening a transaction asks one question, *Count this as*:
+**Spending** (or **Income**) · **Don't count** · **More…** (invested, to people, refund,
+between my accounts, duplicate). Wrong amount or name? *Fix amount or name*. Your choices
+override the automatic analysis and teach both models.
+
 **Bank balance check (Insights):** bank SMS usually include the balance. For each account,
 the balance must move by exactly the transactions captured in between. A gap pinpoints a
 missed payment or a duplicate still counted, with dates.

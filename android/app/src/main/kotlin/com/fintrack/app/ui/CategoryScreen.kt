@@ -152,7 +152,7 @@ fun CategoryScreen(vm: FinTrackViewModel, category: String, onBack: () -> Unit) 
                     Faint("No $category spending in ${m.name()}.", Modifier.padding(12.dp))
                 }
                 inCat.forEachIndexed { i, t ->
-                    TxnRow(t) { editing = t }
+                    TxnRow(t, onToggleCounted = { vm.toggleCounted(t) }) { editing = t }
                     if (i < inCat.lastIndex) HorizontalDivider(Modifier.padding(start = 66.dp, end = 12.dp), color = c.track)
                 }
             }

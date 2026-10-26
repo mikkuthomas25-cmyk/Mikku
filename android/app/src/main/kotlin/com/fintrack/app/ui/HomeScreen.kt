@@ -182,15 +182,17 @@ private fun MoneyFlowHero(s: MonthSummary, open: (Flow) -> Unit) {
         FlowLine("Left over", s.net, "=", bold = true) {}
         val own = s.byFlow[Flow.OWN_TRANSFER] ?: 0.0
         val dup = s.byFlow[Flow.DUPLICATE] ?: 0.0
-        if (own > 0 || dup > 0) {
+        val ignored = s.byFlow[Flow.IGNORED] ?: 0.0
+        if (own > 0 || dup > 0 || ignored > 0) {
             Spacer(Modifier.height(10.dp))
             Text(
                 "Not counted: " + listOfNotNull(
                     own.takeIf { it > 0 }?.let { "between your accounts ${rupees(it / 2)}" },
                     dup.takeIf { it > 0 }?.let { "duplicates ${rupees(it)}" },
+                    ignored.takeIf { it > 0 }?.let { "excluded by you ${rupees(it)}" },
                 ).joinToString("  ·  "),
                 style = MaterialTheme.typography.bodySmall, color = white.copy(alpha = 0.8f),
-                modifier = Modifier.clickable { open(if (own > 0) Flow.OWN_TRANSFER else Flow.DUPLICATE) },
+                modifier = Modifier.clickable { open(if (own > 0) Flow.OWN_TRANSFER else if (dup > 0) Flow.DUPLICATE else Flow.IGNORED) },
             )
         }
     }

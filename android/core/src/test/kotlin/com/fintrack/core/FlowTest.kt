@@ -140,4 +140,16 @@ class FlowTest {
         assertEquals(12345.67, SmsParser.balance("Rs 100 debited. Avl Bal Rs 12,345.67"))
         assertNull(SmsParser.balance("Rs 2,499 spent on card XX9876. Avl Lmt: INR 47,501.00"))
     }
+
+    @Test fun whatTheUserExcludesLeavesTheTotals() {
+        val salary = t(1, 50000.0, Direction.CREDIT, merchant = "Acme", category = "Income", raw = "Salary credited")
+        val rent = t(2, 20000.0, merchant = "Landlord", category = "Rent")
+        val oddOne = t(3, 7000.0, merchant = "Someone", raw = "Rs 7000 debited a/c XX1234 to Someone")
+        val a = FlowAnalyzer.analyze(listOf(salary, rent, oddOne), userFlows = mapOf(oddOne.id to Flow.IGNORED))
+        assertEquals(Flow.IGNORED, a.flowOf(oddOne))
+        val s = Summaries.build(oct, listOf(salary, rent, oddOne).map { it.copy(flow = a.flowOf(it)) }, emptyList(), oct.atDay(26))
+        assertEquals(20000.0, s.spent)
+        assertEquals(30000.0, s.net)
+        assertEquals(2, s.txnCount)
+    }
 }
