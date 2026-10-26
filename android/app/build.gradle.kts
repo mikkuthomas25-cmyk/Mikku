@@ -50,6 +50,7 @@ android {
             excludes += setOf(
                 "META-INF/DEPENDENCIES", "META-INF/LICENSE*", "META-INF/NOTICE*", "META-INF/INDEX.LIST",
                 "META-INF/AL2.0", "META-INF/LGPL2.1", "META-INF/*.md", "META-INF/versions/9/module-info.class",
+                "META-INF/versions/9/OSGI-INF/MANIFEST.MF",
             )
         }
     }

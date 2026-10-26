@@ -95,9 +95,9 @@ fun DailyBars(
                 val path = Path().apply {
                     moveTo(x, base)
                     lineTo(x, t + r)
-                    quadraticTo(x, t, x + r, t)
+                    quadraticBezierTo(x, t, x + r, t)
                     lineTo(x + bw - r, t)
-                    quadraticTo(x + bw, t, x + bw, t + r)
+                    quadraticBezierTo(x + bw, t, x + bw, t + r)
                     lineTo(x + bw, base)
                     close()
                 }
