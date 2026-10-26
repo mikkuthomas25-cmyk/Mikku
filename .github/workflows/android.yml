@@ -7,6 +7,11 @@ on:
       - ".github/workflows/android.yml"
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      release:
+        description: "Publish the APK as a GitHub Release (direct download link)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write   # only used to attach the APK to a release on v* tags
@@ -54,7 +59,16 @@ jobs:
           path: android/FinTrack.apk
 
       - name: Attach to release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.release
         uses: softprops/action-gh-release@v2
         with:
+          # Manual runs create their own tag, e.g. v1.0.7.
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v1.0.{0}', github.run_number) }}
+          target_commitish: ${{ github.sha }}
+          name: FinTrack ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('1.0.{0}', github.run_number) }}
+          body: |
+            Download **FinTrack.apk** below and open it on your Android phone (Android 8.0+).
+            Xiaomi / HyperOS: open it from Xiaomi's File Manager; if it says "App not installed",
+            turn off "Scan apps before installing" in the Security app, install, then turn it back on.
+          make_latest: true
           files: android/FinTrack.apk
