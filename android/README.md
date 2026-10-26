@@ -67,8 +67,8 @@ You need Android Studio (or JDK 17 and the Android SDK).
 
 ```bash
 cd android
-./gradlew :core:test :app:assembleDebug
-# APK: app/build/outputs/apk/debug/app-debug.apk
+./gradlew :core:test :app:assembleRelease
+# APK: app/build/outputs/apk/release/app-release.apk
 ```
 
 To get login in a local build, put `google-services.json` in `android/app/`.

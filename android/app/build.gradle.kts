@@ -25,15 +25,25 @@ android {
     signingConfigs {
         // A fixed key so every CI build installs over the previous one and the
         // SHA-1 registered in Firebase (needed for Google sign-in) stays the same.
-        getByName("debug") {
+        create("fintrack") {
             storeFile = file("fintrack-debug.keystore")
             storePassword = "android"
             keyAlias = "androiddebugkey"
             keyPassword = "android"
+            // All schemes, so every installer (including OEM ones) accepts the APK.
+            enableV1Signing = true
+            enableV2Signing = true
+            enableV3Signing = true
         }
     }
     buildTypes {
-        debug { signingConfig = signingConfigs.getByName("debug") }
+        debug { signingConfig = signingConfigs.getByName("fintrack") }
+        // What users install: not debuggable (some OEM security scanners refuse debug
+        // builds). No minification: the Claude SDK relies on reflection.
+        release {
+            signingConfig = signingConfigs.getByName("fintrack")
+            isMinifyEnabled = false
+        }
     }
 
     buildFeatures {

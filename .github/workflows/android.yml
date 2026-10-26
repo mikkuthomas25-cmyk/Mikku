@@ -36,16 +36,16 @@ jobs:
       - name: Test and build
         run: |
           chmod +x gradlew
-          ./gradlew :core:test :app:assembleDebug --stacktrace
+          ./gradlew :core:test :app:assembleRelease --stacktrace
 
       - name: Rename APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk FinTrack.apk
+        run: cp app/build/outputs/apk/release/app-release.apk FinTrack.apk
 
       - name: Verify APK (signature, supported Android versions)
         run: |
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
           "$BT/apksigner" verify --verbose --print-certs FinTrack.apk | grep -E "Verifies|Verified using|SHA-1|SHA1|Number of signers"
-          "$BT/aapt2" dump badging FinTrack.apk | grep -E "^package:|sdkVersion|targetSdkVersion|native-code|testOnly|application-debuggable" || true
+          "$BT/aapt2" dump badging FinTrack.apk | grep -E "^package:|sdkVersion|minSdk|targetSdkVersion|native-code|testOnly|application-debuggable" || true
           ls -l FinTrack.apk
 
       - uses: actions/upload-artifact@v4
