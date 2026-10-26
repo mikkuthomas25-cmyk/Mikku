@@ -11,9 +11,13 @@ class Prefs(context: Context) {
         get() = sp.getString("active_db", null)
         set(v) = sp.edit().putString("active_db", v).apply()
 
-    var activeUserLabel: String?
+    var activeUserName: String?
         get() = sp.getString("active_user", null)
         set(v) = sp.edit().putString("active_user", v).apply()
+
+    var activeUserEmail: String?
+        get() = sp.getString("active_email", null)
+        set(v) = sp.edit().putString("active_email", v).apply()
 
     var claudeApiKey: String
         get() = sp.getString("claude_api_key", "") ?: ""

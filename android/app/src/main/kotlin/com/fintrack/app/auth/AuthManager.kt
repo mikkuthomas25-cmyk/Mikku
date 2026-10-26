@@ -18,7 +18,7 @@ import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.tasks.await
 
-data class Account(val uid: String, val label: String)
+data class Account(val uid: String, val name: String, val email: String)
 
 class AuthException(message: String) : Exception(message)
 
@@ -93,5 +93,9 @@ class AuthManager(private val context: Context) {
         else -> fallback ?: "Sign-in failed ($code)."
     }
 
-    private fun FirebaseUser.toAccount() = Account(uid, email ?: displayName ?: "Signed in")
+    private fun FirebaseUser.toAccount() = Account(
+        uid = uid,
+        name = displayName?.takeIf { it.isNotBlank() } ?: email?.substringBefore('@')?.replaceFirstChar { it.uppercase() } ?: "there",
+        email = email ?: "",
+    )
 }

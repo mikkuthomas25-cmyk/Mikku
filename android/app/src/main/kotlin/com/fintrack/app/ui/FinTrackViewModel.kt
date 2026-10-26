@@ -24,6 +24,8 @@ import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.YearMonth
 
+enum class Kind { All, Spent, Received }
+
 sealed interface TxnFilter {
     data class Day(val date: LocalDate) : TxnFilter
     data class Category(val name: String) : TxnFilter
@@ -35,22 +37,37 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
     val prefs = Prefs(app)
     private var store: TxnStore? = null
 
+    /** Display name of the signed-in user; null means signed out. */
     var account by mutableStateOf<String?>(null); private set
+    var accountEmail by mutableStateOf(""); private set
     var month by mutableStateOf(YearMonth.now()); private set
     var summary by mutableStateOf<MonthSummary?>(null); private set
     var txns by mutableStateOf<List<Txn>>(emptyList()); private set
     var filter by mutableStateOf<TxnFilter?>(null)
+    var query by mutableStateOf("")
+    var kind by mutableStateOf(Kind.All)
     var hasSmsPermission by mutableStateOf(SmsImporter.hasPermission(app)); private set
     var busy by mutableStateOf(false); private set
     var message by mutableStateOf<String?>(null)
     var insights by mutableStateOf<String?>(null); private set
 
     val filteredTxns: List<Txn>
-        get() = when (val f = filter) {
-            null -> txns
-            is TxnFilter.Day -> txns.filter { it.date == f.date }
-            is TxnFilter.Category -> txns.filter { it.category == f.name && it.direction == Direction.DEBIT }
-            is TxnFilter.Merchant -> txns.filter { it.merchant == f.name && it.direction == Direction.DEBIT }
+        get() {
+            val q = query.trim().lowercase()
+            return txns.filter { t ->
+                val byFilter = when (val f = filter) {
+                    null -> true
+                    is TxnFilter.Day -> t.date == f.date
+                    is TxnFilter.Category -> t.category == f.name && t.direction == Direction.DEBIT
+                    is TxnFilter.Merchant -> t.merchant == f.name && t.direction == Direction.DEBIT
+                }
+                val byKind = when (kind) {
+                    Kind.All -> true
+                    Kind.Spent -> t.direction == Direction.DEBIT
+                    Kind.Received -> t.direction == Direction.CREDIT
+                }
+                byFilter && byKind && (q.isEmpty() || q in t.merchant.lowercase() || q in t.category.lowercase())
+            }
         }
 
     init {
@@ -68,8 +85,10 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
         store?.close()
         store = TxnStore(app, dbName)
         prefs.activeDb = dbName
-        prefs.activeUserLabel = acc?.label ?: "This device only"
-        account = prefs.activeUserLabel
+        prefs.activeUserName = acc?.name ?: "there"
+        prefs.activeUserEmail = acc?.email ?: "This device only"
+        account = prefs.activeUserName
+        accountEmail = prefs.activeUserEmail ?: ""
         onResume()
     }
 
@@ -146,6 +165,7 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
     fun changeMonth(delta: Long) {
         month = month.plusMonths(delta)
         filter = null
+        query = ""
         insights = null
         refresh()
     }

@@ -1,7 +1,10 @@
 package com.fintrack.app.ui
 
 import android.app.Activity
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,125 +13,157 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 @Composable
 fun LoginScreen(vm: FinTrackViewModel) {
     val activity = LocalContext.current as Activity
+    val c = Fin.colors
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var creating by rememberSaveable { mutableStateOf(false) }
-    val enabled = !vm.busy
+    val ready = !vm.busy && vm.auth.configured
+    val snackbar = remember { SnackbarHostState() }
+    LaunchedEffect(vm.message) {
+        vm.message?.let { snackbar.showSnackbar(it); vm.message = null }
+    }
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .systemBarsPadding()
-            .imePadding()
-            .verticalScroll(rememberScrollState())
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Spacer(Modifier.height(32.dp))
-        Text("FinTrack", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-        Text(
-            "Know where every rupee goes, straight from your bank SMS.",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 8.dp, bottom = 32.dp),
-        )
+    GlossyBackground {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .systemBarsPadding()
+                .imePadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            AppMark()
+            Spacer(Modifier.height(20.dp))
+            Text("FinTrack", style = MaterialTheme.typography.displaySmall, color = c.ink)
+            Text(
+                "Every rupee, accounted for.",
+                style = MaterialTheme.typography.bodyLarge, color = c.inkSoft, textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 6.dp, bottom = 32.dp),
+            )
 
-        Column(Modifier.widthIn(max = 420.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (!vm.auth.configured) {
-                Card {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Login isn't set up in this build", fontWeight = FontWeight.SemiBold)
-                        Text(
-                            "Google and email sign-in turn on once a Firebase project is connected " +
-                                "(see android/README.md). You can use the app on this phone in the meantime.",
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                        Button(onClick = vm::continueWithoutAccount, modifier = Modifier.fillMaxWidth()) {
-                            Text("Continue without account")
+            Column(Modifier.widthIn(max = 440.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                if (!vm.auth.configured) {
+                    GlassCard(Modifier.fillMaxWidth()) {
+                        Text("Try it on this phone", style = MaterialTheme.typography.titleMedium, color = c.ink)
+                        Spacer(Modifier.height(4.dp))
+                        Faint("Google and email sign-in switch on once Firebase is connected (see android/README.md).")
+                        Spacer(Modifier.height(14.dp))
+                        GradientButton("Continue without account", vm::continueWithoutAccount, Modifier.fillMaxWidth())
+                    }
+                }
+
+                GlassCard(Modifier.fillMaxWidth(), padding = 20.dp) {
+                    GlassPillButton(
+                        "Continue with Google", onClick = { vm.signInWithGoogle(activity) },
+                        modifier = Modifier.fillMaxWidth(), enabled = ready,
+                        leading = { Text("G", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Color(0xFF4285F4)) },
+                    )
+                    Row(Modifier.padding(vertical = 18.dp), verticalAlignment = Alignment.CenterVertically) {
+                        HorizontalDivider(Modifier.weight(1f), color = c.track)
+                        Text("  or with email  ", style = MaterialTheme.typography.labelMedium, color = c.inkFaint)
+                        HorizontalDivider(Modifier.weight(1f), color = c.track)
+                    }
+                    FinTextField(email, { email = it }, "Email", keyboardType = KeyboardType.Email, enabled = ready)
+                    Spacer(Modifier.height(12.dp))
+                    FinTextField(password, { password = it }, "Password", password = true,
+                        keyboardType = KeyboardType.Password, enabled = ready)
+                    Spacer(Modifier.height(18.dp))
+                    GradientButton(
+                        when {
+                            vm.busy -> "Please wait…"
+                            creating -> "Create account"
+                            else -> "Sign in"
+                        },
+                        onClick = {
+                            if (creating) vm.signIn { createAccount(email, password) }
+                            else vm.signIn { signInWithEmail(email, password) }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = ready && email.isNotBlank() && password.length >= 6,
+                    )
+                    Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                        TextButton(onClick = { creating = !creating }, enabled = vm.auth.configured) {
+                            Text(if (creating) "I have an account" else "Create account")
+                        }
+                        if (!creating) {
+                            TextButton(onClick = { vm.resetPassword(email) }, enabled = vm.auth.configured && email.isNotBlank()) {
+                                Text("Forgot password?")
+                            }
                         }
                     }
                 }
             }
-
-            OutlinedButton(
-                onClick = { vm.signInWithGoogle(activity) },
-                enabled = enabled && vm.auth.configured,
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-            ) { Text("Continue with Google") }
-
-            OrDivider()
-
-            OutlinedTextField(
-                value = email, onValueChange = { email = it }, label = { Text("Email") }, singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                modifier = Modifier.fillMaxWidth(), enabled = enabled && vm.auth.configured,
-            )
-            OutlinedTextField(
-                value = password, onValueChange = { password = it }, label = { Text("Password") }, singleLine = true,
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                modifier = Modifier.fillMaxWidth(), enabled = enabled && vm.auth.configured,
-            )
-            Button(
-                onClick = {
-                    if (creating) vm.signIn { createAccount(email, password) }
-                    else vm.signIn { signInWithEmail(email, password) }
-                },
-                enabled = enabled && vm.auth.configured && email.isNotBlank() && password.length >= 6,
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-            ) {
-                if (vm.busy) CircularProgressIndicator(Modifier.height(20.dp), strokeWidth = 2.dp)
-                else Text(if (creating) "Create account" else "Sign in")
-            }
-            TextButton(onClick = { creating = !creating }, modifier = Modifier.fillMaxWidth(), enabled = vm.auth.configured) {
-                Text(if (creating) "Already have an account? Sign in" else "New here? Create an account")
-            }
-            if (!creating) {
-                TextButton(
-                    onClick = { vm.resetPassword(email) },
-                    enabled = vm.auth.configured && email.isNotBlank(),
-                    modifier = Modifier.fillMaxWidth(),
-                ) { Text("Forgot password?") }
-            }
         }
+        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).systemBarsPadding().padding(16.dp))
     }
 }
 
+/** Glossy app tile: three rising bars on the brand gradient. */
 @Composable
-private fun OrDivider() {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        HorizontalDivider(Modifier.weight(1f))
-        Text("  or use email  ", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        HorizontalDivider(Modifier.weight(1f))
+private fun AppMark() {
+    val c = Fin.colors
+    val shape = RoundedCornerShape(26.dp)
+    Box(
+        Modifier
+            .size(84.dp)
+            .shadow(24.dp, shape, ambientColor = c.heroStart, spotColor = c.heroEnd)
+            .clip(shape)
+            .background(Brush.linearGradient(listOf(c.heroStart, c.heroEnd)))
+            .drawWithContent {
+                drawContent()
+                drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.3f), 0.5f to Color.Transparent))
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(Modifier.size(40.dp)) {
+            val bw = size.width / 4.6f
+            val gap = (size.width - bw * 3) / 2
+            listOf(0.45f, 0.7f, 1f).forEachIndexed { i, h ->
+                val barH = size.height * h
+                drawRoundRect(
+                    Color.White, Offset(i * (bw + gap), size.height - barH), Size(bw, barH), CornerRadius(bw / 2.5f),
+                )
+            }
+        }
     }
 }

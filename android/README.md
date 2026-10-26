@@ -81,7 +81,14 @@ To get login in a local build, put `google-services.json` in `android/app/`.
 | `app/data` | SQLite storage on the phone, settings |
 | `app/sms` | Inbox scan (history + catch-up when the app opens) and a live SMS receiver |
 | `app/auth` | Firebase Auth: Google via Credential Manager, email/password |
-| `app/ui` | Jetpack Compose screens: Login, Home dashboard, Transactions, AI insights, Settings |
+| `app/ui` | Jetpack Compose UI: `Glass.kt` (design system: glossy backdrop, frosted cards, gradient hero, floating nav), `HomeScreen`, `ActivityScreen`, `InsightsScreen`, `ProfileScreen`, `LoginScreen` |
+
+## Design
+
+Glossy and minimal: a soft colour-washed backdrop, frosted-glass cards with a light rim, and a
+blue-to-violet gradient for the one thing that matters on each screen. Navigation is a floating
+pill with four destinations (Home, Activity, Insights, Profile). Edits and new entries open as
+bottom sheets, so you never lose your place. Light and dark themes follow the phone's setting.
 
 ## Why it won't be on the Play Store as-is
 
