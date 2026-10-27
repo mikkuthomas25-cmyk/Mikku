@@ -67,7 +67,7 @@ import java.time.YearMonth
 
 @Composable
 fun ActivityScreen(vm: FinTrackViewModel) {
-    var open by remember { mutableStateOf<Txn?>(null) }
+    var open by remember { mutableStateOf<Opened?>(null) }
     var adding by remember { mutableStateOf(false) }
     val rows = vm.filteredTxns
     val c = Fin.colors
@@ -91,6 +91,8 @@ fun ActivityScreen(vm: FinTrackViewModel) {
                                     is TxnFilter.Category -> f.name
                                     is TxnFilter.Merchant -> f.name
                                     is TxnFilter.OfFlow -> f.flow.label
+                                    TxnFilter.Auto -> "Sorted by FinTrack"
+                                    TxnFilter.Unsorted -> "Needs a category"
                                 } + "  ✕",
                                 selected = true,
                             ) { vm.filter = null }
@@ -100,7 +102,7 @@ fun ActivityScreen(vm: FinTrackViewModel) {
                 }
             }
             if (rows.isNotEmpty()) {
-                item { Faint("Tap any transaction to say what it is. FinTrack remembers it for next time.", Modifier.padding(horizontal = 6.dp)) }
+                item { Faint("Tap a category to change it. ⋮ to edit or delete.", Modifier.padding(horizontal = 6.dp)) }
             } else {
                 item {
                     Tile(Modifier.fillMaxWidth()) {
@@ -124,7 +126,7 @@ fun ActivityScreen(vm: FinTrackViewModel) {
                 item(key = "d$date") {
                     Tile(Modifier.fillMaxWidth(), padding = 6.dp) {
                         dayRows.forEachIndexed { i, t ->
-                            TxnRow(t) { open = t }
+                            TxnRow(t) { open = it }
                             if (i < dayRows.lastIndex) HorizontalDivider(Modifier.padding(start = 66.dp, end = 12.dp), color = c.track)
                         }
                     }
@@ -135,7 +137,7 @@ fun ActivityScreen(vm: FinTrackViewModel) {
         AddButton(Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 20.dp, bottom = 92.dp)) { adding = true }
     }
 
-    open?.let { t -> TxnSheet(t, vm) { open = null } }
+    open?.let { o -> TxnSheet(o, vm) { open = null } }
     if (adding) AddSheet(onDismiss = { adding = false }) { date, amount, dir, what, choice ->
         vm.addManual(date, amount, dir, what, choice)
         adding = false

@@ -26,13 +26,15 @@ import java.time.YearMonth
 import kotlin.math.abs
 
 @Composable
-fun InsightsScreen(vm: FinTrackViewModel, openCategory: (String) -> Unit, openActivity: () -> Unit) {
+fun InsightsScreen(vm: FinTrackViewModel, openCategory: (String) -> Unit, openActivity: () -> Unit, onBack: () -> Unit) {
     val c = Fin.colors
     val s = vm.summary
     LazyColumn(Modifier.fillMaxSize(), contentPadding = ScreenPadding, verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Insights", style = MaterialTheme.typography.headlineMedium, color = c.ink, modifier = Modifier.weight(1f))
+                Text("‹", style = MaterialTheme.typography.headlineMedium, color = c.ink,
+                    modifier = Modifier.clip(TileShape).clickable(onClick = onBack).padding(end = 12.dp))
+                Text("Charts", style = MaterialTheme.typography.headlineMedium, color = c.ink, modifier = Modifier.weight(1f))
                 MonthSwitcher(vm.month.name(), vm.month < YearMonth.now(), { vm.changeMonth(-1) }, { vm.changeMonth(1) })
             }
         }

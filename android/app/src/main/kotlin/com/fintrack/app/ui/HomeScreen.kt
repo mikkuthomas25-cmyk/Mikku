@@ -33,6 +33,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import com.fintrack.app.sms.PermissionHelper
 import androidx.compose.ui.unit.dp
+import com.fintrack.core.Categorizer
+import com.fintrack.core.CategorySource
 import com.fintrack.core.Flow
 import com.fintrack.core.MonthSummary
 import com.fintrack.core.ReviewItem
@@ -44,7 +46,7 @@ import kotlin.math.abs
 @Composable
 fun HomeScreen(vm: FinTrackViewModel, openActivity: () -> Unit, openProfile: () -> Unit, openCategory: (String) -> Unit) {
     val s = vm.summary
-    var open by remember { mutableStateOf<Txn?>(null) }
+    var open by remember { mutableStateOf<Opened?>(null) }
     val show: (Kind, TxnFilter?) -> Unit = { k, f -> vm.kind = k; vm.filter = f; openActivity() }
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -61,50 +63,26 @@ fun HomeScreen(vm: FinTrackViewModel, openActivity: () -> Unit, openProfile: () 
         item { MonthHero(s, show) }
         if (vm.review.isNotEmpty()) item { ReviewCard(vm) }
         item { WhereItWent(s, openCategory) { flow -> show(Kind.All, TxnFilter.OfFlow(flow)) } }
-        val unsorted = vm.txns.filter { it.effectiveFlow == Flow.SPEND && it.category == "Other" }
-        if (unsorted.isNotEmpty()) item { SortOtherCard(unsorted) { open = it } }
+        item { SmartSortingCard(vm) { f -> show(Kind.All, f) } }
     }
-    open?.let { t -> TxnSheet(t, vm) { open = null } }
+    open?.let { o -> TxnSheet(o, vm) { open = null } }
 }
 
 /**
- * The month as a three-line statement: money in − money out = left. Money out is everything that
- * left (spending, people, investments), so it always equals the "Where your money went" list.
- * Money moved between your own accounts and duplicates are shown apart, not added.
+ * The month in three numbers: spent (everything that left: spending, people, investments, the
+ * same total as "Where your money went"), money in, and what's left. Each opens its list.
  */
 @Composable
 private fun MonthHero(s: MonthSummary, show: (Kind, TxnFilter?) -> Unit) {
     val white = Color.White
     HeroTile(Modifier.fillMaxWidth()) {
-        Text(s.month.name().uppercase(), style = CapsLabel, color = white.copy(alpha = 0.8f))
+        Column(Modifier.fillMaxWidth().clickable { show(Kind.Spent, null) }) {
+            Text("SPENT IN ${s.month.name().uppercase()}", style = CapsLabel, color = white.copy(alpha = 0.8f))
+            AnimatedRupees(s.moneyOut, MaterialTheme.typography.displaySmall, white, Modifier.padding(top = 4.dp))
+        }
         Spacer(Modifier.height(10.dp))
         StatementLine("Money in", s.received, "+") { show(Kind.Received, null) }
-        StatementLine("Money out", s.moneyOut, "−") { show(Kind.Spent, null) }
-        Box(Modifier.fillMaxWidth().padding(vertical = 8.dp).height(1.dp).background(white.copy(alpha = 0.35f)))
-        Row(Modifier.fillMaxWidth().clickable { show(Kind.All, null) }, verticalAlignment = Alignment.CenterVertically) {
-            Text("Left", style = MaterialTheme.typography.titleLarge, color = white, modifier = Modifier.weight(1f))
-            Text(
-                (if (s.net < 0) "−" else "") + rupees(abs(s.net)),
-                style = MaterialTheme.typography.headlineMedium.merge(MoneyStyle), color = white,
-            )
-        }
-        val own = s.byFlow[Flow.OWN_TRANSFER] ?: 0.0
-        val dup = s.byFlow[Flow.DUPLICATE] ?: 0.0
-        val ignored = s.byFlow[Flow.IGNORED] ?: 0.0
-        if (own > 0 || dup > 0 || ignored > 0) {
-            Spacer(Modifier.height(10.dp))
-            Text(
-                "Not counted: " + listOfNotNull(
-                    own.takeIf { it > 0 }?.let { "between your accounts ${rupees(it)}" },
-                    dup.takeIf { it > 0 }?.let { "duplicates ${rupees(it)}" },
-                    ignored.takeIf { it > 0 }?.let { "excluded ${rupees(it)}" },
-                ).joinToString("  ·  ") + "  ›",
-                style = MaterialTheme.typography.bodySmall, color = white.copy(alpha = 0.8f),
-                modifier = Modifier.clickable {
-                    show(Kind.All, TxnFilter.OfFlow(if (own > 0) Flow.OWN_TRANSFER else if (dup > 0) Flow.DUPLICATE else Flow.IGNORED))
-                },
-            )
-        }
+        StatementLine("Left", s.net, if (s.net < 0) "−" else "") { show(Kind.All, null) }
     }
 }
 
@@ -113,36 +91,56 @@ private fun StatementLine(label: String, amount: Double, sign: String, onClick: 
     val white = Color.White
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(label, style = MaterialTheme.typography.bodyLarge, color = white, modifier = Modifier.weight(1f))
-        Text("$sign ${rupees(amount)}  ›", style = MaterialTheme.typography.titleMedium.merge(MoneyStyle), color = white)
+        Text("$sign ${rupees(abs(amount))}  ›".trim(), style = MaterialTheme.typography.titleMedium.merge(MoneyStyle), color = white)
     }
 }
 
 /**
- * "Other" grouped by payee, biggest first: one tap per payee sorts every payment to it, now and
- * later, and teaches the model about similar names.
+ * Shows what the on-device learning actually did this month, in counts the user can check:
+ * how many payments FinTrack sorted by itself and how (learned from you, known brands, small
+ * daily spends), how many you sorted, and how many still need you. Each opens that list.
  */
 @Composable
-private fun SortOtherCard(unsorted: List<Txn>, pick: (Txn) -> Unit) {
+private fun SmartSortingCard(vm: FinTrackViewModel, show: (TxnFilter) -> Unit) {
     val c = Fin.colors
-    val payees = unsorted.groupBy { it.merchant }.entries.sortedByDescending { (_, v) -> v.sumOf { it.amount } }
+    val spends = vm.txns.filter { it.effectiveFlow == Flow.SPEND }
+    if (spends.isEmpty()) return
+    val learned = spends.count { CategorySource.isAutomatic(it.categorySource) && it.category != "Other" }
+    val brands = spends.count { it.categorySource == CategorySource.KEYWORD && it.category != "Other" && it.category != Categorizer.SMALL }
+    val small = spends.count { it.categorySource == CategorySource.KEYWORD && it.category == Categorizer.SMALL }
+    val byYou = spends.count { it.categorySource == CategorySource.USER || it.categorySource == CategorySource.RULE }
+    val needsYou = spends.count { it.category == "Other" }
     Tile(Modifier.fillMaxWidth()) {
-        SectionTitle("Sort ${rupees(unsorted.sumOf { it.amount })} in Other")
-        Spacer(Modifier.height(4.dp))
-        Faint("Optional: your totals are already right. One tap per payee sharpens the breakdown, and FinTrack remembers it for good.")
-        payees.take(6).forEach { (name, list) ->
-            Row(
-                Modifier.fillMaxWidth().clip(TileShape).clickable { pick(list.first()) }.padding(vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text(name, style = MaterialTheme.typography.bodyLarge, color = c.ink, maxLines = 1)
-                    Faint("${list.size} payment${if (list.size == 1) "" else "s"}  ·  ${rupees(list.sumOf { it.amount })}")
-                }
-                Text("Choose  ▾", style = MaterialTheme.typography.labelLarge, color = c.ink,
-                    modifier = Modifier.border(1.dp, c.border).padding(horizontal = 10.dp, vertical = 6.dp))
-            }
+        SectionTitle("Smart sorting")
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "FinTrack sorted ${learned + brands + small} of ${spends.size} payments by itself",
+            style = MaterialTheme.typography.titleMedium, color = c.ink,
+        )
+        Spacer(Modifier.height(10.dp))
+        SortLine("✦ Learned from your choices", learned)
+        SortLine("Known shops and brands", brands)
+        SortLine("Small daily spends (₹500 or less)", small)
+        SortLine("Sorted by you", byYou)
+        SortLine("Need a category", needsYou, highlight = needsYou > 0)
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            PopChip("Check what it sorted", selected = false) { show(TxnFilter.Auto) }
+            if (needsYou > 0) PopChip("Sort $needsYou now", selected = true) { show(TxnFilter.Unsorted) }
         }
-        if (payees.size > 6) Faint("+ ${payees.size - 6} more. They'll show here as you sort these.")
+        vm.learning?.accuracy?.let {
+            Spacer(Modifier.height(8.dp))
+            Faint("When tested on payments you sorted yourself, it picks your category ${"%.0f".format(it * 100)}% of the time.")
+        }
+    }
+}
+
+@Composable
+private fun SortLine(label: String, count: Int, highlight: Boolean = false) {
+    val c = Fin.colors
+    Row(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = if (highlight) c.ink else c.inkSoft, modifier = Modifier.weight(1f))
+        Text("$count", style = MaterialTheme.typography.bodyMedium.merge(MoneyStyle), color = if (highlight) c.loss else c.ink)
     }
 }
 
@@ -166,7 +164,7 @@ private fun WhereItWent(s: MonthSummary, openCategory: (String) -> Unit, openFlo
             Faint("Nothing has gone out this month yet.")
             return@Tile
         }
-        Faint("Adds up to your money out, ${rupees(s.moneyOut)}. Tap a line to see its payments.")
+        Faint("Tap a category to see its payments")
         val top = lines.first().amount
         lines.forEach { l ->
             Column(Modifier.fillMaxWidth().clip(TileShape).clickable(onClick = l.open).padding(vertical = 10.dp)) {

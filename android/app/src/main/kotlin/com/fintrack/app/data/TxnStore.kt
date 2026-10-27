@@ -15,7 +15,7 @@ import java.time.LocalDate
 import java.time.YearMonth
 
 /** On-device SQLite storage. One database file per signed-in account. */
-class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbName, null, 3) {
+class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbName, null, 4) {
 
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
@@ -47,6 +47,8 @@ class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbN
     private fun createV3Tables(db: SQLiteDatabase) {
         db.execSQL("CREATE TABLE IF NOT EXISTS payee_flow (payee TEXT PRIMARY KEY, flow TEXT NOT NULL)")
         db.execSQL("CREATE TABLE IF NOT EXISTS review_done (key TEXT PRIMARY KEY)")
+        // v4: messages and statement rows the user deleted, so a rescan doesn't bring them back.
+        db.execSQL("CREATE TABLE IF NOT EXISTS deleted (hash TEXT PRIMARY KEY)")
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -60,10 +62,12 @@ class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbN
             db.execSQL("ALTER TABLE transactions ADD COLUMN user_flow TEXT")
             createV3Tables(db)
         }
+        if (oldVersion < 4) createV3Tables(db)
     }
 
     /** Returns the new row id, or null if this transaction is already stored. */
     fun insert(p: ParsedTxn, category: String, catSource: String, source: String, raw: String): Long? {
+        if (wasDeleted(p.smsHash)) return null
         val values = ContentValues().apply {
             put("sms_hash", p.smsHash)
             put("txn_date", p.date.toString())
@@ -146,6 +150,7 @@ class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbN
 
     /** Adds a statement row; false if this exact row was imported before. */
     fun insertStatementRow(row: StatementRow, category: String, catSource: String): Boolean {
+        if (wasDeleted(row.key)) return false
         val values = ContentValues().apply {
             put("sms_hash", row.key)
             put("txn_date", row.date.toString())
@@ -228,9 +233,15 @@ class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbN
         writableDatabase.execSQL("UPDATE transactions SET category=?, cat_source=? WHERE id=?", arrayOf(category, catSource, id))
     }
 
+    /** Deletes a transaction for good: its SMS or statement row is remembered and never re-added. */
     fun delete(id: Long) {
-        writableDatabase.delete("transactions", "id=?", arrayOf(id.toString()))
+        val db = writableDatabase
+        db.execSQL("INSERT OR IGNORE INTO deleted (hash) SELECT sms_hash FROM transactions WHERE id=? AND sms_hash IS NOT NULL", arrayOf(id))
+        db.delete("transactions", "id=?", arrayOf(id.toString()))
     }
+
+    private fun wasDeleted(hash: String) =
+        readableDatabase.rawQuery("SELECT 1 FROM deleted WHERE hash=?", arrayOf(hash)).use { it.moveToFirst() }
 
     fun getMeta(key: String): String? = readableDatabase.rawQuery("SELECT value FROM meta WHERE key=?", arrayOf(key))
         .use { c -> if (c.moveToFirst()) c.getString(0) else null }

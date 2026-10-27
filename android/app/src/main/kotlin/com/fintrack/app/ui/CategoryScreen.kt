@@ -60,7 +60,7 @@ fun CategoryScreen(vm: FinTrackViewModel, category: String, onBack: () -> Unit) 
         .sortedByDescending { it.amount }
     val perDay = inCat.groupBy { it.date }.mapValues { (_, v) -> v.sumOf { it.spendValue }.coerceAtLeast(0.0) }
     val days = (1..m.lengthOfMonth()).map { m.atDay(it) to (perDay[m.atDay(it)] ?: 0.0) }
-    var open by remember { mutableStateOf<Txn?>(null) }
+    var open by remember { mutableStateOf<Opened?>(null) }
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = ScreenPadding, verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
@@ -152,11 +152,11 @@ fun CategoryScreen(vm: FinTrackViewModel, category: String, onBack: () -> Unit) 
                     Faint("No $category spending in ${m.name()}.", Modifier.padding(12.dp))
                 }
                 inCat.forEachIndexed { i, t ->
-                    TxnRow(t) { open = t }
+                    TxnRow(t) { open = it }
                     if (i < inCat.lastIndex) HorizontalDivider(Modifier.padding(start = 66.dp, end = 12.dp), color = c.track)
                 }
             }
         }
     }
-    open?.let { t -> TxnSheet(t, vm) { open = null } }
+    open?.let { o -> TxnSheet(o, vm) { open = null } }
 }

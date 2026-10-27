@@ -19,7 +19,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
@@ -95,30 +98,39 @@ private fun isCurrent(t: Txn, choice: Choice) = when (choice) {
     is Choice.Kind -> t.effectiveFlow == choice.flow
 }
 
-/** A transaction in a list: name, what it is, amount. Tap to change what it is. */
+/** Which part of the transaction panel is open. */
+enum class SheetMode { Category, Edit, Delete }
+
+/** A transaction the user opened, and on which part. */
+data class Opened(val txn: Txn, val mode: SheetMode)
+
+/**
+ * A transaction in a list: name, its category (tap to change), amount, and ⋮ for edit/delete.
+ * Everything that can be done to it is reachable from what's on screen.
+ */
 @Composable
-internal fun TxnRow(t: Txn, onClick: () -> Unit) {
+internal fun TxnRow(t: Txn, onOpen: (Opened) -> Unit) {
     val c = Fin.colors
     val counted = t.effectiveFlow.counted
     Row(
-        Modifier.fillMaxWidth().clip(TileShape).clickable(onClick = onClick).padding(horizontal = 10.dp, vertical = 12.dp),
+        Modifier.fillMaxWidth().clip(TileShape).clickable { onOpen(Opened(t, SheetMode.Category)) }
+            .padding(start = 10.dp, top = 10.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Avatar(t.merchant)
-        Spacer(Modifier.width(14.dp))
+        Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(t.merchant, style = MaterialTheme.typography.bodyLarge, color = if (counted) c.ink else c.inkSoft,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                WhatTag(t)
-                val extra = listOfNotNull("cash".takeIf { t.source == "manual" }, "statement".takeIf { t.source == "statement" })
-                if (extra.isNotEmpty()) {
+                WhatTag(t) { onOpen(Opened(t, SheetMode.Category)) }
+                if (t.source == "manual") {
                     Spacer(Modifier.width(8.dp))
-                    Faint(extra.joinToString(" · "), maxLines = 1)
+                    Faint("cash", maxLines = 1)
                 }
             }
         }
-        Spacer(Modifier.width(10.dp))
+        Spacer(Modifier.width(8.dp))
         val credit = t.direction == Direction.CREDIT
         Text(
             (if (credit) "+" else "−") + rupees(t.amount),
@@ -130,16 +142,20 @@ internal fun TxnRow(t: Txn, onClick: () -> Unit) {
             },
             textDecoration = if (counted) null else TextDecoration.LineThrough,
         )
+        Box(
+            Modifier.size(44.dp).clip(CircleShape).clickable { onOpen(Opened(t, SheetMode.Edit)) },
+            contentAlignment = Alignment.Center,
+        ) { Icon(Icons.Filled.MoreVert, "Edit or delete", tint = c.inkSoft, modifier = Modifier.size(20.dp)) }
     }
 }
 
-/** The small label under a transaction's name: its category or kind; ✦ when FinTrack chose it. */
+/** The category under a transaction's name, as a button: ✦ when FinTrack chose it, ▾ to change it. */
 @Composable
-private fun WhatTag(t: Txn) {
+private fun WhatTag(t: Txn, onClick: () -> Unit) {
     val c = Fin.colors
     val spend = t.effectiveFlow == Flow.SPEND
     Row(
-        Modifier.border(1.dp, c.border).padding(horizontal = 8.dp, vertical = 3.dp),
+        Modifier.clip(TileShape).border(1.dp, c.border).clickable(onClick = onClick).padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (spend) {
@@ -148,20 +164,22 @@ private fun WhatTag(t: Txn) {
         }
         Text(
             labelOf(t) + (if (spend && CategorySource.isAutomatic(t.categorySource)) " ✦" else "") +
-                (if (t.effectiveFlow.counted) "" else " · not counted"),
-            style = MaterialTheme.typography.labelMedium, color = c.inkSoft, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                (if (t.effectiveFlow.counted) "" else " · not counted") + "  ▾",
+            style = MaterialTheme.typography.labelMedium, color = c.ink, maxLines = 1, overflow = TextOverflow.Ellipsis,
         )
     }
 }
 
 /**
- * The one place to change a transaction: "What is this?" (one tap, remembered for the payee),
- * plus fixing the amount or name, and delete.
+ * The transaction panel: three clear buttons, Category · Edit · Delete, and the part that's open.
+ * Category is one tap and remembered for the payee; Edit changes amount, name, date, in/out;
+ * Delete asks once and the transaction never comes back from a rescan.
  */
 @Composable
-fun TxnSheet(t: Txn, vm: FinTrackViewModel, onDismiss: () -> Unit) {
+fun TxnSheet(opened: Opened, vm: FinTrackViewModel, onDismiss: () -> Unit) {
+    val t = opened.txn
     val c = Fin.colors
-    var editing by remember { mutableStateOf(false) }
+    var mode by remember { mutableStateOf(opened.mode) }
     var name by remember { mutableStateOf(t.merchant) }
     var amountText by remember { mutableStateOf(if (t.amount % 1.0 == 0.0) t.amount.toLong().toString() else t.amount.toString()) }
     var date by remember { mutableStateOf(t.date) }
@@ -177,8 +195,7 @@ fun TxnSheet(t: Txn, vm: FinTrackViewModel, onDismiss: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(t.merchant, style = MaterialTheme.typography.titleLarge, color = c.ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    Faint(t.date.long() + (t.account?.let { "  ·  A/c ••$it" } ?: "") + "  ·  " +
-                        if (t.source == "manual") "added by you" else if (t.source == "statement") "statement" else "SMS")
+                    Faint("${t.date.long()}  ·  now: ${labelOf(t)}")
                 }
                 Text(
                     (if (t.direction == Direction.CREDIT) "+" else "−") + rupees(t.amount),
@@ -186,52 +203,81 @@ fun TxnSheet(t: Txn, vm: FinTrackViewModel, onDismiss: () -> Unit) {
                     color = if (t.direction == Direction.CREDIT) c.gain else c.ink,
                 )
             }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ModeTab("Category", mode == SheetMode.Category, Modifier.weight(1f)) { mode = SheetMode.Category }
+                ModeTab("Edit", mode == SheetMode.Edit, Modifier.weight(1f)) { mode = SheetMode.Edit }
+                ModeTab("Delete", mode == SheetMode.Delete, Modifier.weight(1f), danger = true) { mode = SheetMode.Delete }
+            }
 
-            if (editing) {
-                Text("EDIT", style = CapsLabel, color = c.inkSoft)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    PopChip("Money out", direction == Direction.DEBIT) { direction = Direction.DEBIT }
-                    PopChip("Money in", direction == Direction.CREDIT) { direction = Direction.CREDIT }
+            when (mode) {
+                SheetMode.Category -> {
+                    Text(if (t.direction == Direction.DEBIT) "WHAT WAS THIS FOR?" else "WHAT IS THIS MONEY?", style = CapsLabel, color = c.inkSoft)
+                    ChoiceChips(t.direction, selected = { isCurrent(t, it) }) { vm.classify(t, it); onDismiss() }
+                    Faint(
+                        if (t.merchant == "Unknown") "Applies to this payment."
+                        else "FinTrack remembers this for ${t.merchant}" +
+                            if (t.direction == Direction.DEBIT && t.amount >= PayeeMemory.MIN_PATTERN_AMOUNT) {
+                                " and for ${rupees(t.amount)} paid around the ${ordinal(t.date.dayOfMonth)} in later months."
+                            } else ".",
+                    )
+                    why?.let { Faint("✦ Why it's ${labelOf(t)} now: $it") }
                 }
-                PopTextField(name, { name = it }, "Name")
-                PopTextField(amountText, { v -> amountText = v.filter { it.isDigit() || it == '.' }.take(12) }, "Amount (₹)",
-                    keyboardType = KeyboardType.Decimal)
-                PopChip("Date: ${date.long()}  ▾", selected = false) {
-                    DatePickerDialog(context, { _, y, m, d -> date = LocalDate.of(y, m + 1, d) },
-                        date.year, date.monthValue - 1, date.dayOfMonth).show()
-                }
-                val amount = amountText.toDoubleOrNull()
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                SheetMode.Edit -> {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        PopChip("Money out", direction == Direction.DEBIT) { direction = Direction.DEBIT }
+                        PopChip("Money in", direction == Direction.CREDIT) { direction = Direction.CREDIT }
+                    }
+                    PopTextField(name, { name = it }, "Name")
+                    PopTextField(amountText, { v -> amountText = v.filter { it.isDigit() || it == '.' }.take(12) }, "Amount (₹)",
+                        keyboardType = KeyboardType.Decimal)
+                    PopChip("Date: ${date.long()}  ▾", selected = false) {
+                        DatePickerDialog(context, { _, y, m, d -> date = LocalDate.of(y, m + 1, d) },
+                            date.year, date.monthValue - 1, date.dayOfMonth).show()
+                    }
+                    val amount = amountText.toDoubleOrNull()
                     PopButton("Save changes", onClick = {
                         vm.editDetails(t, name, amount!!, date, direction)
                         onDismiss()
-                    }, Modifier.weight(1f), enabled = amount != null && amount > 0)
-                    PopOutlineButton("Cancel", { editing = false }, Modifier.weight(1f))
+                    }, Modifier.fillMaxWidth(), enabled = amount != null && amount > 0)
+                    t.raw?.let {
+                        Text("ORIGINAL MESSAGE", style = CapsLabel, color = c.inkSoft)
+                        Text(it, style = MaterialTheme.typography.bodySmall, color = c.inkFaint,
+                            modifier = Modifier.fillMaxWidth().border(1.dp, c.border).padding(14.dp))
+                    }
                 }
-                return@Column
-            }
-            PopOutlineButton("✎  Edit amount, name, date", { editing = true }, Modifier.fillMaxWidth())
-
-            Text("WHAT IS THIS?", style = CapsLabel, color = c.inkSoft)
-            ChoiceChips(t.direction, selected = { isCurrent(t, it) }) { vm.classify(t, it); onDismiss() }
-            Faint(
-                if (t.merchant == "Unknown") "Applies to this payment."
-                else "FinTrack remembers this for ${t.merchant}" +
-                    if (t.direction == Direction.DEBIT && t.amount >= PayeeMemory.MIN_PATTERN_AMOUNT) {
-                        " and for ${rupees(t.amount)} paid around the ${ordinal(t.date.dayOfMonth)} in later months."
-                    } else ".",
-            )
-            why?.let { Faint("Why it's ${labelOf(t)} now: $it") }
-
-            t.raw?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall, color = c.inkFaint,
-                    modifier = Modifier.fillMaxWidth().border(1.dp, c.border).padding(14.dp))
-            }
-            TextButton(onClick = { vm.delete(t); onDismiss() }, modifier = Modifier.fillMaxWidth()) {
-                Text("Delete transaction", color = c.loss)
+                SheetMode.Delete -> {
+                    Text("Delete this transaction?", style = MaterialTheme.typography.titleMedium, color = c.ink)
+                    Faint(
+                        "It disappears from your totals and lists" +
+                            (if (t.source == "manual") "." else ", and won't come back when FinTrack reads your messages or statements again.") +
+                            " To keep it but leave it out of totals, choose Category → Don't count instead.",
+                    )
+                    TextButton(
+                        onClick = { vm.delete(t); onDismiss() },
+                        modifier = Modifier.fillMaxWidth().border(1.dp, c.loss),
+                    ) { Text("Delete ${rupees(t.amount)} · ${t.merchant}", color = c.loss, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                }
             }
         }
     }
+}
+
+@Composable
+private fun ModeTab(text: String, selected: Boolean, modifier: Modifier, danger: Boolean = false, onClick: () -> Unit) {
+    val c = Fin.colors
+    val fg = when {
+        selected -> androidx.compose.ui.graphics.Color.Black
+        danger -> c.loss
+        else -> c.ink
+    }
+    Box(
+        modifier.clip(TileShape)
+            .background(if (selected) (if (danger) c.loss else androidx.compose.ui.graphics.Color.White) else androidx.compose.ui.graphics.Color.Transparent)
+            .border(1.dp, if (danger) c.loss else c.border)
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp),
+        contentAlignment = Alignment.Center,
+    ) { Text(text, style = MaterialTheme.typography.labelLarge, color = fg) }
 }
 
 /** The "What is this?" options for money going out or coming in. */

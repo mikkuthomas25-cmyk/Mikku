@@ -16,8 +16,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -39,8 +38,7 @@ import androidx.compose.ui.unit.dp
 private val NAV = listOf(
     NavItem("Home", Icons.Filled.Home),
     NavItem("Transactions", Icons.AutoMirrored.Filled.List),
-    NavItem("Insights", Icons.Filled.Star),
-    NavItem("Profile", Icons.Filled.Person),
+    NavItem("Settings", Icons.Filled.Settings),
 )
 
 /** Content padding shared by every tab: room for the status bar on top, the floating nav below. */
@@ -51,9 +49,12 @@ fun MainScreen(vm: FinTrackViewModel, startTab: Int = 0) {
     var tab by rememberSaveable { mutableIntStateOf(startTab) }
     // Category drill-down (e.g. Food) shown over the current tab.
     var category by rememberSaveable { mutableStateOf<String?>(null) }
+    // Charts and checks, opened from Settings.
+    var insights by rememberSaveable { mutableStateOf(false) }
     val openCategory: (String) -> Unit = { category = it }
     // Back from any tab returns Home before leaving the app.
-    BackHandler(enabled = tab != 0 && category == null) { tab = 0 }
+    BackHandler(enabled = insights && category == null) { insights = false }
+    BackHandler(enabled = tab != 0 && category == null && !insights) { tab = 0 }
 
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(vm.message) {
@@ -67,17 +68,17 @@ fun MainScreen(vm: FinTrackViewModel, startTab: Int = 0) {
 
     AppBackground {
         AnimatedContent(
-            targetState = tab to category,
+            targetState = Triple(tab, category, insights),
             transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(150)) },
             label = "tab",
             modifier = Modifier.fillMaxSize().statusBarsPadding(),
-        ) { (t, cat) ->
+        ) { (t, cat, ins) ->
             when {
                 cat != null -> CategoryScreen(vm, cat, onBack = { category = null })
-                t == 0 -> HomeScreen(vm, openActivity = { tab = 1 }, openProfile = { tab = 3 }, openCategory = openCategory)
+                ins -> InsightsScreen(vm, openCategory, openActivity = { insights = false; tab = 1 }, onBack = { insights = false })
+                t == 0 -> HomeScreen(vm, openActivity = { tab = 1 }, openProfile = { tab = 2 }, openCategory = openCategory)
                 t == 1 -> ActivityScreen(vm)
-                t == 2 -> InsightsScreen(vm, openCategory, openActivity = { tab = 1 })
-                else -> ProfileScreen(vm)
+                else -> ProfileScreen(vm, openInsights = { insights = true })
             }
         }
         if (vm.busy) {
@@ -88,7 +89,7 @@ fun MainScreen(vm: FinTrackViewModel, startTab: Int = 0) {
         }
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 88.dp))
         PopNavBar(
-            NAV, tab, { category = null; tab = it },
+            NAV, tab, { category = null; insights = false; tab = it },
             Modifier.align(Alignment.BottomCenter),
         )
     }

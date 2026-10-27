@@ -37,7 +37,7 @@ import com.fintrack.app.BuildConfig
 import com.fintrack.app.sms.PermissionHelper
 
 @Composable
-fun ProfileScreen(vm: FinTrackViewModel) {
+fun ProfileScreen(vm: FinTrackViewModel, openInsights: () -> Unit) {
     val c = Fin.colors
     var showMissed by remember { mutableStateOf(false) }
     if (showMissed) MissedSheet(vm) { showMissed = false }
@@ -51,7 +51,7 @@ fun ProfileScreen(vm: FinTrackViewModel) {
         }
     }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = ScreenPadding, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        item { Text("Profile", style = MaterialTheme.typography.headlineMedium, color = c.ink) }
+        item { Text("Settings", style = MaterialTheme.typography.headlineMedium, color = c.ink) }
         item {
             Tile(Modifier.fillMaxWidth()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -79,6 +79,10 @@ fun ProfileScreen(vm: FinTrackViewModel) {
                         "Turn on so Xiaomi doesn't stop FinTrack catching SMS in the background",
                     ) { PermissionHelper.openAutostartSettings(context) }
                 }
+                SettingRow(
+                    "Charts and checks",
+                    "Spending pace, daily spending, trends, unusual spends, bank balance check",
+                ) { openInsights() }
                 SettingRow(
                     "Import bank statements",
                     "Add PDFs or CSVs (several at once) to fill gaps like small UPI payments and check the balance",

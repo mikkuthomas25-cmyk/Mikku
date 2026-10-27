@@ -120,6 +120,18 @@ How the type is decided, strongest evidence first:
 4. **The flow model:** a second on-device Naive Bayes model learns types from your answers. It only acts when confident, and never guesses own transfers or duplicates.
 5. **Questions instead of guesses:** uncertain duplicates, the same amount leaving and arriving when one SMS doesn't name its account ("moved between your own accounts?"), and payees you pay often via personal UPI IDs ("shop or person?") appear in **Needs your input** on Home. One tap answers, fixes the totals and teaches the model.
 
+**Every transaction shows what can be done to it.** Tap its category label to change it; tap ⋮ for
+the panel with three buttons, **Category · Edit · Delete**. Edit changes the amount, name, date or
+money in/out. Delete asks once; a deleted SMS or statement row never comes back on a rescan.
+
+**Smart sorting (Home)** shows what the learning did this month: how many payments FinTrack sorted
+by itself (✦ learned from your choices, known shops and brands, small daily spends), how many you
+sorted, and how many still need a category, each opening that list, plus the model's measured
+accuracy on your own choices.
+
+The app has three tabs: **Home · Transactions · Settings**. Charts and checks (pace, daily spending,
+trends, unusual spends, bank balance check) are under Settings.
+
 **One question per transaction: "What is this?"** Tap any transaction (or add one with **+**) and
 pick from one list: a category (Food, Rent, Bills…) or what kind of money it is (*Gave to a person ·
 Investment / savings · My own account · Duplicate · Don't count*; for money in: *Salary / income ·
@@ -216,7 +228,7 @@ Jetpack Compose (`app/ui/Pop.kt`); no CRED code or brand assets are used. It has
 - bold uppercase captions and heavy numbers;
 - white primary buttons and one violet accent for the screen's key tile;
 - **plunk** buttons and tiles with hard 3D edges that press flat when tapped;
-- a full-width bottom bar with four destinations (Home, Transactions, Insights, Profile);
+- a full-width bottom bar with three destinations (Home, Transactions, Settings);
 - always dark, with light system-bar icons.
 
 Category colours are fixed and checked for colour-blind separation on the dark surface.

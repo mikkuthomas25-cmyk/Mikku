@@ -55,6 +55,10 @@ sealed interface TxnFilter {
     data class Category(val name: String) : TxnFilter
     data class Merchant(val name: String) : TxnFilter
     data class OfFlow(val flow: Flow) : TxnFilter
+    /** Spends FinTrack categorized by itself (learned from the user, or the built-in list). */
+    data object Auto : TxnFilter
+    /** Spends still in "Other". */
+    data object Unsorted : TxnFilter
 }
 
 class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
@@ -106,6 +110,8 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
                     is TxnFilter.Category -> t.category == f.name && t.spendValue != 0.0
                     is TxnFilter.Merchant -> t.merchant == f.name && t.effectiveFlow == Flow.SPEND
                     is TxnFilter.OfFlow -> t.effectiveFlow == f.flow
+                    TxnFilter.Auto -> t.effectiveFlow == Flow.SPEND && sortedByItself(t)
+                    TxnFilter.Unsorted -> t.effectiveFlow == Flow.SPEND && t.category == "Other"
                 }
                 val byKind = when (kind) {
                     Kind.All -> true
@@ -115,6 +121,10 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
                 byFilter && byKind && (q.isEmpty() || q in t.merchant.lowercase() || q in t.category.lowercase())
             }
         }
+
+    /** Categorized without the user: learned from their choices, the built-in brand list, or small daily spends. */
+    fun sortedByItself(t: Txn) = t.category != "Other" &&
+        (CategorySource.isAutomatic(t.categorySource) || t.categorySource == CategorySource.KEYWORD)
 
     init {
         when {
