@@ -409,7 +409,7 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
                 val keyword = Categorizer.keywordCategory(t.merchant, t.direction, Categorizer.contextOf(t))
                 val known = keyword != "Other" && keyword != "Income"
                 val guess = if (known) null else learner.suggest(t)
-                val category = guess?.category ?: keyword
+                val category = guess?.category ?: Categorizer.withSmallSpends(keyword, t.direction, t.amount)
                 val source = if (guess != null) CategorySource.LEARNED else CategorySource.KEYWORD
                 if (category != t.category || source != t.categorySource) s.setLearned(t.id, category, source)
             }

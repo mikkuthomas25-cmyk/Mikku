@@ -4,7 +4,7 @@ object Categorizer {
     val CATEGORIES = listOf(
         "Food & Dining", "Groceries", "Shopping", "Transport", "Fuel",
         "Bills & Utilities", "Rent", "Entertainment", "Health", "Education",
-        "Travel", "Cash Withdrawal", "Investments", "Transfers", "Self Transfer", "Income", "Other",
+        "Travel", "Cash Withdrawal", "Investments", "Transfers", "Self Transfer", "Income", "Daily small spends", "Other",
     )
 
     /**
@@ -57,6 +57,17 @@ object Categorizer {
         }
         return if (direction == Direction.CREDIT) "Income" else "Other"
     }
+
+    /**
+     * Unknown payees under this amount (tea, snacks, the local shop over UPI) go to [SMALL] instead
+     * of "Other", so nobody has to sort dozens of tiny payments by hand. Bigger unknowns stay "Other".
+     */
+    const val SMALL_LIMIT = 500.0
+    const val SMALL = "Daily small spends"
+
+    /** [category] as found by the brand list and the model; replaces a small unknown debit's "Other" with [SMALL]. */
+    fun withSmallSpends(category: String, direction: Direction, amount: Double): String =
+        if (category == "Other" && direction == Direction.DEBIT && amount <= SMALL_LIMIT) SMALL else category
 
     /** Statement narrations are worth searching; SMS bodies aren't ("spent on your credit card" isn't a card bill). */
     fun contextOf(t: Txn): String? = t.raw.takeIf { t.source == "statement" }

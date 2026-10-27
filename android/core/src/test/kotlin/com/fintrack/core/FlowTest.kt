@@ -253,4 +253,12 @@ class FlowTest {
         assertEquals("Investments", Categorizer.keywordCategory("Investment Chitty", Direction.DEBIT))
         assertEquals("Investments", Categorizer.keywordCategory("INDstocks", Direction.DEBIT))
     }
+
+    @Test fun smallUnknownPaymentsAreDailySpendsNotOther() {
+        assertEquals("Daily small spends", Categorizer.withSmallSpends("Other", Direction.DEBIT, 60.0))
+        assertEquals("Other", Categorizer.withSmallSpends("Other", Direction.DEBIT, 3200.0))
+        assertEquals("Groceries", Categorizer.withSmallSpends("Groceries", Direction.DEBIT, 60.0))
+        val auto = t(5, 60.0, merchant = "Shalini", category = "Daily small spends").copy(categorySource = CategorySource.KEYWORD)
+        assertTrue(!CategoryLearner.isTrusted(auto) && CategoryLearner.isLearnable(auto))
+    }
 }

@@ -160,7 +160,7 @@ private fun SortOtherCard(unsorted: List<Txn>, pick: (Txn) -> Unit) {
     Tile(Modifier.fillMaxWidth()) {
         SectionTitle("Sort ${rupees(unsorted.sumOf { it.amount })} in Other")
         Spacer(Modifier.height(4.dp))
-        Faint("Tap what each one is. FinTrack remembers the payee and learns similar ones.")
+        Faint("Optional: your totals are already right. One tap per payee sharpens the breakdown, and FinTrack remembers it for good.")
         payees.take(6).forEach { (name, list) ->
             Row(
                 Modifier.fillMaxWidth().clip(TileShape).clickable { pick(list.first()) }.padding(vertical = 10.dp),

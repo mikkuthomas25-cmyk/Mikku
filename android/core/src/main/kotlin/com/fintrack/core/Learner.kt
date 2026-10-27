@@ -144,7 +144,8 @@ class CategoryLearner(labelled: List<Txn>) {
          */
         fun isTrusted(t: Txn) = when (t.categorySource) {
             CategorySource.USER, CategorySource.RULE -> t.category != "Other"
-            CategorySource.KEYWORD -> t.category != "Other" && !(t.category == "Income" && t.direction == Direction.CREDIT)
+            CategorySource.KEYWORD -> t.category != "Other" && t.category != Categorizer.SMALL &&
+                !(t.category == "Income" && t.direction == Direction.CREDIT)
             else -> false
         }
 

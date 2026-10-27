@@ -82,6 +82,8 @@ Categories are learned on the phone. Nothing is sent anywhere, and no API key is
 - **Who wins:** your "always use this for X" rules → the built-in brand list → the model
   (only when it's at least 60% sure *and* the name looks like something it learned) → Other.
   Learned categories show a ✦ in Activity.
+- **Daily small spends:** unknown payees of ₹500 or less (tea, snacks, the local shop over UPI) go here
+  automatically instead of "Other". The model can still learn better categories for them.
 - **Sort "Other" on Home:** payments FinTrack couldn't place are grouped by payee, biggest first; one tap
   per payee sorts all of them.
 - **Changing a category is one tap:** every spend shows its category as a label (Home, Activity, category
