@@ -336,4 +336,19 @@ class FlowTest {
         assertEquals(s.moneyOut, txns.sumOf { it.outValue })
         assertEquals(50000.0 - 7300.0, s.net)
     }
+
+    @Test fun accountsAreFoundAndAFriendsAccountCanBeLeftOut() {
+        val sbi = t(1, 500.0, account = "4321", raw = "Rs 500 debited from A/c XX4321 -SBI")
+        val sbiNoNumber = t(2, 200.0, account = null, raw = "Dear SBI User, Rs 200 debited via UPI")
+        val iob = t(3, 9000.0, Direction.CREDIT, account = "7788", raw = "IOB: A/c XX7788 credited Rs 9000. Avl Bal Rs 12,000")
+        val slice = t(4, 1000.0, Direction.CREDIT, account = null, raw = "Rs 1000 received in your slice account")
+        val cash = t(5, 50.0, account = null, raw = null, source = "manual")
+        val all = listOf(sbi, sbiNoNumber, iob, slice, cash)
+        val list = Accounts.list(all)
+        assertEquals(listOf("SBI ••4321", "IOB ••7788", "Slice"), list.map { it.label })
+        assertEquals(2, list.first().count)
+        assertEquals(12000.0, list.first { it.bank == "IOB" }.balance)
+        val kept = Accounts.tracked(all, untracked = setOf("acct:7788"))
+        assertEquals(listOf(sbi, sbiNoNumber, slice, cash).map { it.id }, kept.map { it.id })
+    }
 }

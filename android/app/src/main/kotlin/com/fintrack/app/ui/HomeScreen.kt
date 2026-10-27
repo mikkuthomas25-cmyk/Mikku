@@ -47,6 +47,7 @@ import kotlin.math.abs
 fun HomeScreen(vm: FinTrackViewModel, openActivity: () -> Unit, openProfile: () -> Unit, openCategory: (String) -> Unit) {
     val s = vm.summary
     var open by remember { mutableStateOf<Opened?>(null) }
+    var choosingAccounts by remember { mutableStateOf(false) }
     val show: (Kind, TxnFilter?) -> Unit = { k, f -> vm.kind = k; vm.filter = f; openActivity() }
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -58,6 +59,7 @@ fun HomeScreen(vm: FinTrackViewModel, openActivity: () -> Unit, openProfile: () 
             MonthSwitcher(vm.month.label(), vm.month < YearMonth.now(), { vm.changeMonth(-1) }, { vm.changeMonth(1) })
         }
         if (!vm.hasSmsPermission) item { PermissionHero(vm) }
+        if (!vm.accountsChosen) item { AccountsPrompt(vm) { choosingAccounts = true } }
         if (s == null) return@LazyColumn
 
         item { MonthHero(s, show) }
@@ -66,6 +68,7 @@ fun HomeScreen(vm: FinTrackViewModel, openActivity: () -> Unit, openProfile: () 
         item { SmartSortingCard(vm) { f -> show(Kind.All, f) } }
     }
     open?.let { o -> TxnSheet(o, vm) { open = null } }
+    if (choosingAccounts) AccountsSheet(vm) { choosingAccounts = false }
 }
 
 /**

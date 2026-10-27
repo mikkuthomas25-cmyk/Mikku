@@ -19,6 +19,7 @@ import com.fintrack.core.Categorizer
 import com.fintrack.core.CategoryLearner
 import com.fintrack.core.CategorySource
 import com.fintrack.core.AccountCheck
+import com.fintrack.core.Accounts
 import com.fintrack.core.Diagnostics
 import com.fintrack.core.Direction
 import com.fintrack.core.Flow
@@ -97,6 +98,11 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
     var importReports by mutableStateOf<List<ImportReport>>(emptyList()); private set
     var importing by mutableStateOf(false); private set
     var passwordFor by mutableStateOf<PasswordAsk?>(null); private set
+    /** Accounts found in the messages, and the ones the user chose not to track (e.g. a friend's). */
+    var accounts by mutableStateOf<List<Accounts.Info>>(emptyList()); private set
+    var untracked by mutableStateOf<Set<String>>(emptySet()); private set
+    /** False until the user has said which accounts to track (asked once there are two or more). */
+    var accountsChosen by mutableStateOf(true); private set
     /** Bank-looking SMS the parser couldn't read; null until loaded. */
     var missed by mutableStateOf<List<MissedSms>?>(null); private set
 
@@ -228,15 +234,26 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
         val s = store ?: return
         viewModelScope.launch {
             val m = month
+            var found = emptyList<Accounts.Info>()
+            var skip = emptySet<String>()
+            var chosen = true
             val (all, analysis) = withContext(Dispatchers.IO) {
                 // A few days past month-end so a transfer or duplicate straddling it is still paired.
-                val raw = s.range(m.minusMonths(HISTORY_MONTHS).atDay(1), m.atEndOfMonth().plusDays(3))
+                val everything = s.range(m.minusMonths(HISTORY_MONTHS).atDay(1), m.atEndOfMonth().plusDays(3))
+                skip = s.getMeta(UNTRACKED)?.split(",")?.filter { it.isNotBlank() }?.toSet().orEmpty()
+                found = Accounts.list(everything)
+                chosen = s.getMeta(ACCOUNTS_CHOSEN) != null || found.size < 2
+                // Only the accounts the user tracks: a friend's account on this phone isn't their money.
+                val raw = Accounts.tracked(everything, skip)
                 val a = FlowAnalyzer.analyze(raw, s.userFlows(), s.payeeFlows(), s.reviewDone())
                 raw.map { t ->
                     val d = a.decisions[t.id]
                     t.copy(flow = d?.flow ?: Flow.basic(t), category = d?.category ?: t.category)
                 }.filter { it.date <= m.atEndOfMonth() } to a
             }
+            accounts = found
+            untracked = skip
+            accountsChosen = chosen
             // Late-month salary counts toward the month it pays for (see Salary).
             val salary = Salary.ids(all)
             val current = all.filter { Salary.monthOf(it, salary) == m }
@@ -246,6 +263,19 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
             review = analysis.review
             accountChecks = Reconciliation.byAccount(all)
             summary = Summaries.build(m, current, all.filter { Salary.monthOf(it, salary) == m.minusMonths(1) })
+        }
+    }
+
+    /** Saves which accounts to leave out; everything is recalculated from the tracked ones. */
+    fun chooseAccounts(skip: Set<String>) {
+        val s = store ?: return
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                s.setMeta(UNTRACKED, skip.joinToString(","))
+                s.setMeta(ACCOUNTS_CHOSEN, "1")
+            }
+            message = if (skip.isEmpty()) "Tracking all accounts" else "Left out ${skip.size} account${if (skip.size == 1) "" else "s"}"
+            refresh()
         }
     }
 
@@ -476,6 +506,8 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
 
     companion object {
         const val HISTORY_MONTHS = 6L
+        private const val UNTRACKED = "untracked_accounts"
+        private const val ACCOUNTS_CHOSEN = "accounts_chosen"
         /** Flows that make sense as a standing answer for a payee. */
         val PAYEE_FLOWS = setOf(Flow.SPEND, Flow.TO_PEOPLE, Flow.FROM_PEOPLE, Flow.INVESTED, Flow.INCOME, Flow.OWN_TRANSFER)
     }

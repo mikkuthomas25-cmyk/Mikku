@@ -42,6 +42,8 @@ fun ProfileScreen(vm: FinTrackViewModel, openInsights: () -> Unit) {
     var showMissed by remember { mutableStateOf(false) }
     if (showMissed) MissedSheet(vm) { showMissed = false }
     var showImport by remember { mutableStateOf(false) }
+    var showAccounts by remember { mutableStateOf(false) }
+    if (showAccounts) AccountsSheet(vm) { showAccounts = false }
     if (showImport) ImportSheet(vm) { showImport = false }
     vm.passwordFor?.let { PasswordDialog(it, vm) }
     val pickStatements = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
@@ -79,6 +81,11 @@ fun ProfileScreen(vm: FinTrackViewModel, openInsights: () -> Unit) {
                         "Turn on so Xiaomi doesn't stop FinTrack catching SMS in the background",
                     ) { PermissionHelper.openAutostartSettings(context) }
                 }
+                SettingRow(
+                    "Accounts to track",
+                    if (vm.untracked.isEmpty()) "${vm.accounts.size} found in your messages · all tracked"
+                    else "${vm.accounts.size - vm.accounts.count { it.key in vm.untracked }} of ${vm.accounts.size} tracked",
+                ) { showAccounts = true }
                 SettingRow(
                     "Charts and checks",
                     "Spending pace, daily spending, trends, unusual spends, bank balance check",
