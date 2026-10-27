@@ -26,6 +26,7 @@ import com.fintrack.core.FlowAnalyzer
 import com.fintrack.core.FlowDecision
 import com.fintrack.core.Reconciliation
 import com.fintrack.core.ReviewItem
+import com.fintrack.core.Salary
 import com.fintrack.core.MissedSms
 import com.fintrack.core.MonthSummary
 import com.fintrack.core.SmsParser
@@ -210,13 +211,15 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
                     t.copy(flow = d?.flow ?: Flow.basic(t), category = d?.category ?: t.category)
                 }.filter { it.date <= m.atEndOfMonth() } to a
             }
-            val current = all.filter { YearMonth.from(it.date) == m }
+            // Late-month salary counts toward the month it pays for (see Salary).
+            val salary = Salary.ids(all)
+            val current = all.filter { Salary.monthOf(it, salary) == m }
             history = all
             txns = current
             flowDecisions = analysis.decisions
             review = analysis.review
             accountChecks = Reconciliation.byAccount(all)
-            summary = Summaries.build(m, current, all.filter { YearMonth.from(it.date) == m.minusMonths(1) })
+            summary = Summaries.build(m, current, all.filter { Salary.monthOf(it, salary) == m.minusMonths(1) })
         }
     }
 

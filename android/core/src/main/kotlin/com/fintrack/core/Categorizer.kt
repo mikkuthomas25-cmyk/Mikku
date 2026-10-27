@@ -53,7 +53,10 @@ object Categorizer {
     fun keywordCategory(merchant: String, direction: Direction, context: String? = null): String {
         for (text in listOfNotNull(merchant, context)) {
             val m = text.lowercase()
-            PATTERNS.firstOrNull { it.second.containsMatchIn(m) }?.let { return it.first }
+            if (direction == Direction.CREDIT && "interest" in m) return "Income"
+            // Money coming in is never a cash withdrawal.
+            PATTERNS.firstOrNull { it.second.containsMatchIn(m) && !(direction == Direction.CREDIT && it.first == "Cash Withdrawal") }
+                ?.let { return it.first }
         }
         return if (direction == Direction.CREDIT) "Income" else "Other"
     }

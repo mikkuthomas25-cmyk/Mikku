@@ -261,4 +261,25 @@ class FlowTest {
         val auto = t(5, 60.0, merchant = "Shalini", category = "Daily small spends").copy(categorySource = CategorySource.KEYWORD)
         assertTrue(!CategoryLearner.isTrusted(auto) && CategoryLearner.isLearnable(auto))
     }
+
+    @Test fun lateMonthSalaryCountsTowardNextMonth() {
+        val sep = YearMonth.of(2026, 9)
+        val aug = Txn(id++, YearMonth.of(2026, 8).atDay(30), 44400.0, Direction.CREDIT, "SBI", "Income", "1111", "sms", "Rs 44400 credited to a/c XX1111", flow = Flow.INCOME)
+        val sal = Txn(id++, sep.atDay(30), 44400.0, Direction.CREDIT, "SBI", "Income", "1111", "sms", "Rs 44400 credited to a/c XX1111", flow = Flow.INCOME)
+        val gift = Txn(id++, sep.atDay(28), 15000.0, Direction.CREDIT, "Uncle", "Income", "1111", "sms", "Rs 15000 credited", flow = Flow.INCOME)
+        val ids = Salary.ids(listOf(aug, sal, gift))
+        assertEquals(setOf(aug.id, sal.id), ids)
+        assertEquals(oct, Salary.monthOf(sal, ids))
+        assertEquals(sep, Salary.monthOf(gift, ids))
+    }
+
+    @Test fun savingsInterestIsIncomeEvenFromYourOwnBank() {
+        val interest = t(12, 98.5, Direction.CREDIT, merchant = "Slice", category = Categorizer.keywordCategory("Slice", Direction.CREDIT),
+            account = null, raw = "Interest of Rs 98.50 credited to your slice savings account")
+        val moved = t(13, 5000.0, Direction.CREDIT, merchant = "Slice", category = Categorizer.keywordCategory("Slice", Direction.CREDIT), account = "1111")
+        val a = FlowAnalyzer.analyze(listOf(interest, moved))
+        assertEquals(Flow.INCOME, a.flowOf(interest))
+        assertEquals(Flow.OWN_TRANSFER, a.flowOf(moved))
+        assertEquals("Income", Categorizer.keywordCategory("ATM interest payout", Direction.CREDIT))
+    }
 }

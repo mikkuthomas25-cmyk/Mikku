@@ -107,6 +107,8 @@ How the type is decided, strongest evidence first:
    - *Statement + SMS:* a statement row for a payment already captured from SMS (same amount and direction within a day, whatever the reference number) counts once; 2–3 days apart, FinTrack asks. Each transaction pairs with at most one other.
    - *Own transfers:* a debit from one of your accounts matched by the same amount arriving in a different one of your accounts within 2 days; an SMS that names another of your accounts ("to A/c XX5678", "towards card XX9012"); card-bill payments (also found in statement narrations).
    - *Wallets:* money counts when it leaves your bank to top up a wallet (Paytm, Amazon Pay, railway R-Wallet). "Added to your wallet" isn't income, and paying from the wallet isn't counted a second time.
+   - *Salary at month-end:* a salary credited from the 24th on counts toward the next month, the one it pays for. Salary is a credit worded as salary, or a ₹10,000+ income that recurs at about the same amount.
+   - *Interest* (e.g. a savings account's daily interest) is income, even when it comes from your own account's bank.
    - *Your own name:* once you've marked two payees with your name as your own account (e.g. "Mikku Thomas John", "MR - Mikku"), other payments to that name are treated as moving money between your accounts. "Who is it?" questions offer **Shop · Person · Me**.
    - *Refunds and reversals:* money back from a merchant you paid, which reduces that category's spending.
 3. **Built-in signals:** UPI to personal IDs (P2A, `@ok…`) means money to or from people; the Investments category means invested.

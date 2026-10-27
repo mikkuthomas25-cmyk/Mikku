@@ -100,6 +100,7 @@ object FlowAnalyzer {
         "transfer", "account", "accounts", "bank", "your", "self", "imps", "neft", "rtgs", "name", "dummy",
         "from", "with", "wallet", "payment", "unknown", "upi", "credit", "debit", "card", "india", "limited",
     )
+    private val INTEREST = Regex("""\binterest\b""", RegexOption.IGNORE_CASE)
     private val MAYBE_OWN_OUT = setOf(Flow.SPEND, Flow.TO_PEOPLE)
     private val MAYBE_OWN_IN = setOf(Flow.INCOME, Flow.FROM_PEOPLE)
 
@@ -156,6 +157,12 @@ object FlowAnalyzer {
         // 2. Between your own accounts: card bills, and a debit matched by an equal credit into a
         //    *different* account. FinTrack only sees SMS for your own accounts, so both ends being
         //    known, different accounts is the proof.
+        // Interest (e.g. a savings account's daily interest) is income, even from your own bank.
+        for (t in sorted) {
+            if (t.id !in out && t.direction == Direction.CREDIT && INTEREST.containsMatchIn((t.raw ?: "") + " " + t.merchant)) {
+                out[t.id] = FlowDecision(Flow.INCOME, "Interest earned")
+            }
+        }
         for (t in sorted) {
             if (t.id !in out && t.category in Categorizer.EXCLUDED_FROM_TOTALS) out[t.id] = FlowDecision(Flow.OWN_TRANSFER, "Card bill / own account")
         }
