@@ -223,7 +223,7 @@ private fun ImportSheet(vm: FinTrackViewModel, onDismiss: () -> Unit) {
 
 /** One file's outcome: how many rows, what was new, and the mass-balance check. */
 @Composable
-private fun StatementReportTile(r: ImportReport, vm: FinTrackViewModel) {
+internal fun StatementReportTile(r: ImportReport, vm: FinTrackViewModel) {
     val c = Fin.colors
     Tile(Modifier.fillMaxWidth(), padding = 16.dp) {
         Text(r.fileName, style = MaterialTheme.typography.titleSmall, color = c.ink, maxLines = 1)
@@ -289,7 +289,7 @@ private fun BalanceLine(label: String, value: Double?) {
 }
 
 @Composable
-private fun PasswordDialog(ask: PasswordAsk, vm: FinTrackViewModel) {
+internal fun PasswordDialog(ask: PasswordAsk, vm: FinTrackViewModel) {
     var pw by remember(ask) { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = vm::skipPassword,

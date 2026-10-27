@@ -379,4 +379,19 @@ class FlowTest {
         assertEquals("1234", StatementParser.accountOf(listOf("A/c No. XXXXXXX1234", "01-10-2026 UPI 100.00 900.00")))
         assertNull(StatementParser.accountOf(listOf("Statement of account", "Period 01-10-2026 to 31-10-2026")))
     }
+
+    @Test fun firstRunSortsStatementSpendingPayeeByPayee() {
+        val a = t(1, 3200.0, merchant = "Manoop - V U", raw = "UPI/DR/1/MANOOP/manoop@ybl", source = "statement")
+        val b = t(2, 100.0, merchant = "MANOOP V U", raw = "UPI/DR/2/MANOOP/manoop@ybl", source = "statement")
+        val zomato = t(3, 400.0, merchant = "Zomato", category = "Food & Dining", raw = "UPI/DR/3/ZOMATO", source = "statement")
+        val sorted = t(4, 900.0, merchant = "Landlord", raw = "NEFT", source = "statement").copy(categorySource = CategorySource.USER)
+        val salary = t(5, 44400.0, Direction.CREDIT, merchant = "Acme", raw = "NEFT CR", source = "statement")
+        val sms = t(6, 50.0, merchant = "Tea", raw = "Rs 50 debited")
+        val payees = Onboarding.toSort(listOf(a, b, zomato, sorted, salary, sms))
+        assertEquals(listOf(3300.0, 400.0), payees.map { it.total })
+        assertEquals(2, payees.first().txns.size)
+        assertEquals("Food & Dining", payees.last().suggestion)
+        assertNull(payees.first().suggestion)
+        assertEquals(setOf(oct), Onboarding.statementMonths(listOf(a, sms)))
+    }
 }

@@ -26,6 +26,7 @@ import com.fintrack.core.Flow
 import com.fintrack.core.FlowAnalyzer
 import com.fintrack.core.FlowDecision
 import com.fintrack.core.Reconciliation
+import com.fintrack.core.Onboarding
 import com.fintrack.core.PayeeMemory
 import com.fintrack.core.ReviewItem
 import com.fintrack.core.Salary
@@ -42,6 +43,9 @@ import java.time.YearMonth
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+/** First-run setup, statement first: import a month, sort its spending, maybe add a month, then SMS. */
+enum class SetupStep { Statement, Sort, More, Sms, Done }
 
 enum class Kind(val label: String) { All("All"), Spent("Money out"), Received("Money in") }
 
@@ -115,6 +119,13 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
     var accountsChosen by mutableStateOf(true); private set
     /** For each imported statement with rows this month: its totals and how each rupee was counted. */
     var tallies by mutableStateOf<List<StatementLedger.Tally>>(emptyList()); private set
+    /** Where the user is in first-run setup; Done once finished or skipped. */
+    var setup by mutableStateOf(SetupStep.Done); private set
+    /** Statement payees still to sort during setup, and which one is showing. */
+    var toSort by mutableStateOf<List<Onboarding.Payee>>(emptyList()); private set
+    var sortIndex by mutableStateOf(0); private set
+    /** How many months of statements have been imported. */
+    var statementMonths by mutableStateOf(0); private set
     /** Bank-looking SMS the parser couldn't read; null until loaded. */
     var missed by mutableStateOf<List<MissedSms>?>(null); private set
 
@@ -164,6 +175,7 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
         prefs.activeUserEmail = acc?.email ?: "This device only"
         account = prefs.activeUserName
         accountEmail = prefs.activeUserEmail ?: ""
+        setup = if (store?.getMeta(SETUP_DONE) == null) SetupStep.Statement else SetupStep.Done
         onResume()
         pendingShared?.let { pendingShared = null; addShared(it) }
     }
@@ -222,7 +234,41 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
     /** Called whenever the app comes to the foreground: pick up new SMS, then redraw. */
     fun onResume() {
         hasSmsPermission = SmsImporter.hasPermission(app)
-        if (hasSmsPermission) scan(full = false) else refresh()
+        // During setup the statement comes first; messages are read once it's done.
+        if (hasSmsPermission && setup == SetupStep.Done) scan(full = false) else refresh()
+    }
+
+    // ------------------------------------------------------------------ first-run setup
+
+    /** After a statement is imported: list its payees to sort, biggest first. */
+    private fun startSorting() {
+        val s = store ?: return
+        viewModelScope.launch {
+            val all = withContext(Dispatchers.IO) { s.all() }
+            toSort = Onboarding.toSort(all)
+            statementMonths = Onboarding.statementMonths(all).size
+            sortIndex = 0
+            setup = if (toSort.isEmpty()) SetupStep.More else SetupStep.Sort
+        }
+    }
+
+    /** The user's answer for the payee on screen (null = skip it); every payment to them is sorted. */
+    fun sortAnswer(choice: Choice?) {
+        val payee = toSort.getOrNull(sortIndex) ?: return
+        if (choice != null) payee.txns.distinctBy { it.merchant }.forEach { classify(it, choice, quiet = true) }
+        sortIndex++
+        if (sortIndex >= toSort.size) setup = SetupStep.More
+    }
+
+    fun finishSorting() { setup = SetupStep.More }
+
+    fun toSmsStep() { setup = SetupStep.Sms }
+
+    /** Setup is over (finished or skipped): from now on messages are read as usual. */
+    fun finishSetup() {
+        store?.setMeta(SETUP_DONE, "1")
+        setup = SetupStep.Done
+        onResume()
     }
 
     fun onPermissionResult() {
@@ -402,7 +448,7 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
      * my own account, investment, don't count…) says what money it is. Either way it's remembered for
      * the payee, so the next payment to them is sorted the same, and both models learn from it.
      */
-    fun classify(t: Txn, choice: Choice) {
+    fun classify(t: Txn, choice: Choice, quiet: Boolean = false) {
         val payee = t.merchant != "Unknown"
         io { s ->
             when (choice) {
@@ -418,7 +464,7 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
                 }
             }
         }
-        message = "${t.merchant} → ${choice.label}" + if (payee) " (and from now on)" else ""
+        if (!quiet) message = "${t.merchant} → ${choice.label}" + if (payee) " (and from now on)" else ""
     }
 
     /** The month's transactions with how each was treated, as text to share for a check (numbers hidden). */
@@ -498,6 +544,7 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
             learning = withContext(Dispatchers.IO) { relearn(s) }
             refresh()
             importing = false
+            if ((setup == SetupStep.Statement || setup == SetupStep.More) && importReports.any { it.result?.empty == false }) startSorting()
         }
     }
 
@@ -542,6 +589,7 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
         const val HISTORY_MONTHS = 6L
         private const val UNTRACKED = "untracked_accounts"
         private const val ACCOUNTS_CHOSEN = "accounts_chosen"
+        private const val SETUP_DONE = "setup_done"
         /** Flows that make sense as a standing answer for a payee. */
         val PAYEE_FLOWS = setOf(Flow.SPEND, Flow.TO_PEOPLE, Flow.FROM_PEOPLE, Flow.INVESTED, Flow.INCOME, Flow.OWN_TRANSFER)
     }

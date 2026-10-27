@@ -11,6 +11,8 @@ import com.fintrack.app.ui.FinTrackTheme
 import com.fintrack.app.ui.FinTrackViewModel
 import com.fintrack.app.ui.LoginScreen
 import com.fintrack.app.ui.MainScreen
+import com.fintrack.app.ui.SetupScreen
+import com.fintrack.app.ui.SetupStep
 
 class MainActivity : ComponentActivity() {
     private val vm: FinTrackViewModel by viewModels()
@@ -26,7 +28,11 @@ class MainActivity : ComponentActivity() {
         setContent {
             FinTrackTheme {
                 // Each screen draws its own glossy backdrop.
-                if (vm.account == null) LoginScreen(vm) else MainScreen(vm)
+                when {
+                    vm.account == null -> LoginScreen(vm)
+                    vm.setup != SetupStep.Done -> SetupScreen(vm)
+                    else -> MainScreen(vm)
+                }
             }
         }
     }

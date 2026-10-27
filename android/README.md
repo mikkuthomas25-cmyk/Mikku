@@ -69,6 +69,20 @@ up, the app shows **Continue without account** so you can use it straight away.
 Accounts created with email get a verification email. "Forgot password?" sends a reset
 link.
 
+## First run: statement first
+
+Before reading any SMS, FinTrack asks for last month's bank statement (`ui/SetupScreen.kt`):
+
+1. **Add a statement** (PDF or CSV). It becomes the record for its account and dates.
+2. **Sort your spending, payee by payee**, biggest first: accept the suggestion (✓), pick from the
+   dropdown, or skip. Each answer covers every payment to that payee (same UPI ID or name), now and
+   later (`core/.../Onboarding.kt`).
+3. **One more month helps:** with fewer than two months, FinTrack recommends adding another month so
+   it learns regular payments (rent, bills, salary). Optional.
+4. **Allow SMS reading**: new payments are then sorted the way you taught it.
+
+Setup can be skipped at any step; existing users see it once too.
+
 ## Smart categories (on-device machine learning)
 
 Categories are learned on the phone. Nothing is sent anywhere, and no API key is needed.
