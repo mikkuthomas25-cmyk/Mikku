@@ -64,6 +64,7 @@ fun HomeScreen(vm: FinTrackViewModel, openActivity: () -> Unit, openProfile: () 
         if (s == null) return@LazyColumn
 
         item { MonthHero(s, show) }
+        if (vm.balances.isNotEmpty()) item { BankBalances(vm) }
         vm.tallies.forEach { tally -> item { StatementTallyCard(tally, vm) { f -> show(Kind.All, f) } } }
         if (vm.review.isNotEmpty()) item { ReviewCard(vm) }
         item { WhereItWent(s, openCategory) { flow -> show(Kind.All, TxnFilter.OfFlow(flow)) } }
@@ -251,6 +252,28 @@ private fun TallyBlock(title: String, total: Double, parts: List<Triple<String, 
         Row(Modifier.fillMaxWidth().clickable { show(TxnFilter.OfFlow(flow)) }.padding(start = 12.dp, top = 4.dp, bottom = 4.dp)) {
             Text("$label  ›", style = MaterialTheme.typography.bodyMedium, color = c.inkSoft, modifier = Modifier.weight(1f))
             Text(rupees(amount), style = MaterialTheme.typography.bodyMedium.merge(MoneyStyle), color = c.inkSoft)
+        }
+    }
+}
+
+/**
+ * The money actually in each tracked account now: the newest of a statement's closing balance and
+ * an SMS's "Avl Bal", with its date. Not the same as "Left", which is this month's in − out.
+ */
+@Composable
+private fun BankBalances(vm: FinTrackViewModel) {
+    val c = Fin.colors
+    Tile(Modifier.fillMaxWidth()) {
+        SectionTitle("Bank balance")
+        vm.balances.forEach { b ->
+            val name = vm.accounts.firstOrNull { it.key == b.accountKey }?.label ?: b.accountKey.removePrefix("acct:").let { "••$it" }
+            Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(name, style = MaterialTheme.typography.bodyLarge, color = c.ink, maxLines = 1)
+                    Faint("on ${b.date.short()} · from your ${if (b.fromStatement) "statement" else "bank SMS"}")
+                }
+                Text(rupees(b.amount), style = MaterialTheme.typography.titleMedium.merge(MoneyStyle), color = c.ink)
+            }
         }
     }
 }

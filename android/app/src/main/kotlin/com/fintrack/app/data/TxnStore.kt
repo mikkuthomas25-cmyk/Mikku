@@ -5,6 +5,7 @@ import android.content.Context
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
+import com.fintrack.core.Balances
 import com.fintrack.core.Direction
 import com.fintrack.core.Flow
 import com.fintrack.core.FlowAnalyzer
@@ -16,7 +17,7 @@ import java.time.LocalDate
 import java.time.YearMonth
 
 /** On-device SQLite storage. One database file per signed-in account. */
-class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbName, null, 5) {
+class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbName, null, 6) {
 
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
@@ -52,6 +53,8 @@ class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbN
         db.execSQL("CREATE TABLE IF NOT EXISTS deleted (hash TEXT PRIMARY KEY)")
         // v5: which account and dates each imported statement covers (the statement is the record there).
         db.execSQL("CREATE TABLE IF NOT EXISTS statement_cover (account TEXT NOT NULL, start TEXT NOT NULL, finish TEXT NOT NULL, PRIMARY KEY (account, start, finish))")
+        // v6: each statement's closing balance, for the bank balance on Home.
+        db.execSQL("CREATE TABLE IF NOT EXISTS statement_balance (account TEXT NOT NULL, day TEXT NOT NULL, amount REAL NOT NULL, PRIMARY KEY (account, day))")
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -65,7 +68,7 @@ class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbN
             db.execSQL("ALTER TABLE transactions ADD COLUMN user_flow TEXT")
             createV3Tables(db)
         }
-        if (oldVersion < 5) createV3Tables(db)
+        if (oldVersion < 6) createV3Tables(db)
     }
 
     /** Returns the new row id, or null if this transaction is already stored. */
@@ -159,6 +162,18 @@ class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbN
             put("start", cover.start.toString())
             put("finish", cover.end.toString())
         }, SQLiteDatabase.CONFLICT_IGNORE)
+    }
+
+    fun addClosing(closing: Balances.Closing) {
+        writableDatabase.insertWithOnConflict("statement_balance", null, ContentValues().apply {
+            put("account", closing.account)
+            put("day", closing.date.toString())
+            put("amount", closing.amount)
+        }, SQLiteDatabase.CONFLICT_REPLACE)
+    }
+
+    fun closings(): List<Balances.Closing> = readableDatabase.rawQuery("SELECT account, day, amount FROM statement_balance", null).use { c ->
+        buildList { while (c.moveToNext()) add(Balances.Closing(c.getString(0), LocalDate.parse(c.getString(1)), c.getDouble(2))) }
     }
 
     fun covers(): List<StatementCover> = readableDatabase.rawQuery("SELECT account, start, finish FROM statement_cover", null).use { c ->

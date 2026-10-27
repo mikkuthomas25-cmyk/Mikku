@@ -73,6 +73,7 @@ private fun StatementStep(vm: FinTrackViewModel, upload: () -> Unit) {
         item {
             Faint(
                 "Download last month's statement from your bank (e.g. YONO or net banking) as a PDF or CSV and add it here. " +
+                    "Have 2–3 months? Select them all at once: more months teach FinTrack your regular payments. " +
                     "FinTrack reads it on this phone; nothing is uploaded anywhere. Next, you'll sort its spending once, " +
                     "and FinTrack sorts similar payments by itself from then on.",
             )

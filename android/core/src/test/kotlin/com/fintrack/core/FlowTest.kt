@@ -412,4 +412,16 @@ class FlowTest {
         assertTrue(landlord.monthly)
         assertEquals(Onboarding.Kind.SHOP, plan.ask.last().kind)
     }
+
+    @Test fun bankBalanceIsTheNewestOfStatementAndSms() {
+        val older = t(10, 100.0, account = "4321", raw = "Rs 100 debited from A/c XX4321. Avl Bal Rs 9,000.00 -SBI")
+        val newer = t(29, 50.0, account = "4321", raw = "Rs 50 debited from A/c XX4321. Avl Bal Rs 8,950.00 -SBI")
+        val friend = t(12, 10.0, account = "7788", raw = "IOB A/c XX7788 debited Rs 10. Avl Bal Rs 500.00")
+        val closing = Balances.Closing("4321", oct.atDay(25), 9100.0)
+        val b = Balances.latest(listOf(older, newer, friend), listOf(closing))
+        assertEquals(8950.0, b.first { it.accountKey == "acct:4321" }.amount)
+        val onlyStatement = Balances.latest(listOf(older), listOf(closing))
+        assertEquals(9100.0, onlyStatement.single().amount)
+        assertTrue(onlyStatement.single().fromStatement)
+    }
 }

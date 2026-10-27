@@ -19,6 +19,7 @@ import com.fintrack.core.Categorizer
 import com.fintrack.core.CategoryLearner
 import com.fintrack.core.CategorySource
 import com.fintrack.core.AccountCheck
+import com.fintrack.core.Balances
 import com.fintrack.core.Accounts
 import com.fintrack.core.Diagnostics
 import com.fintrack.core.Direction
@@ -117,6 +118,8 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
     var untracked by mutableStateOf<Set<String>>(emptySet()); private set
     /** False until the user has said which accounts to track (asked once there are two or more). */
     var accountsChosen by mutableStateOf(true); private set
+    /** Latest known balance of each tracked account (statement closing or SMS "Avl Bal"). */
+    var balances by mutableStateOf<List<Balances.Balance>>(emptyList()); private set
     /** For each imported statement with rows this month: its totals and how each rupee was counted. */
     var tallies by mutableStateOf<List<StatementLedger.Tally>>(emptyList()); private set
     /** Where the user is in first-run setup; Done once finished or skipped. */
@@ -331,6 +334,7 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
             var found = emptyList<Accounts.Info>()
             var skip = emptySet<String>()
             var chosen = true
+            var latestBalances = emptyList<Balances.Balance>()
             val (all, analysis) = withContext(Dispatchers.IO) {
                 // A few days past month-end so a transfer or duplicate straddling it is still paired.
                 val everything = s.range(m.minusMonths(HISTORY_MONTHS).atDay(1), m.atEndOfMonth().plusDays(3))
@@ -340,6 +344,9 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
                 // Where a statement was imported, it's the record for its account and dates; then only
                 // the accounts the user tracks (a friend's account on this phone isn't their money).
                 val resolver = Accounts.Resolver(everything)
+                // Bank balances are "now", whatever month is shown: from recent messages and statements.
+                val recent = s.range(LocalDate.now().minusDays(120), LocalDate.now())
+                latestBalances = Balances.latest(recent, s.closings()).filter { it.accountKey !in skip }
                 val raw = Accounts.tracked(StatementLedger.apply(everything, s.covers(), resolver), skip, resolver)
                 val a = FlowAnalyzer.analyze(raw, s.userFlows(), s.payeeFlows(), s.reviewDone())
                 raw.map { t ->
@@ -348,6 +355,7 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
                 }.filter { it.date <= m.atEndOfMonth() } to a
             }
             accounts = found
+            balances = latestBalances
             untracked = skip
             accountsChosen = chosen
             tallies = all.filter { YearMonth.from(it.date) == m && it.source == "statement" }
@@ -532,7 +540,10 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
         val end = result.end ?: return
         val last4 = accountKey.removePrefix("acct:")
         viewModelScope.launch {
-            withContext(Dispatchers.IO) { s.assignStatementAccount(StatementCover(last4, start, end)) }
+            withContext(Dispatchers.IO) {
+                s.assignStatementAccount(StatementCover(last4, start, end))
+                result.check.closing?.let { s.addClosing(Balances.Closing(last4, end, it)) }
+            }
             importReports = importReports.map { if (it === report) it.copy(account = last4) else it }
             refresh()
         }
@@ -578,7 +589,14 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
                 pw = null
             }
             learning = withContext(Dispatchers.IO) { relearn(s) }
-            refresh()
+            // Show the statement's month, so its numbers are on screen straight away.
+            val latest = importReports.mapNotNull { it.result?.end }.maxOrNull()
+            if (latest != null && YearMonth.from(latest) != month) {
+                pickMonth(YearMonth.from(latest))
+                message = "Showing ${YearMonth.from(latest).label()}, the month of your statement"
+            } else {
+                refresh()
+            }
             importing = false
             if ((setup == SetupStep.Statement || setup == SetupStep.More) && importReports.any { it.result?.empty == false }) startSorting()
         }

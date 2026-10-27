@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
 import com.fintrack.app.data.TxnStore
+import com.fintrack.core.Balances
 import com.fintrack.core.Categorizer
 import com.fintrack.core.StatementCover
 import com.fintrack.core.StatementParser
@@ -52,7 +53,10 @@ object StatementImporter {
             }
             val start = result.start
             val end = result.end
-            if (account != null && start != null && end != null) store.addCover(StatementCover(account, start, end))
+            if (account != null && start != null && end != null) {
+                store.addCover(StatementCover(account, start, end))
+                result.check.closing?.let { store.addClosing(Balances.Closing(account, end, it)) }
+            }
         }
         return ImportOutcome(name, result, added, known)
     }
