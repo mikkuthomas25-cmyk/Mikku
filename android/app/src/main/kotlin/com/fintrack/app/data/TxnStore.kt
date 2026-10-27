@@ -161,6 +161,15 @@ class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbN
         return writableDatabase.insertWithOnConflict("transactions", null, values, SQLiteDatabase.CONFLICT_IGNORE) != -1L
     }
 
+    /** Replaces a placeholder name from an older parser; names the user typed are left alone. */
+    fun repairMerchant(smsHash: String, merchant: String) {
+        if (merchant == "Unknown") return
+        writableDatabase.execSQL(
+            "UPDATE transactions SET merchant=? WHERE sms_hash=? AND merchant IN ('Rs', 'Rs.', 'INR', 'Unknown')",
+            arrayOf(merchant, smsHash),
+        )
+    }
+
     /** Corrects a transaction the reader got wrong (amount or name). */
     fun updateDetails(id: Long, merchant: String, amount: Double) {
         writableDatabase.execSQL("UPDATE transactions SET merchant=?, amount=? WHERE id=?", arrayOf(merchant, amount, id))

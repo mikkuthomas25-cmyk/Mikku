@@ -24,7 +24,7 @@ data class ParsedTxn(
  */
 object SmsParser {
     /** Bump when parsing improves: the app then re-reads old SMS once to pick up what it missed. */
-    const val VERSION = 3
+    const val VERSION = 4
 
     private val I = RegexOption.IGNORE_CASE
 
@@ -32,12 +32,13 @@ object SmsParser {
     // "debited by 20.0", "credited with Rs.500", "Sent Rs.120": the amount right after the verb.
     // Preferred over the first Rs/INR in the text, which is sometimes the balance.
     private val AMOUNT_AFTER_VERB = Regex(
-        """\b(?:debited|credited|deducted|spent|paid|sent|received|withdrawn)\s+(?:by|for|with|of)?\s*(?:rs\.?|inr|₹)?\s*([\d,]*\d(?:\.\d{1,2})?)(?![\d/-])""",
+        """\b(?:debited|credited|deducted|spent|paid|sent|received|withdrawn|credit\s+by\s+\w+\s+of)\s+(?:by|for|with|of)?\s*(?:rs\.?|inr|₹)?\s*([\d,]*\d(?:\.\d{1,2})?)(?![\d/-])""",
         I,
     )
 
     private const val DEBIT_WORDS = "debited|spent|sent|paid|withdrawn|withdrawal|purchase|debit(?:ed)?|txn of|transferred to"
-    private const val CREDIT_WORDS = "credited|received|deposited|refund(?:ed)?|reversed|cashback of"
+    // SBI: "Your A/C XX1234 has a credit by NEFT of Rs 44,400.00"
+    private const val CREDIT_WORDS = "credited|received|deposited|refund(?:ed)?|reversed|cashback of|has a credit|credit of"
     private val DEBIT = Regex("""\b(?:$DEBIT_WORDS)\b""", I)
     private val CREDIT = Regex("""\b(?:$CREDIT_WORDS)\b""", I)
 
@@ -61,6 +62,10 @@ object SmsParser {
     private const val NAME = """([A-Za-z0-9][\w .&'*/@\-]{1,40}?)"""
     private val ATM = Regex("""\batm\b.{0,30}?(?:wdl|withdrawa?l|cash)|(?:cash\s+)?withdrawn\s+at\s+atm|\bat\s+atm\b""", I)
     private val MERCHANT_PATTERNS = listOf(
+        // SBI: "credited by Rs.44400 on 01Oct26 transfer from ACME PVT LTD Ref No …"
+        Regex("""\btransfer\s+from\s+$NAME$STOP""", I),
+        // SBI IMPS: "by a/c linked to mobile 9XXXXXX999-ACME LTD (IMPS Ref …)"
+        Regex("""linked\s+to\s+mobile\s+[\dx*]+\s*-\s*([A-Za-z][\w .&'\-]{1,40}?)$STOP""", I),
         // "UPI/P2M/412345678901/MERCHANT NAME/..." (Axis and others)
         Regex("""\bUPI/P2[AM]/\d+/([^/\n]{2,40})""", I),
         // ICICI: "...debited for Rs 20.00 on 26-Oct-26; MERCHANT credited."
@@ -162,6 +167,7 @@ object SmsParser {
             for (m in pattern.findAll(body)) {
                 val cand = m.groupValues[1].trim()
                 if (cand.isEmpty() || SELF_REF.containsMatchIn(cand) || AMOUNT.matchesAt(cand, 0)) continue
+                if (cand.lowercase().trimEnd('.') in setOf("rs", "inr")) continue  // "credited by Rs.500": that's the amount
                 if (cand.all { it.isDigit() || it in " /.-" }) continue
                 return cleanMerchant(cand)
             }

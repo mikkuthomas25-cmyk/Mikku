@@ -46,7 +46,12 @@ object SmsImporter {
                 val body = c.getString(0) ?: continue
                 val millis = c.getLong(1)
                 newest = maxOf(newest, millis)
-                if (ingest(store, body, millis, "sms", rules)) added++
+                if (ingest(store, body, millis, "sms", rules)) {
+                    added++
+                } else if (reparse) {
+                    // Already stored: pick up a name the old parser got wrong ("Rs", "Unknown").
+                    SmsParser.parse(body)?.let { store.repairMerchant(it.smsHash, it.merchant) }
+                }
             }
         }
         store.setMeta(LAST_SCAN, newest.toString())

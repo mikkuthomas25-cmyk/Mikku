@@ -64,4 +64,15 @@ class BankFormatsTest {
         assertTrue("1234" !in r && "4321" !in r && "628555556666" !in r && "9876543210" !in r, r)
         assertTrue("rahul" !in r && "@okaxis" in r, r)
     }
+
+    @Test fun sbiSalaryAndTransferCredits() {
+        val neft = assertNotNull(SmsParser.parse("Dear Customer, Your A/C XXXXX123456 has a credit by NEFT of Rs 44,400.00 on 01/10/26. Avl Bal Rs 50,123.00 -SBI"))
+        assertEquals(44400.0, neft.amount)
+        assertEquals(Direction.CREDIT, neft.direction)
+        val transfer = assertNotNull(SmsParser.parse("Dear SBI User, your A/c X1234-credited by Rs.758 on 22Oct26 transfer from ACME PVT LTD Ref No 612345678901 -SBI"))
+        assertEquals(758.0, transfer.amount)
+        assertEquals("Acme", transfer.merchant)
+        val imps = assertNotNull(SmsParser.parse("Your a/c no. XXXXXXXX1234 is credited by Rs.44,400.00 on 01-10-26 by a/c linked to mobile 9XXXXXX999-ACME LTD (IMPS Ref no 123456789012). -SBI"))
+        assertEquals("Acme", imps.merchant)
+    }
 }
