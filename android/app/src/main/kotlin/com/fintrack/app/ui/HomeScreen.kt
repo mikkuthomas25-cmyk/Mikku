@@ -3,6 +3,7 @@ package com.fintrack.app.ui
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -61,6 +62,8 @@ fun HomeScreen(vm: FinTrackViewModel, openActivity: () -> Unit, openProfile: () 
         item { MonthHero(s, show) }
         if (vm.review.isNotEmpty()) item { ReviewCard(vm) }
         item { CategoryBreakdown(s, openCategory) }
+        val unsorted = vm.txns.filter { it.effectiveFlow == Flow.SPEND && it.category == "Other" }
+        if (unsorted.isNotEmpty()) item { SortOtherCard(unsorted) { picking = it } }
         val latest = vm.txns.filter { it.effectiveFlow == Flow.SPEND }.sortedByDescending { it.date }.take(5)
         if (latest.isNotEmpty()) {
             item {
@@ -146,6 +149,35 @@ private fun HeroNumber(label: String, amount: Double, modifier: Modifier, onClic
     }
 }
 
+/**
+ * "Other" grouped by payee, biggest first: one tap per payee sorts every payment to it, now and
+ * later, and teaches the model about similar names.
+ */
+@Composable
+private fun SortOtherCard(unsorted: List<Txn>, pick: (Txn) -> Unit) {
+    val c = Fin.colors
+    val payees = unsorted.groupBy { it.merchant }.entries.sortedByDescending { (_, v) -> v.sumOf { it.amount } }
+    Tile(Modifier.fillMaxWidth()) {
+        SectionTitle("Sort ${rupees(unsorted.sumOf { it.amount })} in Other")
+        Spacer(Modifier.height(4.dp))
+        Faint("Tap what each one is. FinTrack remembers the payee and learns similar ones.")
+        payees.take(6).forEach { (name, list) ->
+            Row(
+                Modifier.fillMaxWidth().clip(TileShape).clickable { pick(list.first()) }.padding(vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(name, style = MaterialTheme.typography.bodyLarge, color = c.ink, maxLines = 1)
+                    Faint("${list.size} payment${if (list.size == 1) "" else "s"}  ·  ${rupees(list.sumOf { it.amount })}")
+                }
+                Text("Choose  ▾", style = MaterialTheme.typography.labelLarge, color = c.ink,
+                    modifier = Modifier.border(1.dp, c.border).padding(horizontal = 10.dp, vertical = 6.dp))
+            }
+        }
+        if (payees.size > 6) Faint("+ ${payees.size - 6} more. They'll show here as you sort these.")
+    }
+}
+
 /** Spending split into Food, Rent, Bills…: amount, share and number of payments. Tap to open one. */
 @Composable
 private fun CategoryBreakdown(s: MonthSummary, openCategory: (String) -> Unit) {
@@ -209,14 +241,16 @@ private fun ReviewCard(vm: FinTrackViewModel) {
             when (item) {
                 is ReviewItem.ShopOrPerson -> {
                     Text(
-                        "You paid ${item.payee} ${item.count}× (${rupees(item.total)}) to a personal UPI ID. Is this a shop or a person?",
+                        "You paid ${item.payee} ${item.count}× (${rupees(item.total)}) to a personal UPI ID. Who is it?",
                         style = MaterialTheme.typography.bodyLarge, color = c.ink,
                     )
                     Spacer(Modifier.height(10.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        PopChip("Shop · spending", selected = true) { vm.answerShopOrPerson(item, isShop = true) }
-                        PopChip("Person", selected = false) { vm.answerShopOrPerson(item, isShop = false) }
+                        PopChip("Shop", selected = true) { vm.answerShopOrPerson(item, Flow.SPEND) }
+                        PopChip("Person", selected = false) { vm.answerShopOrPerson(item, Flow.TO_PEOPLE) }
+                        PopChip("Me", selected = false) { vm.answerShopOrPerson(item, Flow.OWN_TRANSFER) }
                     }
+                    Faint("Me = your own account elsewhere: not spending.", Modifier.padding(top = 6.dp))
                 }
                 is ReviewItem.PossibleOwnTransfer -> {
                     Text(

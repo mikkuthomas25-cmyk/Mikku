@@ -94,6 +94,12 @@ object FlowAnalyzer {
         RegexOption.IGNORE_CASE,
     )
     private val WALLET_SPEND = Regex("""(?:from|using|via)\s+(?:your\s+)?(?:\w+\s+)?wallet|wallet\b.{0,20}\bdebited""", RegexOption.IGNORE_CASE)
+    /** "your RWallet Account", "your Paytm Wallet": the payment came out of the wallet. */
+    private val WALLET_NAME = Regex("""\byour\s+(?:\w+\s+)?\w*wallet""", RegexOption.IGNORE_CASE)
+    private val NOT_A_NAME = setOf(
+        "transfer", "account", "accounts", "bank", "your", "self", "imps", "neft", "rtgs", "name", "dummy",
+        "from", "with", "wallet", "payment", "unknown", "upi", "credit", "debit", "card", "india", "limited",
+    )
     private val MAYBE_OWN_OUT = setOf(Flow.SPEND, Flow.TO_PEOPLE)
     private val MAYBE_OWN_IN = setOf(Flow.INCOME, Flow.FROM_PEOPLE)
 
@@ -174,16 +180,29 @@ object FlowAnalyzer {
             if (other != null) out[t.id] = FlowDecision(Flow.OWN_TRANSFER, "Names your other account ••$other")
         }
 
-        // Wallets: loading Paytm / Amazon Pay / PhonePe moves your own money. The "added to your
-        // wallet" message isn't income, and when wallet spends are tracked too, the bank debit for
-        // the top-up isn't spending either.
-        val walletSpends = sorted.any { it.direction == Direction.DEBIT && it.raw != null && WALLET_SPEND.containsMatchIn(it.raw) }
+        // Wallets (Paytm, Amazon Pay, railway R-Wallet…): the money leaves your bank when you top
+        // the wallet up, and that's what counts. "Added to your wallet" isn't income, and paying
+        // from the wallet isn't spending again (wallet SMS often just report the balance anyway).
         for (t in sorted) {
             if (t.id in out) continue
-            val text = (t.raw ?: "") + " " + t.merchant
-            if (!WALLET_LOAD.containsMatchIn(text)) continue
-            if (t.direction == Direction.CREDIT) out[t.id] = FlowDecision(Flow.OWN_TRANSFER, "Money added to your wallet")
-            else if (walletSpends) out[t.id] = FlowDecision(Flow.OWN_TRANSFER, "Wallet top-up (the wallet spends are counted)")
+            val raw = t.raw ?: ""
+            if (t.direction == Direction.CREDIT && WALLET_LOAD.containsMatchIn("$raw ${t.merchant}")) {
+                out[t.id] = FlowDecision(Flow.OWN_TRANSFER, "Money added to your wallet")
+            } else if (t.direction == Direction.DEBIT && !WALLET_LOAD.containsMatchIn(raw) && (WALLET_SPEND.containsMatchIn(raw) || WALLET_NAME.containsMatchIn(t.merchant))) {
+                out[t.id] = FlowDecision(Flow.OWN_TRANSFER, "Paid from your wallet: counted when you topped it up")
+            }
+        }
+
+        // Your own name: payees the user marked as their own account more than once share a name
+        // (e.g. "Mikku Thomas John", "MR - Mikku"). Other payments to that name are yours too.
+        val selfNames = selfNames(sorted, userFlows, payeeFlows)
+        if (selfNames.isNotEmpty()) {
+            for (t in sorted) {
+                if (t.id in out || (t.raw != null && MERCHANT_PAYMENT.containsMatchIn(t.raw))) continue
+                val hit = nameTokens(t.merchant).firstOrNull { it in selfNames } ?: continue
+                if (payeeFlows[norm(t.merchant)].let { it != null && it != Flow.TO_PEOPLE && it != Flow.FROM_PEOPLE }) continue
+                out[t.id] = FlowDecision(Flow.OWN_TRANSFER, "Your own name (${hit.replaceFirstChar(Char::uppercase)}): between your accounts")
+            }
         }
 
         // 3. Refunds: money back from somewhere you spent (not a person paying you back), or worded as
@@ -208,7 +227,13 @@ object FlowAnalyzer {
             if (t.id in out) continue
             val answer = payeeFlows[norm(t.merchant)]
             if (answer != null) {
-                out[t.id] = FlowDecision(adjust(answer, t.direction), "You said ${t.merchant} is ${if (answer == Flow.SPEND) "a shop" else "a person"}")
+                val who = when (answer) {
+                    Flow.SPEND -> "a shop"
+                    Flow.OWN_TRANSFER -> "your own account"
+                    Flow.TO_PEOPLE, Flow.FROM_PEOPLE -> "a person"
+                    else -> answer.label.lowercase()
+                }
+                out[t.id] = FlowDecision(adjust(answer, t.direction), "You said ${t.merchant} is $who")
                 continue
             }
             if (t.category == "Investments") {
@@ -295,6 +320,16 @@ object FlowAnalyzer {
     /** Money in that could be the other half of [d]: income, from people, or a full "refund" of [d] itself. */
     private fun maybeOwnIn(c: FlowDecision?, d: Txn) =
         c != null && (c.flow in MAYBE_OWN_IN || (c.flow == Flow.REFUND && c.linkedId == d.id))
+
+    private fun nameTokens(merchant: String) =
+        merchant.lowercase().split(Regex("""[^a-z]+""")).filter { it.length >= 4 && it !in NOT_A_NAME }.toSet()
+
+    /** Name words shared by at least two different payees the user called their own account. */
+    private fun selfNames(txns: List<Txn>, userFlows: Map<Long, Flow>, payeeFlows: Map<String, Flow>): Set<String> {
+        val own = txns.filter { userFlows[it.id] == Flow.OWN_TRANSFER }.map { it.merchant } +
+            txns.filter { payeeFlows[norm(it.merchant)] == Flow.OWN_TRANSFER }.map { it.merchant }
+        return own.distinctBy(::norm).flatMap(::nameTokens).groupingBy { it }.eachCount().filterValues { it >= 2 }.keys
+    }
 
     private fun isStatement(t: Txn) = t.source == "statement"
 

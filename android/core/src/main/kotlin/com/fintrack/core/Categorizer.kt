@@ -16,14 +16,15 @@ object Categorizer {
     /** Built-in brand list; also the learner's starting knowledge. */
     val KEYWORDS: Map<String, List<String>> = linkedMapOf(
         "Self Transfer" to listOf("credit card", "card payment", "cc payment", "cc bill", "card bill",
-            "self transfer", "own account", "cred club", "cred"),
+            "self transfer", "own account", "cred club", "cred", "slice"),
         "Food & Dining" to listOf("swiggy", "zomato", "eatsure", "domino", "pizza", "mcdonald", "kfc",
             "starbucks", "cafe", "restaurant", "hotel", "burger", "chai", "bakery", "dunzo"),
         "Groceries" to listOf("bigbasket", "blinkit", "grofers", "zepto", "instamart", "dmart", "jiomart",
             "more retail", "reliance fresh", "spencer", "nature basket", "kirana", "supermarket"),
         "Shopping" to listOf("amazon", "flipkart", "myntra", "ajio", "meesho", "nykaa", "tatacliq", "croma",
             "reliance digital", "decathlon", "ikea", "lifestyle", "westside", "mall"),
-        "Transport" to listOf("uber", "ola", "rapido", "metro", "irctc", "redbus", "namma yatri", "fastag", "parking"),
+        "Transport" to listOf("uber", "ola", "rapido", "metro", "irctc", "redbus", "namma yatri", "fastag", "parking",
+            "railway", "railways", "uts", "ksrtc"),
         "Fuel" to listOf("petrol", "fuel", "hpcl", "bpcl", "iocl", "indian oil", "shell", "bharat petroleum"),
         "Bills & Utilities" to listOf("electricity", "bescom", "tneb", "msedcl", "airtel", "jio", "vodafone", "vi",
             "bsnl", "broadband", "act fibernet", "gas", "water", "recharge", "dth", "tata play", "billdesk",
@@ -38,7 +39,7 @@ object Categorizer {
             "spicejet", "oyo", "airbnb", "booking.com", "yatra"),
         "Cash Withdrawal" to listOf("atm withdrawal", "atm"),
         "Investments" to listOf("zerodha", "groww", "upstox", "indmoney", "kuvera", "coin", "mutual fund",
-            "sip", "nps", "ppf", "smallcase"),
+            "sip", "nps", "ppf", "smallcase", "indstocks", "investment", "chit", "chitty", "chitti", "kuri"),
     )
 
     private val PATTERNS: List<Pair<String, Regex>> = KEYWORDS.flatMap { (cat, words) ->

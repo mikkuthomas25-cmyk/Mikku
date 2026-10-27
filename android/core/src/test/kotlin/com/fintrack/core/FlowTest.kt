@@ -221,4 +221,36 @@ class FlowTest {
         assertEquals("Self Transfer", Categorizer.keywordCategory("HDFC0001234", Direction.DEBIT, "NEFT DR HDFC0001234 CC BILL PAYMENT"))
         assertEquals("Other", Categorizer.keywordCategory("HDFC0001234", Direction.DEBIT))
     }
+
+    @Test fun railwayWalletTopUpCountsOnceAsTransport() {
+        val topUp = t(3, 3000.0, merchant = "Indian Railways UTS", category = Categorizer.keywordCategory("Indian Railways UTS", Direction.DEBIT))
+        val ticket = t(9, 90.0, merchant = "your RWallet Account", account = null, raw = "Rs.90.00 debited from your RWallet Account for UTS ticket")
+        val a = FlowAnalyzer.analyze(listOf(topUp, ticket))
+        assertEquals("Transport", topUp.category)
+        assertEquals(Flow.SPEND, a.flowOf(topUp))
+        assertEquals(Flow.OWN_TRANSFER, a.flowOf(ticket))
+    }
+
+    @Test fun paymentsToYourOwnNameAreLearnedAsOwnTransfers() {
+        val a1 = t(1, 1000.0, merchant = "Mikku - Th", account = null, source = "statement")
+        val a2 = t(3, 1639.0, merchant = "MR - Mikku", account = null, source = "statement")
+        val later = t(17, 294.0, merchant = "MR - Mikku", account = null, raw = "UPI/DR/mikku@okhdfcbank", source = "statement")
+        val friend = t(18, 300.0, merchant = "Rahul", raw = "Rs 300 debited to rahul@okaxis")
+        val user = mapOf(a1.id to Flow.OWN_TRANSFER, a2.id to Flow.OWN_TRANSFER)
+        // Even an old "person" answer for that payee gives way to the user's own name.
+        val a = FlowAnalyzer.analyze(listOf(a1, a2, later, friend), user, payeeFlows = mapOf(FlowAnalyzer.norm("MR - Mikku") to Flow.TO_PEOPLE))
+        assertEquals(Flow.OWN_TRANSFER, a.flowOf(later))
+        assertEquals(Flow.TO_PEOPLE, a.flowOf(friend))
+    }
+
+    @Test fun meAsAPayeeAnswerIsAnOwnTransfer() {
+        val p = t(5, 2000.0, merchant = "Mikku Thomas", raw = "Rs 2000 debited to mikku@okicici")
+        val a = FlowAnalyzer.analyze(listOf(p), payeeFlows = mapOf(FlowAnalyzer.norm("Mikku Thomas") to Flow.OWN_TRANSFER))
+        assertEquals(Flow.OWN_TRANSFER, a.flowOf(p))
+    }
+
+    @Test fun chittyAndIndstocksAreInvestments() {
+        assertEquals("Investments", Categorizer.keywordCategory("Investment Chitty", Direction.DEBIT))
+        assertEquals("Investments", Categorizer.keywordCategory("INDstocks", Direction.DEBIT))
+    }
 }

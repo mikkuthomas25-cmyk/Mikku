@@ -305,8 +305,9 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
         it.updateDetails(t.id, merchant.trim().ifBlank { t.merchant }, amount)
     }
 
-    fun answerShopOrPerson(item: ReviewItem.ShopOrPerson, isShop: Boolean) = io {
-        it.setPayeeFlow(item.payee, if (isShop) Flow.SPEND else Flow.TO_PEOPLE)
+    /** [flow]: SPEND (a shop), TO_PEOPLE (a person) or OWN_TRANSFER (it's me, another of my accounts). */
+    fun answerShopOrPerson(item: ReviewItem.ShopOrPerson, flow: Flow) = io {
+        it.setPayeeFlow(item.payee, flow)
         it.markReviewDone(item.key)
     }
 
@@ -404,8 +405,11 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
         s.transaction {
             for (t in all) {
                 if (!CategoryLearner.isLearnable(t)) continue
-                val guess = learner.suggest(t)
-                val category = guess?.category ?: Categorizer.keywordCategory(t.merchant, t.direction, Categorizer.contextOf(t))
+                // The built-in brand list first, then the model, then the fallback (Other / Income).
+                val keyword = Categorizer.keywordCategory(t.merchant, t.direction, Categorizer.contextOf(t))
+                val known = keyword != "Other" && keyword != "Income"
+                val guess = if (known) null else learner.suggest(t)
+                val category = guess?.category ?: keyword
                 val source = if (guess != null) CategorySource.LEARNED else CategorySource.KEYWORD
                 if (category != t.category || source != t.categorySource) s.setLearned(t.id, category, source)
             }
@@ -421,7 +425,7 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
     companion object {
         const val HISTORY_MONTHS = 6L
         /** Flows that make sense as a standing answer for a payee. */
-        val PAYEE_FLOWS = setOf(Flow.SPEND, Flow.TO_PEOPLE, Flow.FROM_PEOPLE, Flow.INVESTED, Flow.INCOME)
+        val PAYEE_FLOWS = setOf(Flow.SPEND, Flow.TO_PEOPLE, Flow.FROM_PEOPLE, Flow.INVESTED, Flow.INCOME, Flow.OWN_TRANSFER)
     }
 
     override fun onCleared() {
