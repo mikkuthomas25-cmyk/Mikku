@@ -309,8 +309,13 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
     // ------------------------------------------------------------------ money flows
 
     /** Fixes an amount or name the reader got wrong. */
-    fun editDetails(t: Txn, merchant: String, amount: Double) = io {
-        it.updateDetails(t.id, merchant.trim().ifBlank { t.merchant }, amount)
+    fun editDetails(t: Txn, merchant: String, amount: Double, date: LocalDate, direction: Direction) {
+        io {
+            it.updateDetails(t.id, merchant.trim().ifBlank { t.merchant }, amount, date, direction)
+            // "Rent" or "Salary" no longer fits once money in becomes money out (or back): decide again.
+            if (direction != t.direction) it.setUserFlow(t.id, null)
+        }
+        message = "Saved"
     }
 
     /** [flow]: SPEND (a shop), TO_PEOPLE (a person) or OWN_TRANSFER (it's me, another of my accounts). */

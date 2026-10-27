@@ -171,8 +171,11 @@ class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbN
     }
 
     /** Corrects a transaction the reader got wrong (amount or name). */
-    fun updateDetails(id: Long, merchant: String, amount: Double) {
-        writableDatabase.execSQL("UPDATE transactions SET merchant=?, amount=? WHERE id=?", arrayOf(merchant, amount, id))
+    fun updateDetails(id: Long, merchant: String, amount: Double, date: LocalDate, direction: Direction) {
+        writableDatabase.execSQL(
+            "UPDATE transactions SET merchant=?, amount=?, txn_date=?, direction=? WHERE id=?",
+            arrayOf(merchant, amount, date.toString(), direction.name, id),
+        )
     }
 
     /** Flow types the user set on individual transactions. */

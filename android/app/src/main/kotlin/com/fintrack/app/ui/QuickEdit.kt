@@ -33,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -43,6 +44,8 @@ import com.fintrack.core.Direction
 import com.fintrack.core.Flow
 import com.fintrack.core.PayeeMemory
 import com.fintrack.core.Txn
+import android.app.DatePickerDialog
+import java.time.LocalDate
 
 /** Categories a spend can be put in. */
 val SPEND_CATEGORIES = Categorizer.CATEGORIES.filter { it !in setOf("Income", "Self Transfer", "Transfers", "Investments") }
@@ -158,9 +161,12 @@ private fun WhatTag(t: Txn) {
 @Composable
 fun TxnSheet(t: Txn, vm: FinTrackViewModel, onDismiss: () -> Unit) {
     val c = Fin.colors
-    var fixing by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf(t.merchant) }
     var amountText by remember { mutableStateOf(if (t.amount % 1.0 == 0.0) t.amount.toLong().toString() else t.amount.toString()) }
+    var date by remember { mutableStateOf(t.date) }
+    var direction by remember { mutableStateOf(t.direction) }
+    val context = LocalContext.current
     val why = vm.categoryReason(t) ?: vm.flowDecisions[t.id]?.reason?.takeIf { it.isNotBlank() }
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = MaterialTheme.colorScheme.surface) {
@@ -181,6 +187,31 @@ fun TxnSheet(t: Txn, vm: FinTrackViewModel, onDismiss: () -> Unit) {
                 )
             }
 
+            if (editing) {
+                Text("EDIT", style = CapsLabel, color = c.inkSoft)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PopChip("Money out", direction == Direction.DEBIT) { direction = Direction.DEBIT }
+                    PopChip("Money in", direction == Direction.CREDIT) { direction = Direction.CREDIT }
+                }
+                PopTextField(name, { name = it }, "Name")
+                PopTextField(amountText, { v -> amountText = v.filter { it.isDigit() || it == '.' }.take(12) }, "Amount (₹)",
+                    keyboardType = KeyboardType.Decimal)
+                PopChip("Date: ${date.long()}  ▾", selected = false) {
+                    DatePickerDialog(context, { _, y, m, d -> date = LocalDate.of(y, m + 1, d) },
+                        date.year, date.monthValue - 1, date.dayOfMonth).show()
+                }
+                val amount = amountText.toDoubleOrNull()
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    PopButton("Save changes", onClick = {
+                        vm.editDetails(t, name, amount!!, date, direction)
+                        onDismiss()
+                    }, Modifier.weight(1f), enabled = amount != null && amount > 0)
+                    PopOutlineButton("Cancel", { editing = false }, Modifier.weight(1f))
+                }
+                return@Column
+            }
+            PopOutlineButton("✎  Edit amount, name, date", { editing = true }, Modifier.fillMaxWidth())
+
             Text("WHAT IS THIS?", style = CapsLabel, color = c.inkSoft)
             ChoiceChips(t.direction, selected = { isCurrent(t, it) }) { vm.classify(t, it); onDismiss() }
             Faint(
@@ -192,18 +223,6 @@ fun TxnSheet(t: Txn, vm: FinTrackViewModel, onDismiss: () -> Unit) {
             )
             why?.let { Faint("Why it's ${labelOf(t)} now: $it") }
 
-            if (fixing) {
-                PopTextField(name, { name = it }, "Name")
-                PopTextField(amountText, { v -> amountText = v.filter { it.isDigit() || it == '.' }.take(12) }, "Amount (₹)",
-                    keyboardType = KeyboardType.Decimal)
-                PopButton("Save", onClick = {
-                    val amount = amountText.toDoubleOrNull()
-                    if (amount != null && amount > 0) vm.editDetails(t, name, amount)
-                    onDismiss()
-                }, Modifier.fillMaxWidth())
-            } else {
-                Text("FIX AMOUNT OR NAME  →", style = CapsLabel, color = c.ink, modifier = Modifier.clickable { fixing = true })
-            }
             t.raw?.let {
                 Text(it, style = MaterialTheme.typography.bodySmall, color = c.inkFaint,
                     modifier = Modifier.fillMaxWidth().border(1.dp, c.border).padding(14.dp))
