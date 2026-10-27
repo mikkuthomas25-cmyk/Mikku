@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@file:OptIn(ExperimentalMaterial3Api::class)
 
 package com.fintrack.app.ui
 
@@ -9,8 +9,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,8 +19,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -77,28 +73,34 @@ fun ActivityScreen(vm: FinTrackViewModel) {
             item {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Transactions", style = MaterialTheme.typography.headlineMedium, color = c.ink, modifier = Modifier.weight(1f))
-                    MonthSwitcher(vm.month.name(), vm.month < YearMonth.now(), { vm.changeMonth(-1) }, { vm.changeMonth(1) })
+                    MonthPicker(vm)
                 }
             }
             item { SearchBar(vm.query) { vm.query = it } }
             item {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    vm.filter?.let { f ->
-                        item {
-                            PopChip(
-                                when (f) {
-                                    is TxnFilter.Day -> f.date.long()
-                                    is TxnFilter.Category -> f.name
-                                    is TxnFilter.Merchant -> f.name
-                                    is TxnFilter.OfFlow -> f.flow.label
-                                    TxnFilter.Auto -> "Sorted by FinTrack"
-                                    TxnFilter.Unsorted -> "Needs a category"
-                                } + "  ✕",
-                                selected = true,
-                            ) { vm.filter = null }
-                        }
-                    }
-                    items(Kind.entries) { k -> PopChip(k.label, vm.kind == k) { vm.kind = k } }
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    PopDropdown(vm.kind.label, Kind.entries, { it.label }, { vm.kind = it }, Modifier.weight(1f), label = "Show")
+                    val cats = listOf<String?>(null) + vm.txns.filter { it.effectiveFlow == Flow.SPEND }.map { it.category }.distinct().sorted()
+                    PopDropdown(
+                        (vm.filter as? TxnFilter.Category)?.name ?: "All categories", cats, { it ?: "All categories" },
+                        { vm.filter = it?.let(TxnFilter::Category) }, Modifier.weight(1f), label = "Category",
+                    )
+                }
+            }
+            // A filter opened from elsewhere (a day, a payee, "not counted"…): shown so it can be cleared.
+            vm.filter?.takeIf { it !is TxnFilter.Category }?.let { f ->
+                item {
+                    PopChip(
+                        when (f) {
+                            is TxnFilter.Day -> f.date.long()
+                            is TxnFilter.Merchant -> f.name
+                            is TxnFilter.OfFlow -> f.flow.label
+                            TxnFilter.Auto -> "Sorted by FinTrack"
+                            TxnFilter.Unsorted -> "Needs a category"
+                            is TxnFilter.Category -> f.name
+                        } + "  ✕",
+                        selected = true,
+                    ) { vm.filter = null }
                 }
             }
             if (rows.isNotEmpty()) {
@@ -216,8 +218,7 @@ private fun AddSheet(onDismiss: () -> Unit, onSave: (LocalDate, Double, Directio
                 )
             }
             PopTextField(what, { what = it }, "Name or note (optional)")
-            Text("WHAT IS THIS?", style = CapsLabel, color = c.inkSoft)
-            ChoiceChips(direction, selected = { it == choice }) { choice = it }
+            WhatDropdown(direction, current = choice?.label) { choice = it }
             PopChip("${date.relative()}  ▾", selected = false) {
                 DatePickerDialog(context, { _, y, m, d -> date = LocalDate.of(y, m + 1, d) },
                     date.year, date.monthValue - 1, date.dayOfMonth).show()

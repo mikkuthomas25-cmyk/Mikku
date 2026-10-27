@@ -279,8 +279,10 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun changeMonth(delta: Long) {
-        month = month.plusMonths(delta)
+    fun changeMonth(delta: Long) = pickMonth(month.plusMonths(delta))
+
+    fun pickMonth(m: YearMonth) {
+        month = m
         filter = null
         query = ""
         refresh()

@@ -56,7 +56,7 @@ fun HomeScreen(vm: FinTrackViewModel, openActivity: () -> Unit, openProfile: () 
     ) {
         item { Greeting(vm.account ?: "", onAvatar = openProfile) }
         item {
-            MonthSwitcher(vm.month.label(), vm.month < YearMonth.now(), { vm.changeMonth(-1) }, { vm.changeMonth(1) })
+            MonthPicker(vm, long = true)
         }
         if (!vm.hasSmsPermission) item { PermissionHero(vm) }
         if (!vm.accountsChosen) item { AccountsPrompt(vm) { choosingAccounts = true } }
@@ -65,7 +65,6 @@ fun HomeScreen(vm: FinTrackViewModel, openActivity: () -> Unit, openProfile: () 
         item { MonthHero(s, show) }
         if (vm.review.isNotEmpty()) item { ReviewCard(vm) }
         item { WhereItWent(s, openCategory) { flow -> show(Kind.All, TxnFilter.OfFlow(flow)) } }
-        item { SmartSortingCard(vm) { f -> show(Kind.All, f) } }
     }
     open?.let { o -> TxnSheet(o, vm) { open = null } }
     if (choosingAccounts) AccountsSheet(vm) { choosingAccounts = false }
@@ -104,7 +103,7 @@ private fun StatementLine(label: String, amount: Double, sign: String, onClick: 
  * daily spends), how many you sorted, and how many still need you. Each opens that list.
  */
 @Composable
-private fun SmartSortingCard(vm: FinTrackViewModel, show: (TxnFilter) -> Unit) {
+internal fun SmartSortingCard(vm: FinTrackViewModel, show: (TxnFilter) -> Unit) {
     val c = Fin.colors
     val spends = vm.txns.filter { it.effectiveFlow == Flow.SPEND }
     if (spends.isEmpty()) return
@@ -218,7 +217,7 @@ private fun ReviewCard(vm: FinTrackViewModel) {
     Tile(Modifier.fillMaxWidth()) {
         SectionTitle("Needs your input · ${vm.review.size}")
         Spacer(Modifier.height(4.dp))
-        Faint("Each answer fixes your totals and teaches FinTrack for next time.")
+        Faint("Each answer fixes your totals.")
         vm.review.take(3).forEach { item ->
             Spacer(Modifier.height(14.dp))
             when (item) {

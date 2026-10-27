@@ -35,7 +35,7 @@ fun InsightsScreen(vm: FinTrackViewModel, openCategory: (String) -> Unit, openAc
                 Text("‹", style = MaterialTheme.typography.headlineMedium, color = c.ink,
                     modifier = Modifier.clip(TileShape).clickable(onClick = onBack).padding(end = 12.dp))
                 Text("Charts", style = MaterialTheme.typography.headlineMedium, color = c.ink, modifier = Modifier.weight(1f))
-                MonthSwitcher(vm.month.name(), vm.month < YearMonth.now(), { vm.changeMonth(-1) }, { vm.changeMonth(1) })
+                MonthPicker(vm)
             }
         }
         if (s != null && s.txnCount > 0) item { QuickFacts(s) }

@@ -75,7 +75,7 @@ fun CategoryScreen(vm: FinTrackViewModel, category: String, onBack: () -> Unit) 
                 Text(category, style = MaterialTheme.typography.headlineMedium, color = c.ink, modifier = Modifier.weight(1f), maxLines = 1)
             }
         }
-        item { MonthSwitcher(m.label(), m < YearMonth.now(), { vm.changeMonth(-1) }, { vm.changeMonth(1) }) }
+        item { MonthPicker(vm, long = true) }
         item {
             HeroTile(Modifier.fillMaxWidth()) {
                 Text("$category in ${m.name()}", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.8f))

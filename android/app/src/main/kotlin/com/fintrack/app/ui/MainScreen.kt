@@ -78,7 +78,11 @@ fun MainScreen(vm: FinTrackViewModel, startTab: Int = 0) {
                 ins -> InsightsScreen(vm, openCategory, openActivity = { insights = false; tab = 1 }, onBack = { insights = false })
                 t == 0 -> HomeScreen(vm, openActivity = { tab = 1 }, openProfile = { tab = 2 }, openCategory = openCategory)
                 t == 1 -> ActivityScreen(vm)
-                else -> ProfileScreen(vm, openInsights = { insights = true })
+                else -> ProfileScreen(vm, openInsights = { insights = true }, openTransactions = { f ->
+                    vm.kind = Kind.All
+                    vm.filter = f
+                    tab = 1
+                })
             }
         }
         if (vm.busy) {

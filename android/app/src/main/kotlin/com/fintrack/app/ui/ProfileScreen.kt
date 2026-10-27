@@ -37,7 +37,7 @@ import com.fintrack.app.BuildConfig
 import com.fintrack.app.sms.PermissionHelper
 
 @Composable
-fun ProfileScreen(vm: FinTrackViewModel, openInsights: () -> Unit) {
+fun ProfileScreen(vm: FinTrackViewModel, openInsights: () -> Unit, openTransactions: (TxnFilter) -> Unit) {
     val c = Fin.colors
     var showMissed by remember { mutableStateOf(false) }
     if (showMissed) MissedSheet(vm) { showMissed = false }
@@ -110,6 +110,8 @@ fun ProfileScreen(vm: FinTrackViewModel, openInsights: () -> Unit) {
                 ) { vm.scan(full = true) }
             }
         }
+        // How the automatic sorting works: kept here, out of the way of everyday use.
+        item { SmartSortingCard(vm, openTransactions) }
         item {
             Tile(Modifier.fillMaxWidth(), padding = 6.dp) {
                 SettingRow("Sign out", "You can sign back in any time", danger = true) { vm.signOut() }

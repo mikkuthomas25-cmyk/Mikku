@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@file:OptIn(ExperimentalMaterial3Api::class)
 
 package com.fintrack.app.ui
 
@@ -8,8 +8,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -42,10 +40,8 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.fintrack.core.Categorizer
-import com.fintrack.core.CategorySource
 import com.fintrack.core.Direction
 import com.fintrack.core.Flow
-import com.fintrack.core.PayeeMemory
 import com.fintrack.core.Txn
 import android.app.DatePickerDialog
 import java.time.LocalDate
@@ -149,7 +145,7 @@ internal fun TxnRow(t: Txn, onOpen: (Opened) -> Unit) {
     }
 }
 
-/** The category under a transaction's name, as a button: ✦ when FinTrack chose it, ▾ to change it. */
+/** The category under a transaction's name, as a button: ▾ to change it. */
 @Composable
 private fun WhatTag(t: Txn, onClick: () -> Unit) {
     val c = Fin.colors
@@ -163,8 +159,7 @@ private fun WhatTag(t: Txn, onClick: () -> Unit) {
             Spacer(Modifier.width(6.dp))
         }
         Text(
-            labelOf(t) + (if (spend && CategorySource.isAutomatic(t.categorySource)) " ✦" else "") +
-                (if (t.effectiveFlow.counted) "" else " · not counted") + "  ▾",
+            labelOf(t) + (if (t.effectiveFlow.counted) "" else " · not counted") + "  ▾",
             style = MaterialTheme.typography.labelMedium, color = c.ink, maxLines = 1, overflow = TextOverflow.Ellipsis,
         )
     }
@@ -211,16 +206,8 @@ fun TxnSheet(opened: Opened, vm: FinTrackViewModel, onDismiss: () -> Unit) {
 
             when (mode) {
                 SheetMode.Category -> {
-                    Text(if (t.direction == Direction.DEBIT) "WHAT WAS THIS FOR?" else "WHAT IS THIS MONEY?", style = CapsLabel, color = c.inkSoft)
-                    ChoiceChips(t.direction, selected = { isCurrent(t, it) }) { vm.classify(t, it); onDismiss() }
-                    Faint(
-                        if (t.merchant == "Unknown") "Applies to this payment."
-                        else "FinTrack remembers this for ${t.merchant}" +
-                            if (t.direction == Direction.DEBIT && t.amount >= PayeeMemory.MIN_PATTERN_AMOUNT) {
-                                " and for ${rupees(t.amount)} paid around the ${ordinal(t.date.dayOfMonth)} in later months."
-                            } else ".",
-                    )
-                    why?.let { Faint("✦ Why it's ${labelOf(t)} now: $it") }
+                    WhatDropdown(t.direction, current = labelOf(t)) { vm.classify(t, it); onDismiss() }
+                    Faint(if (t.merchant == "Unknown") "Applies to this payment." else "Remembered for ${t.merchant} next time.")
                 }
                 SheetMode.Edit -> {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -239,6 +226,7 @@ fun TxnSheet(opened: Opened, vm: FinTrackViewModel, onDismiss: () -> Unit) {
                         vm.editDetails(t, name, amount!!, date, direction)
                         onDismiss()
                     }, Modifier.fillMaxWidth(), enabled = amount != null && amount > 0)
+                    why?.let { Faint("How FinTrack chose \"${labelOf(t)}\": $it") }
                     t.raw?.let {
                         Text("ORIGINAL MESSAGE", style = CapsLabel, color = c.inkSoft)
                         Text(it, style = MaterialTheme.typography.bodySmall, color = c.inkFaint,
@@ -280,28 +268,17 @@ private fun ModeTab(text: String, selected: Boolean, modifier: Modifier, danger:
     ) { Text(text, style = MaterialTheme.typography.labelLarge, color = fg) }
 }
 
-/** The "What is this?" options for money going out or coming in. */
+/**
+ * "What was this for?" as a dropdown: the spending categories first, then the kinds of money that
+ * aren't spending (a person, your own account, investment, duplicate, don't count).
+ */
 @Composable
-fun ChoiceChips(direction: Direction, selected: (Choice) -> Boolean, onPick: (Choice) -> Unit) {
-    val c = Fin.colors
-    val all = choicesFor(direction)
-    val categories = all.filterIsInstance<Choice.Category>()
-    val kinds = all.filterIsInstance<Choice.Kind>()
-    if (categories.isNotEmpty()) {
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            categories.forEach { ch -> PopChip(ch.label, selected(ch)) { onPick(ch) } }
-        }
-        Text("NOT SPENDING", style = CapsLabel, color = c.inkSoft)
-    }
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        kinds.forEach { ch -> PopChip(ch.label, selected(ch)) { onPick(ch) } }
-    }
-}
-
-private fun ordinal(d: Int) = "$d" + when {
-    d in 11..13 -> "th"
-    d % 10 == 1 -> "st"
-    d % 10 == 2 -> "nd"
-    d % 10 == 3 -> "rd"
-    else -> "th"
+fun WhatDropdown(direction: Direction, current: String?, onPick: (Choice) -> Unit) {
+    PopDropdown(
+        value = current ?: "Choose",
+        options = choicesFor(direction),
+        text = { it.label },
+        onSelect = onPick,
+        label = if (direction == Direction.DEBIT) "What was this for?" else "What is this money?",
+    )
 }

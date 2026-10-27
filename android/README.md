@@ -126,11 +126,14 @@ its transaction count and last balance, and asks once (Home, when there are two 
 track; Settings → Accounts to track changes it. Untracked accounts are left out of every total and
 list. Messages without an account number are matched to the bank's only account when there is one.
 
-**Every transaction shows what can be done to it.** Tap its category label to change it; tap ⋮ for
+**Every transaction shows what can be done to it.** Tap its category label to change it (a dropdown); tap ⋮ for
 the panel with three buttons, **Category · Edit · Delete**. Edit changes the amount, name, date or
 money in/out. Delete asks once; a deleted SMS or statement row never comes back on a rescan.
 
-**Smart sorting (Home)** shows what the learning did this month: how many payments FinTrack sorted
+**Dropdowns:** the month (tap its name for the last 12 months), the Transactions filters (Show:
+All / Money out / Money in; Category), and "What was this for?" when sorting or adding a transaction.
+
+**Smart sorting (Settings, at the bottom)** shows what the learning did this month: how many payments FinTrack sorted
 by itself (✦ learned from your choices, known shops and brands, small daily spends), how many you
 sorted, and how many still need a category, each opening that list, plus the model's measured
 accuracy on your own choices.
