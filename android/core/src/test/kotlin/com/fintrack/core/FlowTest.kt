@@ -282,4 +282,40 @@ class FlowTest {
         assertEquals(Flow.OWN_TRANSFER, a.flowOf(moved))
         assertEquals("Income", Categorizer.keywordCategory("ATM interest payout", Direction.CREDIT))
     }
+
+    @Test fun rentPaidToAPersonIsRememberedNextMonth() {
+        val sep = YearMonth.of(2026, 9)
+        val taught = Txn(id++, sep.atDay(2), 3200.0, Direction.DEBIT, "Manoop - V U", "Rent", null, "statement",
+            "UPI/DR/512345/MANOOP V U/YBL/manoop@ybl", categorySource = CategorySource.USER)
+        val memory = PayeeMemory(listOf(taught))
+        // Same person, written differently, via SMS: same UPI ID.
+        val sms = t(2, 3200.0, merchant = "Manoop V U", raw = "Rs 3200 debited from a/c XX1234 to VPA manoop@ybl")
+        assertEquals("Rent", memory.match(sms)?.category)
+        // Same name, no UPI ID in the text.
+        assertEquals("Rent", memory.match(t(3, 3200.0, merchant = "MANOOP V U", raw = "NEFT DR MANOOP V U", source = "statement"))?.category)
+        // Different name, same amount around the same day: the monthly pattern.
+        val other = t(4, 3200.0, merchant = "V U Manoop Homes", raw = "Rs 3200 debited to landlord1@okaxis")
+        assertEquals("Rent", memory.match(other)?.category)
+        // Same amount, but the middle of the month: not the rent.
+        assertNull(memory.match(t(18, 3200.0, merchant = "Someone", raw = "Rs 3200 debited")))
+        // Small payments never match by amount alone.
+        val small = PayeeMemory(listOf(taught.copy(amount = 120.0)))
+        assertNull(small.match(t(2, 120.0, merchant = "Tea Shop", raw = "Rs 120 debited")))
+    }
+
+    @Test fun aPaymentToAPersonSortedAsRentCountsAsSpending() {
+        val rent = t(2, 3200.0, merchant = "Manoop", category = "Rent", raw = "Rs 3200 debited to manoop@okaxis")
+            .copy(categorySource = CategorySource.MEMORY)
+        val gift = t(3, 500.0, merchant = "Rahul", raw = "Rs 500 debited to rahul@okaxis")
+        val a = FlowAnalyzer.analyze(listOf(rent, gift))
+        assertEquals(Flow.SPEND, a.flowOf(rent))
+        assertEquals(Flow.TO_PEOPLE, a.flowOf(gift))
+    }
+
+    @Test fun gatewayUpiIdsDontLinkDifferentBusinesses() {
+        val fees = Txn(id++, oct.atDay(1), 9000.0, Direction.DEBIT, "ABC School", "Education", null, "sms",
+            "Rs 9000 debited to abcschool.razorpay@icici", categorySource = CategorySource.USER)
+        val shop = t(25, 400.0, merchant = "Some Shop", raw = "Rs 400 debited to shop.razorpay@icici")
+        assertNull(PayeeMemory(listOf(fees)).match(shop))
+    }
 }

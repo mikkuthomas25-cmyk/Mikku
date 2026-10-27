@@ -101,6 +101,7 @@ object FlowAnalyzer {
         "from", "with", "wallet", "payment", "unknown", "upi", "credit", "debit", "card", "india", "limited",
     )
     private val INTEREST = Regex("""\binterest\b""", RegexOption.IGNORE_CASE)
+    private val USER_CATEGORIES = setOf(CategorySource.USER, CategorySource.RULE, CategorySource.MEMORY)
     private val MAYBE_OWN_OUT = setOf(Flow.SPEND, Flow.TO_PEOPLE)
     private val MAYBE_OWN_IN = setOf(Flow.INCOME, Flow.FROM_PEOPLE)
 
@@ -245,6 +246,12 @@ object FlowAnalyzer {
             }
             if (t.category == "Investments") {
                 out[t.id] = FlowDecision(if (t.direction == Direction.DEBIT) Flow.INVESTED else Flow.INCOME, "Investment")
+                continue
+            }
+            // A payment to a person that the user (or their payee memory) filed as Rent, Fees,
+            // Food… is spending, not money given away.
+            if (t.direction == Direction.DEBIT && PayeeMemory.isSpending(t.category) && t.categorySource in USER_CATEGORIES) {
+                out[t.id] = FlowDecision(Flow.SPEND, "${t.category}, as you sorted it")
                 continue
             }
             if (isPersonal(t)) {

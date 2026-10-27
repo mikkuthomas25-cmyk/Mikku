@@ -151,7 +151,12 @@ fun ActivityScreen(vm: FinTrackViewModel) {
     }
 
     editing?.let { t -> EditSheet(t, onDismiss = { editing = null }, vm = vm) }
-    picking?.let { t -> CategoryPickerSheet(t, onDismiss = { picking = null }) { vm.quickCategory(t, it); picking = null } }
+    picking?.let { t ->
+        CategoryPickerSheet(
+            t, onDismiss = { picking = null }, why = vm.categoryReason(t),
+            onPerson = { vm.markPerson(t); picking = null }.takeIf { t.direction == com.fintrack.core.Direction.DEBIT },
+        ) { vm.quickCategory(t, it); picking = null }
+    }
     if (adding) AddSheet(onDismiss = { adding = false }) { date, amount, dir, what ->
         vm.addManual(date, amount, dir, what)
         adding = false
@@ -193,10 +198,11 @@ internal fun TxnRow(t: Txn, onToggleCounted: (() -> Unit)? = null, onCategory: (
         Column(Modifier.weight(1f)) {
             Text(t.merchant, style = MaterialTheme.typography.bodyLarge, color = c.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
             val flow = t.effectiveFlow
-            val hasCategory = flow == Flow.SPEND || flow == Flow.REFUND
+            // Payments to people can be sorted too (₹3,200 to a person → Rent), which makes them spending.
+            val hasCategory = flow == Flow.SPEND || flow == Flow.REFUND || flow == Flow.TO_PEOPLE
             Row(Modifier.padding(top = 3.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (hasCategory && onCategory != null) {
-                    CategoryTag(t, onCategory)
+                    if (flow == Flow.TO_PEOPLE) PersonTag(onCategory) else CategoryTag(t, onCategory)
                     Spacer(Modifier.width(8.dp))
                 }
                 Faint(
@@ -308,7 +314,7 @@ internal fun EditSheet(txn: Txn, onDismiss: () -> Unit, vm: FinTrackViewModel) {
             // 2. Category, only where it matters (spending and refunds).
             if (flow == Flow.SPEND || flow == Flow.REFUND) {
                 Text("CATEGORY", style = CapsLabel, color = c.inkSoft)
-                if (txn.categorySource == CategorySource.LEARNED) {
+                if (CategorySource.isAutomatic(txn.categorySource)) {
                     Faint("✦ Learned from your past choices. Pick the right one and it learns from that too.")
                 }
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

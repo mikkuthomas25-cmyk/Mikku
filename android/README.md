@@ -86,6 +86,11 @@ Categories are learned on the phone. Nothing is sent anywhere, and no API key is
   automatically instead of "Other". The model can still learn better categories for them.
 - **Sort "Other" on Home:** payments FinTrack couldn't place are grouped by payee, biggest first; one tap
   per payee sorts all of them.
+- **Payee memory (`core/.../PayeeMemory.kt`):** a category you give a payment is reused for (1) the
+  same payee, matched by UPI ID or by name however it's written, and (2) the same monthly payment: the
+  same amount (±1%) around the same day in a later month, from ₹500 up (e.g. ₹3,200 rent on the 2nd).
+  These show ✦ and say why in the picker. Payments to people can be sorted too ("What for?"); sorting
+  one as Rent, Fees… makes it spending, and "Just a person" keeps it as money given.
 - **Changing a category is one tap:** every spend shows its category as a label (Home, Activity, category
   pages). Tap it and pick the right one. It applies to that payee from now on and trains the model.
 - **When it retrains:** after every SMS scan and every correction (milliseconds).

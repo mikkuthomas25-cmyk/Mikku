@@ -25,6 +25,7 @@ import com.fintrack.core.Flow
 import com.fintrack.core.FlowAnalyzer
 import com.fintrack.core.FlowDecision
 import com.fintrack.core.Reconciliation
+import com.fintrack.core.PayeeMemory
 import com.fintrack.core.ReviewItem
 import com.fintrack.core.Salary
 import com.fintrack.core.MissedSms
@@ -325,8 +326,28 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
 
     /** The one-tap category fix from a list row: applies to this payee from now on, and teaches the model. */
     fun quickCategory(txn: Txn, category: String) {
-        setCategory(txn, category, applyToMerchant = txn.merchant != "Unknown")
+        val s = store ?: return
+        viewModelScope.launch {
+            // A payee answered "person" earlier, or a payment marked "sent to people", becomes spending now.
+            withContext(Dispatchers.IO) {
+                if (txn.effectiveFlow == Flow.TO_PEOPLE) {
+                    s.setUserFlow(txn.id, null)
+                    s.clearPayeeFlow(txn.merchant)
+                }
+            }
+            setCategory(txn, category, applyToMerchant = txn.merchant != "Unknown")
+        }
         message = "${txn.merchant} → $category" + if (txn.merchant != "Unknown") " (and from now on)" else ""
+    }
+
+    /** Why an automatic category was chosen ("You put Manoop V U in Rent"), for the picker. */
+    fun categoryReason(t: Txn): String? =
+        if (t.categorySource == CategorySource.MEMORY) PayeeMemory(history).match(t)?.reason else null
+
+    /** "Just a person": money given, not spent; remembered for this payee. */
+    fun markPerson(t: Txn) {
+        setFlow(t, Flow.TO_PEOPLE, forPayee = true)
+        message = "${t.merchant}: a person, not spending (from now on)"
     }
 
     /** The month's transactions with how each was treated, as text to share for a check (numbers hidden). */
@@ -405,22 +426,29 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
     private fun relearn(s: TxnStore): LearningStats {
         val all = s.all()
         val learner = CategoryLearner(all)
+        val memory = PayeeMemory(all)
         s.transaction {
             for (t in all) {
-                if (!CategoryLearner.isLearnable(t)) continue
-                // The built-in brand list first, then the model, then the fallback (Other / Income).
+                if (t.categorySource == CategorySource.USER || t.categorySource == CategorySource.RULE) continue
+                // What the user taught about this payee (or this monthly payment) comes first,
+                // then the built-in brand list, then the model, then the fallback (Other / Income).
+                val remembered = memory.match(t)
                 val keyword = Categorizer.keywordCategory(t.merchant, t.direction, Categorizer.contextOf(t))
                 val known = keyword != "Other" && keyword != "Income"
-                val guess = if (known) null else learner.suggest(t)
-                val category = guess?.category ?: Categorizer.withSmallSpends(keyword, t.direction, t.amount)
-                val source = if (guess != null) CategorySource.LEARNED else CategorySource.KEYWORD
+                if (remembered == null && !CategoryLearner.isLearnable(t)) continue
+                val guess = if (remembered != null || known) null else learner.suggest(t)
+                val (category, source) = when {
+                    remembered != null -> remembered.category to CategorySource.MEMORY
+                    guess != null -> guess.category to CategorySource.LEARNED
+                    else -> Categorizer.withSmallSpends(keyword, t.direction, t.amount) to CategorySource.KEYWORD
+                }
                 if (category != t.category || source != t.categorySource) s.setLearned(t.id, category, source)
             }
         }
         val after = s.all()
         return LearningStats(
             taught = learner.userTaught,
-            autoSorted = after.count { it.categorySource == CategorySource.LEARNED },
+            autoSorted = after.count { CategorySource.isAutomatic(it.categorySource) },
             accuracy = CategoryLearner.estimateAccuracy(after),
         )
     }

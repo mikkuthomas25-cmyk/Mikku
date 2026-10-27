@@ -76,7 +76,12 @@ fun HomeScreen(vm: FinTrackViewModel, openActivity: () -> Unit, openProfile: () 
         }
     }
     editing?.let { t -> EditSheet(t, onDismiss = { editing = null }, vm = vm) }
-    picking?.let { t -> CategoryPickerSheet(t, onDismiss = { picking = null }) { vm.quickCategory(t, it); picking = null } }
+    picking?.let { t ->
+        CategoryPickerSheet(
+            t, onDismiss = { picking = null }, why = vm.categoryReason(t),
+            onPerson = { vm.markPerson(t); picking = null }.takeIf { t.direction == com.fintrack.core.Direction.DEBIT },
+        ) { vm.quickCategory(t, it); picking = null }
+    }
 }
 
 /**

@@ -187,6 +187,10 @@ class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbN
     fun payeeFlows(): Map<String, Flow> = readableDatabase.rawQuery("SELECT payee, flow FROM payee_flow", null)
         .use { c -> buildMap { while (c.moveToNext()) runCatching { Flow.valueOf(c.getString(1)) }.getOrNull()?.let { put(c.getString(0), it) } } }
 
+    fun clearPayeeFlow(payee: String) {
+        writableDatabase.delete("payee_flow", "payee=?", arrayOf(FlowAnalyzer.norm(payee)))
+    }
+
     fun setPayeeFlow(payee: String, flow: Flow) {
         writableDatabase.insertWithOnConflict("payee_flow", null, ContentValues().apply {
             put("payee", FlowAnalyzer.norm(payee))

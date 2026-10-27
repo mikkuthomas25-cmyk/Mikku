@@ -11,6 +11,10 @@ object CategorySource {
     const val RULE = "rule"        // the user's "always use this for <merchant>"
     const val KEYWORD = "keyword"  // built-in brand list (or "Other" when nothing matched)
     const val LEARNED = "ml"       // guessed by the on-device model
+    const val MEMORY = "memory"    // same payee / same monthly payment as one the user categorized
+
+    /** Automatic choices that are re-checked on every relearn. */
+    fun isAutomatic(source: String) = source == LEARNED || source == MEMORY
 }
 
 /** Turns a transaction into the signals the model learns from. */
@@ -150,7 +154,7 @@ class CategoryLearner(labelled: List<Txn>) {
         }
 
         /** Rows the model may (re)categorize: its own past guesses and the keyword fallbacks. */
-        fun isLearnable(t: Txn) = t.categorySource == CategorySource.LEARNED ||
+        fun isLearnable(t: Txn) = CategorySource.isAutomatic(t.categorySource) ||
             (t.categorySource == CategorySource.KEYWORD && !isTrusted(t))
 
         fun weightFor(source: String) = when (source) {
