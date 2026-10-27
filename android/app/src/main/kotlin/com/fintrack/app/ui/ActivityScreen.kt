@@ -64,7 +64,6 @@ import java.time.YearMonth
 @Composable
 fun ActivityScreen(vm: FinTrackViewModel) {
     var open by remember { mutableStateOf<Opened?>(null) }
-    var adding by remember { mutableStateOf(false) }
     val rows = vm.filteredTxns
     val c = Fin.colors
 
@@ -136,14 +135,9 @@ fun ActivityScreen(vm: FinTrackViewModel) {
             }
         }
 
-        AddButton(Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 20.dp, bottom = 92.dp)) { adding = true }
     }
 
     open?.let { o -> TxnSheet(o, vm) { open = null } }
-    if (adding) AddSheet(onDismiss = { adding = false }) { date, amount, dir, what, choice ->
-        vm.addManual(date, amount, dir, what, choice)
-        adding = false
-    }
 }
 
 @Composable
@@ -170,15 +164,7 @@ private fun SearchBar(query: String, onChange: (String) -> Unit) {
 }
 
 @Composable
-private fun AddButton(modifier: Modifier, onClick: () -> Unit) {
-    val c = Fin.colors
-    Plunk(Color.White, c.buttonEdgeRight, c.buttonEdgeBottom, modifier, faceModifier = Modifier.size(56.dp), depth = 5.dp, onClick = onClick) {
-        Icon(Icons.Filled.Add, "Add cash spend", tint = Color.Black, modifier = Modifier.size(28.dp).align(Alignment.Center))
-    }
-}
-
-@Composable
-private fun AddSheet(onDismiss: () -> Unit, onSave: (LocalDate, Double, Direction, String, Choice) -> Unit) {
+internal fun AddSheet(onDismiss: () -> Unit, onSave: (LocalDate, Double, Direction, String, Choice) -> Unit) {
     val c = Fin.colors
     val context = LocalContext.current
     var amount by remember { mutableStateOf("") }

@@ -260,17 +260,19 @@ To get login in a local build, put `google-services.json` in `android/app/`.
 
 ## Design
 
-The look follows the principles of CRED's open-source **NeoPOP** design system, re-implemented in
-Jetpack Compose (`app/ui/Pop.kt`); no CRED code or brand assets are used. It has:
+"Obsidian & Emerald" (`app/ui/Theme.kt`, `Pop.kt`, `Dashboard.kt`):
 
-- a near-black canvas, flat dark tiles with hairline borders and sharp corners;
-- bold uppercase captions and heavy numbers;
-- white primary buttons and one violet accent for the screen's key tile;
-- **plunk** buttons and tiles with hard 3D edges that press flat when tapped;
-- a full-width bottom bar with three destinations (Home, Transactions, Settings);
-- always dark, with light system-bar icons.
+- a deep carbon canvas (#0B0D10) with charcoal cards (#14171C), razor-thin borders and soft corners;
+- one emerald accent (#34D399) with a soft glow on what matters, amber as the second colour;
+- a serif for balances, with the paise smaller and dimmer; a clean sans-serif for everything else;
+  tabular figures for every number;
+- Home: total bank balance with a "this month" badge, pacing against your usual month with a TODAY
+  marker, a cash-flow curve (income vs spent, 6 months), quick actions and top-category rings,
+  recent activity with a category symbol per row;
+- a privacy eye that hides every amount;
+- a floating tab bar: Home · Charts · + Add · Activity · Settings.
 
-Category colours are fixed and checked for colour-blind separation on the dark surface.
+Category colours are fixed (Food is always the same colour) and categories are always labelled.
 
 ## Publishing on Google Play
 

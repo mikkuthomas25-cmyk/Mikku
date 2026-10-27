@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -37,7 +38,8 @@ import androidx.compose.ui.unit.dp
 
 private val NAV = listOf(
     NavItem("Home", Icons.Filled.Home),
-    NavItem("Transactions", Icons.AutoMirrored.Filled.List),
+    NavItem("Charts", Icons.Filled.Star),
+    NavItem("Activity", Icons.AutoMirrored.Filled.List),
     NavItem("Settings", Icons.Filled.Settings),
 )
 
@@ -49,12 +51,11 @@ fun MainScreen(vm: FinTrackViewModel, startTab: Int = 0) {
     var tab by rememberSaveable { mutableIntStateOf(startTab) }
     // Category drill-down (e.g. Food) shown over the current tab.
     var category by rememberSaveable { mutableStateOf<String?>(null) }
-    // Charts and checks, opened from Settings.
-    var insights by rememberSaveable { mutableStateOf(false) }
+    // "+ Add" in the tab bar: a cash (or any missed) transaction, from any tab.
+    var adding by rememberSaveable { mutableStateOf(false) }
     val openCategory: (String) -> Unit = { category = it }
     // Back from any tab returns Home before leaving the app.
-    BackHandler(enabled = insights && category == null) { insights = false }
-    BackHandler(enabled = tab != 0 && category == null && !insights) { tab = 0 }
+    BackHandler(enabled = tab != 0 && category == null) { tab = 0 }
 
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(vm.message) {
@@ -68,20 +69,23 @@ fun MainScreen(vm: FinTrackViewModel, startTab: Int = 0) {
 
     AppBackground {
         AnimatedContent(
-            targetState = Triple(tab, category, insights),
+            targetState = tab to category,
             transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(150)) },
             label = "tab",
             modifier = Modifier.fillMaxSize().statusBarsPadding(),
-        ) { (t, cat, ins) ->
+        ) { (t, cat) ->
             when {
                 cat != null -> CategoryScreen(vm, cat, onBack = { category = null })
-                ins -> InsightsScreen(vm, openCategory, openActivity = { insights = false; tab = 1 }, onBack = { insights = false })
-                t == 0 -> HomeScreen(vm, openActivity = { tab = 1 }, openProfile = { tab = 2 }, openCategory = openCategory)
-                t == 1 -> ActivityScreen(vm)
-                else -> ProfileScreen(vm, openInsights = { insights = true }, openTransactions = { f ->
+                t == 0 -> HomeScreen(
+                    vm, openActivity = { tab = 2 }, openProfile = { tab = 3 }, openCategory = openCategory,
+                    onAdd = { adding = true }, openCharts = { tab = 1 },
+                )
+                t == 1 -> InsightsScreen(vm, openCategory, openActivity = { tab = 2 })
+                t == 2 -> ActivityScreen(vm)
+                else -> ProfileScreen(vm, openInsights = { tab = 1 }, openTransactions = { f ->
                     vm.kind = Kind.All
                     vm.filter = f
-                    tab = 1
+                    tab = 2
                 })
             }
         }
@@ -93,8 +97,13 @@ fun MainScreen(vm: FinTrackViewModel, startTab: Int = 0) {
         }
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 88.dp))
         PopNavBar(
-            NAV, tab, { category = null; insights = false; tab = it },
+            NAV, tab, { category = null; tab = it },
             Modifier.align(Alignment.BottomCenter),
+            onAdd = { adding = true },
         )
+    }
+    if (adding) AddSheet(onDismiss = { adding = false }) { date, amount, dir, what, choice ->
+        vm.addManual(date, amount, dir, what, choice)
+        adding = false
     }
 }

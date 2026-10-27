@@ -45,59 +45,50 @@ import java.time.YearMonth
 import kotlin.math.abs
 
 @Composable
-fun HomeScreen(vm: FinTrackViewModel, openActivity: () -> Unit, openProfile: () -> Unit, openCategory: (String) -> Unit) {
+fun HomeScreen(
+    vm: FinTrackViewModel,
+    openActivity: () -> Unit,
+    openProfile: () -> Unit,
+    openCategory: (String) -> Unit,
+    onAdd: () -> Unit = {},
+    openCharts: () -> Unit = {},
+) {
     val s = vm.summary
     var open by remember { mutableStateOf<Opened?>(null) }
     var choosingAccounts by remember { mutableStateOf(false) }
     val show: (Kind, TxnFilter?) -> Unit = { k, f -> vm.kind = k; vm.filter = f; openActivity() }
+    val pickStatements = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        if (uris.isNotEmpty()) vm.importStatements(uris)
+    }
     LazyColumn(
         Modifier.fillMaxSize(),
         contentPadding = ScreenPadding,
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        item { Greeting(vm.account ?: "", onAvatar = openProfile) }
-        item {
-            MonthPicker(vm, long = true)
-        }
+        item { DashboardTopBar(onProfile = openProfile) }
+        if (s != null) item { Spacer(Modifier.height(6.dp)); BalanceHeader(vm, s) }
+        item { Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { MonthPicker(vm, long = true) } }
         if (!vm.hasSmsPermission) item { PermissionHero(vm) }
         if (!vm.accountsChosen) item { AccountsPrompt(vm) { choosingAccounts = true } }
         if (s == null) return@LazyColumn
 
-        item { MonthHero(s, show) }
-        if (vm.balances.isNotEmpty()) item { BankBalances(vm) }
-        vm.tallies.forEach { tally -> item { StatementTallyCard(tally, vm) { f -> show(Kind.All, f) } } }
+        item { PacingCard(vm, s) }
+        item { CashFlowCard(vm) }
+        item {
+            BentoRow(
+                s, onAdd = onAdd,
+                onImport = { pickStatements.launch(arrayOf("application/pdf", "text/csv", "text/comma-separated-values", "text/plain")) },
+                onCharts = openCharts, openCategory = openCategory,
+            )
+        }
         if (vm.review.isNotEmpty()) item { ReviewCard(vm) }
+        item { RecentActivity(vm.txns, onOpen = { open = Opened(it, SheetMode.Category) }, onSeeAll = { show(Kind.All, null) }) }
         item { WhereItWent(s, openCategory) { flow -> show(Kind.All, TxnFilter.OfFlow(flow)) } }
+        vm.tallies.forEach { tally -> item { StatementTallyCard(tally, vm) { f -> show(Kind.All, f) } } }
     }
+    vm.passwordFor?.let { PasswordDialog(it, vm) }
     open?.let { o -> TxnSheet(o, vm) { open = null } }
     if (choosingAccounts) AccountsSheet(vm) { choosingAccounts = false }
-}
-
-/**
- * The month in three numbers: spent (everything that left: spending, people, investments, the
- * same total as "Where your money went"), money in, and what's left. Each opens its list.
- */
-@Composable
-private fun MonthHero(s: MonthSummary, show: (Kind, TxnFilter?) -> Unit) {
-    val white = Color.White
-    HeroTile(Modifier.fillMaxWidth()) {
-        Column(Modifier.fillMaxWidth().clickable { show(Kind.Spent, null) }) {
-            Text("SPENT IN ${s.month.name().uppercase()}", style = CapsLabel, color = white.copy(alpha = 0.8f))
-            AnimatedRupees(s.moneyOut, MaterialTheme.typography.displaySmall, white, Modifier.padding(top = 4.dp))
-        }
-        Spacer(Modifier.height(10.dp))
-        StatementLine("Money in", s.received, "+") { show(Kind.Received, null) }
-        StatementLine("Left", s.net, if (s.net < 0) "−" else "") { show(Kind.All, null) }
-    }
-}
-
-@Composable
-private fun StatementLine(label: String, amount: Double, sign: String, onClick: () -> Unit) {
-    val white = Color.White
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, style = MaterialTheme.typography.bodyLarge, color = white, modifier = Modifier.weight(1f))
-        Text("$sign ${rupees(abs(amount))}  ›".trim(), style = MaterialTheme.typography.titleMedium.merge(MoneyStyle), color = white)
-    }
 }
 
 /**
@@ -198,27 +189,6 @@ private fun WhereItWent(s: MonthSummary, openCategory: (String) -> Unit, openFlo
 }
 
 @Composable
-private fun Greeting(name: String, onAvatar: () -> Unit) {
-    val hello = when (LocalTime.now().hour) {
-        in 5..11 -> "Good morning"
-        in 12..16 -> "Good afternoon"
-        else -> "Good evening"
-    }
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            Text(hello, style = MaterialTheme.typography.bodyMedium, color = Fin.colors.inkSoft)
-            Text(name.ifBlank { "there" }, style = MaterialTheme.typography.headlineMedium, color = Fin.colors.ink)
-        }
-        Column(Modifier.clip(CircleShape).clickable(onClick = onAvatar)) { Avatar(name, size = 44.dp, gradient = true) }
-    }
-}
-
-/**
- * "Does it tally?": an imported statement's money in and out for the month, and where FinTrack
- * put every rupee of it (spent, people, invested, your own accounts, not counted). The lines add up
- * to the statement's own totals, so the two can be checked side by side.
- */
-@Composable
 private fun StatementTallyCard(t: StatementLedger.Tally, vm: FinTrackViewModel, show: (TxnFilter) -> Unit) {
     val c = Fin.colors
     val name = vm.accounts.firstOrNull { it.key == "acct:${t.account}" }?.label ?: "Account ••${t.account}"
@@ -252,28 +222,6 @@ private fun TallyBlock(title: String, total: Double, parts: List<Triple<String, 
         Row(Modifier.fillMaxWidth().clickable { show(TxnFilter.OfFlow(flow)) }.padding(start = 12.dp, top = 4.dp, bottom = 4.dp)) {
             Text("$label  ›", style = MaterialTheme.typography.bodyMedium, color = c.inkSoft, modifier = Modifier.weight(1f))
             Text(rupees(amount), style = MaterialTheme.typography.bodyMedium.merge(MoneyStyle), color = c.inkSoft)
-        }
-    }
-}
-
-/**
- * The money actually in each tracked account now: the newest of a statement's closing balance and
- * an SMS's "Avl Bal", with its date. Not the same as "Left", which is this month's in − out.
- */
-@Composable
-private fun BankBalances(vm: FinTrackViewModel) {
-    val c = Fin.colors
-    Tile(Modifier.fillMaxWidth()) {
-        SectionTitle("Bank balance")
-        vm.balances.forEach { b ->
-            val name = vm.accounts.firstOrNull { it.key == b.accountKey }?.label ?: b.accountKey.removePrefix("acct:").let { "••$it" }
-            Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(name, style = MaterialTheme.typography.bodyLarge, color = c.ink, maxLines = 1)
-                    Faint("on ${b.date.short()} · from your ${if (b.fromStatement) "statement" else "bank SMS"}")
-                }
-                Text(rupees(b.amount), style = MaterialTheme.typography.titleMedium.merge(MoneyStyle), color = c.ink)
-            }
         }
     }
 }
