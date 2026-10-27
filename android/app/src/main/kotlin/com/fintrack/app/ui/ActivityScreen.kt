@@ -68,6 +68,7 @@ import java.time.YearMonth
 @Composable
 fun ActivityScreen(vm: FinTrackViewModel) {
     var editing by remember { mutableStateOf<Txn?>(null) }
+    var picking by remember { mutableStateOf<Txn?>(null) }
     var adding by remember { mutableStateOf(false) }
     val rows = vm.filteredTxns
     val c = Fin.colors
@@ -111,7 +112,8 @@ fun ActivityScreen(vm: FinTrackViewModel) {
                         Faint("Something here that shouldn't be? Untick it to leave it out of your totals.")
                     }
                 } else if (rows.isNotEmpty()) {
-                    Faint("✓ = counted in your totals. Untick anything that shouldn't count.", Modifier.padding(horizontal = 6.dp))
+                    Faint("Tap a category to change it (FinTrack remembers). ✓ = counted in your totals; untick anything that shouldn't count.",
+                        Modifier.padding(horizontal = 6.dp))
                 }
             }
             if (rows.isEmpty()) {
@@ -127,7 +129,8 @@ fun ActivityScreen(vm: FinTrackViewModel) {
             }
             rows.groupBy { it.date }.forEach { (date, dayRows) ->
                 item(key = "h$date") {
-                    val spent = dayRows.filter { it.direction == Direction.DEBIT }.sumOf { it.amount }
+                    // Only real spending: transfers, duplicates and excluded rows don't add to the day.
+                    val spent = dayRows.sumOf { it.spendValue }
                     Row(Modifier.padding(start = 6.dp, end = 6.dp, top = 6.dp)) {
                         Text(date.relative(), style = MaterialTheme.typography.labelLarge, color = c.inkSoft, modifier = Modifier.weight(1f))
                         if (spent > 0) Text("−" + rupees(spent), style = MaterialTheme.typography.labelLarge.merge(MoneyStyle), color = c.inkFaint)
@@ -136,7 +139,7 @@ fun ActivityScreen(vm: FinTrackViewModel) {
                 item(key = "d$date") {
                     Tile(Modifier.fillMaxWidth(), padding = 6.dp) {
                         dayRows.forEachIndexed { i, t ->
-                            TxnRow(t, onToggleCounted = { vm.toggleCounted(t) }) { editing = t }
+                            TxnRow(t, onToggleCounted = { vm.toggleCounted(t) }, onCategory = { picking = t }) { editing = t }
                             if (i < dayRows.lastIndex) HorizontalDivider(Modifier.padding(start = 66.dp, end = 12.dp), color = c.track)
                         }
                     }
@@ -148,6 +151,7 @@ fun ActivityScreen(vm: FinTrackViewModel) {
     }
 
     editing?.let { t -> EditSheet(t, onDismiss = { editing = null }, vm = vm) }
+    picking?.let { t -> CategoryPickerSheet(t, onDismiss = { picking = null }) { vm.quickCategory(t, it); picking = null } }
     if (adding) AddSheet(onDismiss = { adding = false }) { date, amount, dir, what ->
         vm.addManual(date, amount, dir, what)
         adding = false
@@ -178,7 +182,7 @@ private fun SearchBar(query: String, onChange: (String) -> Unit) {
 }
 
 @Composable
-internal fun TxnRow(t: Txn, onToggleCounted: (() -> Unit)? = null, onClick: () -> Unit) {
+internal fun TxnRow(t: Txn, onToggleCounted: (() -> Unit)? = null, onCategory: (() -> Unit)? = null, onClick: () -> Unit) {
     val c = Fin.colors
     Row(
         Modifier.fillMaxWidth().clip(TileShape).clickable(onClick = onClick).padding(horizontal = 10.dp, vertical = 12.dp),
@@ -188,17 +192,25 @@ internal fun TxnRow(t: Txn, onToggleCounted: (() -> Unit)? = null, onClick: () -
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(t.merchant, style = MaterialTheme.typography.bodyLarge, color = c.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Faint(
-                listOfNotNull(
-                    t.category + if (t.categorySource == CategorySource.LEARNED) " ✦" else "",
-                    t.account?.let { "••$it" },
-                    "cash".takeIf { t.source == "manual" },
-                    "statement".takeIf { t.source == "statement" },
-                ).joinToString("  ·  "),
-                maxLines = 1,
-            )
-            // Anything that isn't plain spending or income says what it is.
             val flow = t.effectiveFlow
+            val hasCategory = flow == Flow.SPEND || flow == Flow.REFUND
+            Row(Modifier.padding(top = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (hasCategory && onCategory != null) {
+                    CategoryTag(t, onCategory)
+                    Spacer(Modifier.width(8.dp))
+                }
+                Faint(
+                    listOfNotNull(
+                        t.category.takeIf { hasCategory && onCategory == null },
+                        t.account?.let { "••$it" },
+                        "cash".takeIf { t.source == "manual" },
+                        "statement".takeIf { t.source == "statement" },
+                    ).joinToString("  ·  "),
+                    Modifier.weight(1f, fill = false),
+                    maxLines = 1,
+                )
+            }
+            // Anything that isn't plain spending or income says what it is.
             if (flow != Flow.SPEND && flow != Flow.INCOME) {
                 Text(
                     (if (flow.counted) flow.label else "Not counted · ${flow.label}").uppercase(),

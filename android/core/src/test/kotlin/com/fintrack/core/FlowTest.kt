@@ -152,4 +152,73 @@ class FlowTest {
         assertEquals(30000.0, s.net)
         assertEquals(2, s.txnCount)
     }
+
+    @Test fun aStatementRowForAPaymentAlreadyInSmsCountsOnce() {
+        val sms = t(5, 1200.0, merchant = "Zomato", raw = "Rs 1200 debited from a/c XX1234 to VPA zomato@hdfc UPI Ref 512345678901", ref = "512345678901")
+        val row = t(6, 1200.0, merchant = "UPI ZOMATO", account = null, raw = "UPI/DR/998877/ZOMATO/HDFC", ref = "998877", source = "statement")
+        val a = FlowAnalyzer.analyze(listOf(row, sms))
+        assertEquals(Flow.SPEND, a.flowOf(sms))
+        assertEquals(Flow.DUPLICATE, a.flowOf(row))
+    }
+
+    @Test fun aStatementRowDaysAwayFromItsSmsBecomesAQuestion() {
+        val sms = t(5, 1200.0, merchant = "Zomato")
+        val row = t(8, 1200.0, merchant = "ZOMATO", account = null, raw = "UPI/DR/ZOMATO", source = "statement")
+        val a = FlowAnalyzer.analyze(listOf(sms, row))
+        assertEquals(Flow.SPEND, a.flowOf(row))
+        assertTrue(a.review.any { it is ReviewItem.PossibleDuplicate })
+    }
+
+    @Test fun oneStatementCopyCannotSwallowTwoRealPayments() {
+        val first = t(5, 300.0, merchant = "Cafe", raw = "Rs 300 debited from a/c XX1234 to Cafe ref 1")
+        val second = t(5, 300.0, merchant = "Cafe", raw = "Rs 300 debited from a/c XX1234 to Cafe ref 2 on another day")
+        val row = t(5, 300.0, merchant = "CAFE", account = null, raw = "POS CAFE", source = "statement")
+        val a = FlowAnalyzer.analyze(listOf(first, second, row))
+        assertEquals(1, listOf(first, second, row).count { a.flowOf(it) == Flow.DUPLICATE })
+    }
+
+    @Test fun transferWhereOneSideHasNoAccountIsAskedNotDoubleCounted() {
+        val out = t(1, 15000.0, merchant = "Mikku Thomas", account = "1234", raw = "Rs 15000 debited from a/c XX1234 IMPS to MIKKU THOMAS")
+        val inn = t(1, 15000.0, Direction.CREDIT, merchant = "Mikku Thomas", account = null, raw = "Rs 15000 credited to your account via IMPS from MIKKU THOMAS")
+        val a = FlowAnalyzer.analyze(listOf(out, inn))
+        val q = a.review.filterIsInstance<ReviewItem.PossibleOwnTransfer>().single()
+        assertEquals(out.id, q.out.id)
+        assertEquals(inn.id, q.into.id)
+        assertTrue(FlowAnalyzer.analyze(listOf(out, inn), dismissed = setOf(q.key)).review.none { it is ReviewItem.PossibleOwnTransfer })
+    }
+
+    @Test fun anSmsNamingYourOtherAccountIsAnOwnTransfer() {
+        val card = t(2, 800.0, merchant = "Amazon", account = "9012", raw = "Rs 800 spent on your credit card XX9012 at Amazon")
+        val bill = t(20, 15000.0, merchant = "HDFC Bank", account = "1234", raw = "Rs 15000 debited from a/c XX1234 towards HDFC credit card XX9012")
+        val a = FlowAnalyzer.analyze(listOf(card, bill))
+        assertEquals(Flow.SPEND, a.flowOf(card))
+        assertEquals(Flow.OWN_TRANSFER, a.flowOf(bill))
+    }
+
+    @Test fun aDebitCardPurchaseIsStillSpending() {
+        val card = t(2, 800.0, merchant = "Amazon", account = "9012", raw = "Rs 800 spent on Debit Card XX9012 at Amazon")
+        val shop = t(4, 450.0, merchant = "DMart", account = "1234", raw = "Rs 450 debited from a/c XX1234 for POS purchase at DMART using card XX9012")
+        assertEquals(Flow.SPEND, FlowAnalyzer.analyze(listOf(card, shop)).flowOf(shop))
+    }
+
+    @Test fun walletTopUpIsNotIncome() {
+        val load = t(3, 2000.0, Direction.CREDIT, merchant = "Paytm", account = null, raw = "Rs 2000 added to your Paytm Wallet. Balance Rs 2100")
+        val a = FlowAnalyzer.analyze(listOf(load))
+        assertEquals(Flow.OWN_TRANSFER, a.flowOf(load))
+    }
+
+    @Test fun checkReportListsEveryTransactionWithoutAccountNumbers() {
+        val spend = t(3, 250.0, merchant = "rahul@okaxis")
+        val row = t(4, 99.0, merchant = "Netflix", account = null, raw = "NETFLIX", source = "statement")
+        val txns = listOf(spend, row).map { it.copy(flow = Flow.SPEND) }
+        val text = Diagnostics.report(oct, txns, emptyMap(), Summaries.build(oct, txns, emptyList(), oct.atDay(26)))
+        assertTrue("SMS: 1" in text && "statement: 1" in text, text)
+        assertTrue("Spent ₹349" in text, text)
+        assertTrue("okaxis" in text && "rahul@" !in text, text)
+    }
+
+    @Test fun statementNarrationFindsTheCardBill() {
+        assertEquals("Self Transfer", Categorizer.keywordCategory("HDFC0001234", Direction.DEBIT, "NEFT DR HDFC0001234 CC BILL PAYMENT"))
+        assertEquals("Other", Categorizer.keywordCategory("HDFC0001234", Direction.DEBIT))
+    }
 }

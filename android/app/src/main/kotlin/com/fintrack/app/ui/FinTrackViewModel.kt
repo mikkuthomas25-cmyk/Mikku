@@ -19,6 +19,7 @@ import com.fintrack.core.Categorizer
 import com.fintrack.core.CategoryLearner
 import com.fintrack.core.CategorySource
 import com.fintrack.core.AccountCheck
+import com.fintrack.core.Diagnostics
 import com.fintrack.core.Direction
 import com.fintrack.core.Flow
 import com.fintrack.core.FlowAnalyzer
@@ -309,6 +310,24 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
         it.markReviewDone(item.key)
     }
 
+    /** "Moved between your accounts?" Yes takes both halves out of money in and spending. */
+    fun answerOwnTransfer(item: ReviewItem.PossibleOwnTransfer, isOwn: Boolean) = io {
+        if (isOwn) {
+            it.setUserFlow(item.out.id, Flow.OWN_TRANSFER)
+            it.setUserFlow(item.into.id, Flow.OWN_TRANSFER)
+        }
+        it.markReviewDone(item.key)
+    }
+
+    /** The one-tap category fix from a list row: applies to this payee from now on, and teaches the model. */
+    fun quickCategory(txn: Txn, category: String) {
+        setCategory(txn, category, applyToMerchant = txn.merchant != "Unknown")
+        message = "${txn.merchant} → $category" + if (txn.merchant != "Unknown") " (and from now on)" else ""
+    }
+
+    /** The month's transactions with how each was treated, as text to share for a check (numbers hidden). */
+    fun checkReport(): String = Diagnostics.report(month, txns, flowDecisions, summary)
+
     fun answerDuplicate(item: ReviewItem.PossibleDuplicate, isDuplicate: Boolean) = io {
         if (isDuplicate) it.setUserFlow(item.duplicate.id, Flow.DUPLICATE)
         it.markReviewDone(item.key)
@@ -386,7 +405,7 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
             for (t in all) {
                 if (!CategoryLearner.isLearnable(t)) continue
                 val guess = learner.suggest(t)
-                val category = guess?.category ?: Categorizer.keywordCategory(t.merchant, t.direction)
+                val category = guess?.category ?: Categorizer.keywordCategory(t.merchant, t.direction, Categorizer.contextOf(t))
                 val source = if (guess != null) CategorySource.LEARNED else CategorySource.KEYWORD
                 if (category != t.category || source != t.categorySource) s.setLearned(t.id, category, source)
             }

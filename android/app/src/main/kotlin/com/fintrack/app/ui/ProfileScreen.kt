@@ -89,6 +89,10 @@ fun ProfileScreen(vm: FinTrackViewModel) {
                     enabled = vm.hasSmsPermission,
                 ) { vm.loadMissed(); showMissed = true }
                 SettingRow(
+                    "Check my numbers",
+                    "Totals look wrong? Share ${vm.month.name()}'s list (where each payment came from and how it was counted). Account numbers and UPI IDs are hidden",
+                ) { PermissionHelper.shareText(context, "FinTrack check", vm.checkReport()) }
+                SettingRow(
                     "Rescan messages",
                     if (vm.hasSmsPermission) "Re-read the last 6 months of bank SMS" else "Allow SMS access on Home first",
                     enabled = vm.hasSmsPermission && !vm.busy,

@@ -76,7 +76,7 @@ fun MainScreen(vm: FinTrackViewModel, startTab: Int = 0) {
                 cat != null -> CategoryScreen(vm, cat, onBack = { category = null })
                 t == 0 -> HomeScreen(vm, openActivity = { tab = 1 }, openProfile = { tab = 3 }, openCategory = openCategory)
                 t == 1 -> ActivityScreen(vm)
-                t == 2 -> InsightsScreen(vm, openCategory)
+                t == 2 -> InsightsScreen(vm, openCategory, openActivity = { tab = 1 })
                 else -> ProfileScreen(vm)
             }
         }

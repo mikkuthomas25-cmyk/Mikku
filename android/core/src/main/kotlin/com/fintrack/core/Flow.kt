@@ -51,6 +51,15 @@ sealed interface ReviewItem {
         override val key get() = "dup:${keep.id}:${duplicate.id}"
     }
 
+    /**
+     * Money left one account and the same amount arrived soon after, but FinTrack can't prove both
+     * accounts are yours (one SMS doesn't name its account). Counting both would inflate money in
+     * *and* spending.
+     */
+    data class PossibleOwnTransfer(val out: Txn, val into: Txn) : ReviewItem {
+        override val key get() = "own:${out.id}:${into.id}"
+    }
+
     /** Someone paid often via a personal UPI ID: a shop (spending) or a person? */
     data class ShopOrPerson(val payee: String, val count: Int, val total: Double) : ReviewItem {
         override val key get() = "payee:${payee.lowercase()}"
@@ -75,6 +84,18 @@ object FlowAnalyzer {
     private val MERCHANT_PAYMENT = Regex("""\b(p2m|pos|spent on|purchase)\b""", RegexOption.IGNORE_CASE)
     private val PERSONAL = Regex("""\bp2a\b|@ok[a-z]+""", RegexOption.IGNORE_CASE)
     private val DIGITS = Regex("""[\d.,]+""")
+    /** "to / from / towards [your] [HDFC credit] a/c|card XX5678": the account money moved to or from. */
+    private val OTHER_ACCOUNT = Regex(
+        """\b(?:to|from|into|towards|for)\s+(?:your\s+)?(?:[a-z]+\s+){0,2}(?:a/c|acct|account|card)\s*(?:no\.?)?\s*(?:ending\s*(?:with|in)?\s*)?[x*]+\s*(\d{3,6})""",
+        RegexOption.IGNORE_CASE,
+    )
+    private val WALLET_LOAD = Regex(
+        """(?:added|loaded|top.?up|recharged)\b.{0,40}\b(?:wallet|pay balance|paytm balance)|\b(?:wallet|pay balance)\b.{0,30}\b(?:loaded|top.?up|recharged|add money)|\badd money\b""",
+        RegexOption.IGNORE_CASE,
+    )
+    private val WALLET_SPEND = Regex("""(?:from|using|via)\s+(?:your\s+)?(?:\w+\s+)?wallet|wallet\b.{0,20}\bdebited""", RegexOption.IGNORE_CASE)
+    private val MAYBE_OWN_OUT = setOf(Flow.SPEND, Flow.TO_PEOPLE)
+    private val MAYBE_OWN_IN = setOf(Flow.INCOME, Flow.FROM_PEOPLE)
 
     /**
      * @param userFlows flows the user set on individual transactions.
@@ -92,19 +113,35 @@ object FlowAnalyzer {
         val review = mutableListOf<ReviewItem>()
         for (t in sorted) userFlows[t.id]?.let { out[t.id] = FlowDecision(it, "Set by you") }
 
-        // 1. Duplicates: same direction and amount within a day, reported differently.
+        // 1. Duplicates: same direction and amount, reported twice (bank SMS + UPI app, or SMS + a
+        //    statement row). Each transaction pairs with at most one other, closest date first.
+        val paired = HashSet<Long>()
         val byKey = sorted.filter { it.id !in out }.groupBy { it.direction to Math.round(it.amount * 100) }
         for (group in byKey.values) {
             if (group.size < 2) continue
-            for (i in group.indices) for (j in i + 1 until group.size) {
-                val a = group[i]
-                val b = group[j]
-                if (a.id in out || b.id in out) continue
-                if (abs(a.date.toEpochDay() - b.date.toEpochDay()) > 1) continue
+            val pairs = buildList {
+                for (i in group.indices) for (j in i + 1 until group.size) {
+                    val a = group[i]
+                    val b = group[j]
+                    val gap = abs(a.date.toEpochDay() - b.date.toEpochDay())
+                    if (gap <= (if (isStatement(a) != isStatement(b)) 3 else 1)) add(Triple(a, b, gap))
+                }
+            }.sortedBy { it.third }
+            for ((x, y, _) in pairs) {
+                if (x.id in paired || y.id in paired || x.id in out || y.id in out) continue
+                // Keep the SMS (it has the account and the payee); drop the statement or app copy.
+                val (a, b) = if (isStatement(x) && !isStatement(y)) y to x else x to y
                 when (duplicateConfidence(a, b)) {
-                    Confidence.CERTAIN, Confidence.HIGH ->
+                    Confidence.CERTAIN, Confidence.HIGH -> {
                         out[b.id] = FlowDecision(Flow.DUPLICATE, "Same payment as ${a.merchant} on ${a.date}", linkedId = a.id)
-                    Confidence.MEDIUM -> ReviewItem.PossibleDuplicate(a, b).takeIf { it.key !in dismissed }?.let { review += it }
+                        paired += a.id
+                        paired += b.id
+                    }
+                    Confidence.MEDIUM -> ReviewItem.PossibleDuplicate(a, b).takeIf { it.key !in dismissed }?.let {
+                        review += it
+                        paired += a.id
+                        paired += b.id
+                    }
                     Confidence.NONE -> Unit
                 }
             }
@@ -126,6 +163,27 @@ object FlowAnalyzer {
             credits -= c
             out[d.id] = FlowDecision(Flow.OWN_TRANSFER, "Matched by ${rupeesPlain(c.amount)} arriving on ${c.date}", linkedId = c.id)
             out[c.id] = FlowDecision(Flow.OWN_TRANSFER, "Matched by ${rupeesPlain(d.amount)} leaving on ${d.date}", linkedId = d.id)
+        }
+        // An SMS that names another of your own accounts ("to A/c XX5678", "card XX9012 payment")
+        // is money moving between them, even when the other side's SMS is missing.
+        val ownAccounts = sorted.mapNotNull { it.account?.takeLast(4) }.toSet()
+        for (t in sorted) {
+            if (t.id in out || t.raw == null || MERCHANT_PAYMENT.containsMatchIn(t.raw)) continue
+            val other = OTHER_ACCOUNT.findAll(t.raw).map { it.groupValues[1].takeLast(4) }
+                .firstOrNull { it in ownAccounts && it != t.account?.takeLast(4) }
+            if (other != null) out[t.id] = FlowDecision(Flow.OWN_TRANSFER, "Names your other account ••$other")
+        }
+
+        // Wallets: loading Paytm / Amazon Pay / PhonePe moves your own money. The "added to your
+        // wallet" message isn't income, and when wallet spends are tracked too, the bank debit for
+        // the top-up isn't spending either.
+        val walletSpends = sorted.any { it.direction == Direction.DEBIT && it.raw != null && WALLET_SPEND.containsMatchIn(it.raw) }
+        for (t in sorted) {
+            if (t.id in out) continue
+            val text = (t.raw ?: "") + " " + t.merchant
+            if (!WALLET_LOAD.containsMatchIn(text)) continue
+            if (t.direction == Direction.CREDIT) out[t.id] = FlowDecision(Flow.OWN_TRANSFER, "Money added to your wallet")
+            else if (walletSpends) out[t.id] = FlowDecision(Flow.OWN_TRANSFER, "Wallet top-up (the wallet spends are counted)")
         }
 
         // 3. Refunds: money back from somewhere you spent (not a person paying you back), or worded as
@@ -174,7 +232,24 @@ object FlowAnalyzer {
                 ?: FlowDecision(if (t.direction == Direction.DEBIT) Flow.SPEND else Flow.INCOME, "")
         }
 
-        // 6. Questions: frequent payments to personal IDs nobody has classified yet.
+        // 6. Questions: the same amount leaving and arriving within 2 days, when FinTrack can't
+        //    prove both accounts are yours. Same account both ways (a friend paying you back) isn't asked.
+        val pairedOwn = HashSet<Long>()
+        val ins = sorted.filter { it.direction == Direction.CREDIT && userFlows[it.id] == null }
+        for (d in sorted) {
+            if (d.direction != Direction.DEBIT || out[d.id]?.flow !in MAYBE_OWN_OUT || userFlows[d.id] != null) continue
+            if (d.amount < 100 || (d.raw != null && MERCHANT_PAYMENT.containsMatchIn(d.raw))) continue
+            val c = ins.firstOrNull {
+                it.id !in pairedOwn && maybeOwnIn(out[it.id], d) && abs(it.amount - d.amount) < 0.005 && it.date.toEpochDay() - d.date.toEpochDay() in 0..2 &&
+                    (it.account == null || d.account == null || it.account != d.account) && !looksLikeSalary(it)
+            } ?: continue
+            val item = ReviewItem.PossibleOwnTransfer(d, c)
+            if (item.key in dismissed) continue
+            pairedOwn += c.id
+            review += item
+        }
+
+        // 7. Questions: frequent payments to personal IDs nobody has classified yet.
         sorted.filter { out[it.id]?.flow == Flow.TO_PEOPLE && userFlows[it.id] == null && norm(it.merchant) !in payeeFlows }
             .groupBy { it.merchant }
             .filter { (_, v) -> v.size >= 3 || v.sumOf { it.amount } >= 2000 }
@@ -189,7 +264,13 @@ object FlowAnalyzer {
     private enum class Confidence { CERTAIN, HIGH, MEDIUM, NONE }
 
     private fun duplicateConfidence(a: Txn, b: Txn): Confidence {
-        if (a.ref != null && b.ref != null) return if (a.ref == b.ref) Confidence.CERTAIN else Confidence.NONE
+        if (a.ref != null && a.ref == b.ref) return Confidence.CERTAIN
+        // A statement row and an SMS: statements don't name the account, and their reference
+        // numbers often differ from the SMS's, so go by amount and date.
+        if (isStatement(a) != isStatement(b)) {
+            return if (abs(a.date.toEpochDay() - b.date.toEpochDay()) <= 1) Confidence.HIGH else Confidence.MEDIUM
+        }
+        if (a.ref != null && b.ref != null) return Confidence.NONE
         if (a.account != null && b.account != null && a.account != b.account) return Confidence.NONE
         val ra = a.raw ?: return Confidence.NONE
         val rb = b.raw ?: return Confidence.NONE
@@ -210,6 +291,12 @@ object FlowAnalyzer {
         if (ta.isEmpty() || tb.isEmpty()) return 0.0
         return (ta intersect tb).size.toDouble() / (ta union tb).size
     }
+
+    /** Money in that could be the other half of [d]: income, from people, or a full "refund" of [d] itself. */
+    private fun maybeOwnIn(c: FlowDecision?, d: Txn) =
+        c != null && (c.flow in MAYBE_OWN_IN || (c.flow == Flow.REFUND && c.linkedId == d.id))
+
+    private fun isStatement(t: Txn) = t.source == "statement"
 
     private fun isPersonal(t: Txn) = (t.raw != null && PERSONAL.containsMatchIn(t.raw)) || t.category == "Transfers"
 

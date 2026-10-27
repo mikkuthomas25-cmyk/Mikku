@@ -45,17 +45,26 @@ object Categorizer {
         words.map { w -> cat to Regex("""(?<![a-z])${Regex.escape(w)}(?![a-z])""") }
     }
 
-    fun keywordCategory(merchant: String, direction: Direction): String {
-        val m = merchant.lowercase()
-        PATTERNS.firstOrNull { it.second.containsMatchIn(m) }?.let { return it.first }
+    /**
+     * [context]: more text to look in when the name alone says nothing, e.g. a statement row's full
+     * narration ("NEFT CC BILL PAYMENT HDFC…") whose shortened name lost the clue.
+     */
+    fun keywordCategory(merchant: String, direction: Direction, context: String? = null): String {
+        for (text in listOfNotNull(merchant, context)) {
+            val m = text.lowercase()
+            PATTERNS.firstOrNull { it.second.containsMatchIn(m) }?.let { return it.first }
+        }
         return if (direction == Direction.CREDIT) "Income" else "Other"
     }
+
+    /** Statement narrations are worth searching; SMS bodies aren't ("spent on your credit card" isn't a card bill). */
+    fun contextOf(t: Txn): String? = t.raw.takeIf { t.source == "statement" }
 
     /** [rules] maps a lowercased merchant name to the category the user picked for it before. */
     fun categorize(merchant: String, direction: Direction, rules: Map<String, String>): String =
         categorizeWithSource(merchant, direction, rules).first
 
     /** Category plus where it came from: "rule" (the user's choice) or "keyword" (built-in list). */
-    fun categorizeWithSource(merchant: String, direction: Direction, rules: Map<String, String>): Pair<String, String> =
-        rules[merchant.lowercase()]?.let { it to CategorySource.RULE } ?: (keywordCategory(merchant, direction) to CategorySource.KEYWORD)
+    fun categorizeWithSource(merchant: String, direction: Direction, rules: Map<String, String>, context: String? = null): Pair<String, String> =
+        rules[merchant.lowercase()]?.let { it to CategorySource.RULE } ?: (keywordCategory(merchant, direction, context) to CategorySource.KEYWORD)
 }

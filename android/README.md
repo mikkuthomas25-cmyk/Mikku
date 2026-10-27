@@ -82,6 +82,8 @@ Categories are learned on the phone. Nothing is sent anywhere, and no API key is
 - **Who wins:** your "always use this for X" rules → the built-in brand list → the model
   (only when it's at least 60% sure *and* the name looks like something it learned) → Other.
   Learned categories show a ✦ in Activity.
+- **Changing a category is one tap:** every spend shows its category as a label (Home, Activity, category
+  pages). Tap it and pick the right one. It applies to that payee from now on and trains the model.
 - **When it retrains:** after every SMS scan and every correction (milliseconds).
 - **Insights → Smart categories** shows how many categories you've taught, how many it
   sorted itself, and its accuracy on your own corrections (5-fold cross-validation, once
@@ -98,11 +100,13 @@ How the type is decided, strongest evidence first:
 1. **Your answers:** a type you set on a transaction, or for a payee.
 2. **Proof from the data:**
    - *Duplicates:* the same reference twice, or the same amount reported by different senders (bank SMS + UPI app) on the same day. Two identical SMS from the same bank are two real payments.
-   - *Own transfers:* a debit from one of your accounts matched by the same amount arriving in a different one of your accounts within 2 days; card-bill payments.
+   - *Statement + SMS:* a statement row for a payment already captured from SMS (same amount and direction within a day, whatever the reference number) counts once; 2–3 days apart, FinTrack asks. Each transaction pairs with at most one other.
+   - *Own transfers:* a debit from one of your accounts matched by the same amount arriving in a different one of your accounts within 2 days; an SMS that names another of your accounts ("to A/c XX5678", "towards card XX9012"); card-bill payments (also found in statement narrations).
+   - *Wallets:* "₹2,000 added to your Paytm wallet" is your own money moving, not income.
    - *Refunds and reversals:* money back from a merchant you paid, which reduces that category's spending.
 3. **Built-in signals:** UPI to personal IDs (P2A, `@ok…`) means money to or from people; the Investments category means invested.
 4. **The flow model:** a second on-device Naive Bayes model learns types from your answers. It only acts when confident, and never guesses own transfers or duplicates.
-5. **Questions instead of guesses:** uncertain duplicates, and payees you pay often via personal UPI IDs ("shop or person?"), appear in **Needs your input** on Home. One tap answers, fixes the totals and teaches the model.
+5. **Questions instead of guesses:** uncertain duplicates, the same amount leaving and arriving when one SMS doesn't name its account ("moved between your own accounts?"), and payees you pay often via personal UPI IDs ("shop or person?") appear in **Needs your input** on Home. One tap answers, fixes the totals and teaches the model.
 
 **You decide, in one tap.** Every transaction in Activity, and in every section opened from
 the money-flow statement, has a ✓ box: untick it and it leaves your totals (with Undo); tick
@@ -110,6 +114,11 @@ it to bring it back. Opening a transaction asks one question, *Count this as*:
 **Spending** (or **Income**) · **Don't count** · **More…** (invested, to people, refund,
 between my accounts, duplicate). Wrong amount or name? *Fix amount or name*. Your choices
 override the automatic analysis and teach both models.
+
+**Check my numbers (Profile):** totals still look wrong? This shares the month as text: every
+transaction, where it came from (SMS, statement, added by hand), what it was counted as and why.
+Account numbers, phone numbers and UPI IDs are hidden. It shows at a glance whether the problem is
+missing messages or something counted twice.
 
 **Bank balance check (Insights):** bank SMS usually include the balance. For each account,
 the balance must move by exactly the transactions captured in between. A gap pinpoints a
@@ -142,9 +151,11 @@ Each chart answers one question:
 
 | Where | Chart | Question it answers |
 |---|---|---|
-| Home | **Spending pace**: this month's running total vs last month (dashed), dotted line to the forecast | Am I spending faster than usual? |
-| Home | **Where it went**: donut plus a labelled list | Which categories take my money? *Tap one to open it.* |
-| Home | **Daily spending**: bar per day, ₹ axis, dashed daily average, dot for today | Which days were heavy? |
+| Home | **Spent / Money in / Left**: three numbers, each opens its transactions | How did this month go? |
+| Home | **Spending by category**: Food, Rent, Bills… with amount, share, number of payments and a bar | Which categories take my money? *Tap one to open it.* |
+| Home | **Latest spends**: each with its category label; tap the label to change it | Is it sorted right? |
+| Insights | **Spending pace**: this month's running total vs last month (dashed), dotted line to the forecast | Am I spending faster than usual? |
+| Insights | **Daily spending**: bar per day, ₹ axis, dashed daily average, dot for today | Which days were heavy? |
 | Category page | Total, share, *usual* and month-end forecast; 6-month trend; day by day; top merchants; unusual spends; all its payments | Everything about Food (or any category) |
 | Insights | **Month by month** for 6 months with your usual level; **Unusual spends** | Am I improving? What stood out? |
 

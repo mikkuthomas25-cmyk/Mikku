@@ -50,7 +50,7 @@ object StatementImporter {
                     known++
                     continue
                 }
-                val (category, source) = Categorizer.categorizeWithSource(row.merchant, row.direction, rules)
+                val (category, source) = Categorizer.categorizeWithSource(row.merchant, row.direction, rules, row.narration)
                 if (store.insertStatementRow(row, category, source)) added++ else known++
             }
         }

@@ -5,6 +5,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,15 +13,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -33,8 +35,7 @@ import androidx.compose.ui.unit.dp
 import com.fintrack.core.Flow
 import com.fintrack.core.MonthSummary
 import com.fintrack.core.ReviewItem
-import com.fintrack.core.Patterns
-import java.time.LocalDate
+import com.fintrack.core.Txn
 import java.time.LocalTime
 import java.time.YearMonth
 import kotlin.math.abs
@@ -42,6 +43,9 @@ import kotlin.math.abs
 @Composable
 fun HomeScreen(vm: FinTrackViewModel, openActivity: () -> Unit, openProfile: () -> Unit, openCategory: (String) -> Unit) {
     val s = vm.summary
+    var editing by remember { mutableStateOf<Txn?>(null) }
+    var picking by remember { mutableStateOf<Txn?>(null) }
+    val show: (Kind, TxnFilter?) -> Unit = { k, f -> vm.kind = k; vm.filter = f; openActivity() }
     LazyColumn(
         Modifier.fillMaxSize(),
         contentPadding = ScreenPadding,
@@ -54,95 +58,125 @@ fun HomeScreen(vm: FinTrackViewModel, openActivity: () -> Unit, openProfile: () 
         if (!vm.hasSmsPermission) item { PermissionHero(vm) }
         if (s == null) return@LazyColumn
 
-        item { MoneyFlowHero(s) { flow -> vm.filter = TxnFilter.OfFlow(flow); openActivity() } }
+        item { MonthHero(s, show) }
         if (vm.review.isNotEmpty()) item { ReviewCard(vm) }
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                MiniStat("Today", s.todaySpent, Modifier.weight(1f))
-                MiniStat("Daily average", s.avgPerDay, Modifier.weight(1f))
-            }
-        }
-        item { PaceCard(vm, s) }
-        item {
-            Tile(Modifier.fillMaxWidth()) {
-                SectionTitle("Where it went")
-                Spacer(Modifier.height(4.dp))
-                Faint("Tap a category to see everything in it")
-                Spacer(Modifier.height(16.dp))
-                CategoryDonut(s.byCategory, s.spent, onOpen = openCategory)
-            }
-        }
-        item {
-            Tile(Modifier.fillMaxWidth()) {
-                SectionTitle("Daily spending")
-                Spacer(Modifier.height(14.dp))
-                val sel = (vm.filter as? TxnFilter.Day)?.date
-                DailyBars(s.byDay, s.avgPerDay, sel, onSelect = { vm.filter = it?.let(TxnFilter::Day) })
-                Spacer(Modifier.height(10.dp))
-                if (sel != null) {
-                    val amount = s.byDay.firstOrNull { it.first == sel }?.second ?: 0.0
-                    Row(
-                        Modifier.fillMaxWidth().clip(TileShape).clickable(onClick = openActivity).padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text("${sel.long()}  ·  ${rupees(amount)}", style = MaterialTheme.typography.titleSmall.merge(MoneyStyle),
-                            color = Fin.colors.ink, modifier = Modifier.weight(1f))
-                        Text("View  ›", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-                    }
-                } else {
-                    Faint("Tap a bar to see that day  ·  dashed line = your daily average  ·  dot = today")
+        item { CategoryBreakdown(s, openCategory) }
+        val latest = vm.txns.filter { it.effectiveFlow == Flow.SPEND }.sortedByDescending { it.date }.take(5)
+        if (latest.isNotEmpty()) {
+            item {
+                Tile(Modifier.fillMaxWidth(), padding = 6.dp) {
+                    SectionTitle("Latest spends", Modifier.padding(start = 12.dp, end = 12.dp, top = 12.dp), action = "All", onAction = { show(Kind.Spent, null) })
+                    Faint("Wrong category? Tap it. FinTrack learns it for next time.", Modifier.padding(horizontal = 12.dp, vertical = 4.dp))
+                    latest.forEach { t -> TxnRow(t, onCategory = { picking = t }) { editing = t } }
                 }
             }
         }
-        item {
-            Tile(Modifier.fillMaxWidth()) {
-                SectionTitle("Top merchants")
-                Spacer(Modifier.height(16.dp))
-                RankedList(s.topMerchants.take(5), s.spent, leadingAvatar = true, onClick = {
-                    vm.filter = TxnFilter.Merchant(it)
-                    openActivity()
-                })
+    }
+    editing?.let { t -> EditSheet(t, onDismiss = { editing = null }, vm = vm) }
+    picking?.let { t -> CategoryPickerSheet(t, onDismiss = { picking = null }) { vm.quickCategory(t, it); picking = null } }
+}
+
+/**
+ * The month in three numbers: money in, spent, left. Only real income and spending count;
+ * money moved between your accounts and duplicates are listed separately, not added.
+ */
+@Composable
+private fun MonthHero(s: MonthSummary, show: (Kind, TxnFilter?) -> Unit) {
+    val white = Color.White
+    val change = if (s.prevMonthSpent > 0) (s.spent - s.prevMonthSpent) / s.prevMonthSpent else null
+    HeroTile(Modifier.fillMaxWidth()) {
+        Column(Modifier.fillMaxWidth().clickable { show(Kind.Spent, null) }) {
+            Text("SPENT IN ${s.month.name().uppercase()}", style = CapsLabel, color = white.copy(alpha = 0.8f))
+            AnimatedRupees(s.spent, MaterialTheme.typography.displaySmall, white, Modifier.padding(top = 4.dp))
+            change?.let {
+                Text(
+                    "${if (it >= 0) "▲" else "▼"} ${"%.0f".format(abs(it * 100))}% vs ${s.month.minusMonths(1).name()}",
+                    style = MaterialTheme.typography.labelLarge, color = white.copy(alpha = 0.85f),
+                )
             }
+        }
+        Spacer(Modifier.height(18.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            HeroNumber("Money in", s.received, Modifier.weight(1f)) { show(Kind.Received, null) }
+            HeroNumber("Left", s.net, Modifier.weight(1f)) { show(Kind.All, null) }
+        }
+        val invested = s.byFlow[Flow.INVESTED] ?: 0.0
+        val toPeople = s.byFlow[Flow.TO_PEOPLE] ?: 0.0
+        if (invested > 0 || toPeople > 0) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Left = money in − spent" + listOfNotNull(
+                    invested.takeIf { it > 0 }?.let { " − invested ${rupees(it)}" },
+                    toPeople.takeIf { it > 0 }?.let { " − sent to people ${rupees(it)}" },
+                ).joinToString(""),
+                style = MaterialTheme.typography.bodySmall, color = white.copy(alpha = 0.8f),
+                modifier = Modifier.clickable { show(Kind.All, TxnFilter.OfFlow(if (toPeople > 0) Flow.TO_PEOPLE else Flow.INVESTED)) },
+            )
+        }
+        val own = s.byFlow[Flow.OWN_TRANSFER] ?: 0.0
+        val dup = s.byFlow[Flow.DUPLICATE] ?: 0.0
+        val ignored = s.byFlow[Flow.IGNORED] ?: 0.0
+        if (own > 0 || dup > 0 || ignored > 0) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Not counted: " + listOfNotNull(
+                    own.takeIf { it > 0 }?.let { "moved between your accounts ${rupees(it)}" },
+                    dup.takeIf { it > 0 }?.let { "duplicates ${rupees(it)}" },
+                    ignored.takeIf { it > 0 }?.let { "excluded by you ${rupees(it)}" },
+                ).joinToString("  ·  ") + "  ›",
+                style = MaterialTheme.typography.bodySmall, color = white.copy(alpha = 0.8f),
+                modifier = Modifier.clickable {
+                    show(Kind.All, TxnFilter.OfFlow(if (own > 0) Flow.OWN_TRANSFER else if (dup > 0) Flow.DUPLICATE else Flow.IGNORED))
+                },
+            )
         }
     }
 }
 
-/** "Am I spending faster than usual?": running total vs last month, plus the learned forecast. */
 @Composable
-private fun PaceCard(vm: FinTrackViewModel, s: MonthSummary) {
-    val c = Fin.colors
-    val m = vm.month
-    val today = LocalDate.now()
-    val isCurrent = YearMonth.from(today) == m
-    val thisMonth = Patterns.cumulative(vm.history, m, untilDay = if (isCurrent) today.dayOfMonth else null)
-    val lastMonth = Patterns.cumulative(vm.history, m.minusMonths(1))
-    val forecast = if (isCurrent) Patterns.forecast(vm.history, m, today) else null
-    Tile(Modifier.fillMaxWidth()) {
-        SectionTitle("Spending pace")
-        Spacer(Modifier.height(4.dp))
+private fun HeroNumber(label: String, amount: Double, modifier: Modifier, onClick: () -> Unit) {
+    val white = Color.White
+    Column(modifier.clip(TileShape).background(white.copy(alpha = 0.14f)).clickable(onClick = onClick).padding(12.dp)) {
+        Text(label.uppercase(), style = CapsLabel, color = white.copy(alpha = 0.8f))
         Text(
-            when {
-                forecast != null && forecast.basedOnMonths >= 2 ->
-                    "On track for ${rupees(forecast.projected)} by month-end, based on how your last ${forecast.basedOnMonths} months went."
-                forecast != null -> "At this pace: about ${rupees(forecast.projected)} by month-end."
-                isCurrent -> "A forecast appears after a week of data."
-                else -> "${rupees(s.spent)} spent in ${m.name()}."
-            },
-            style = MaterialTheme.typography.bodyMedium, color = c.inkSoft,
+            (if (amount < 0) "−" else "") + rupees(abs(amount)),
+            style = MaterialTheme.typography.titleLarge.merge(MoneyStyle), color = white, maxLines = 1,
+            modifier = Modifier.padding(top = 2.dp),
         )
-        if (isCurrent && lastMonth.isNotEmpty() && thisMonth.isNotEmpty()) {
-            val sameDayLast = lastMonth.getOrNull(thisMonth.size - 1) ?: lastMonth.last()
-            val diff = thisMonth.last() - sameDayLast
-            if (sameDayLast > 0) {
-                Text(
-                    "${if (diff > 0) "▲" else "▼"} ${rupees(kotlin.math.abs(diff))} ${if (diff > 0) "more" else "less"} than by this day last month",
-                    style = MaterialTheme.typography.labelLarge, color = if (diff > 0) c.loss else c.gain,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
+    }
+}
+
+/** Spending split into Food, Rent, Bills…: amount, share and number of payments. Tap to open one. */
+@Composable
+private fun CategoryBreakdown(s: MonthSummary, openCategory: (String) -> Unit) {
+    val c = Fin.colors
+    Tile(Modifier.fillMaxWidth()) {
+        SectionTitle("Spending by category")
+        Spacer(Modifier.height(4.dp))
+        if (s.byCategory.isEmpty()) {
+            Faint("No spending this month yet.")
+            return@Tile
+        }
+        Faint("Tap a category to see its payments")
+        val top = s.byCategory.first().amount
+        s.byCategory.forEach { a ->
+            Column(Modifier.fillMaxWidth().clip(TileShape).clickable { openCategory(a.label) }.padding(vertical = 10.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(10.dp).clip(CircleShape).background(categoryColor(a.label)))
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(a.label, style = MaterialTheme.typography.bodyLarge, color = c.ink, maxLines = 1)
+                        Faint("${a.count} payment${if (a.count == 1) "" else "s"}  ·  ${"%.0f".format(a.amount / s.spent * 100)}%")
+                    }
+                    Text(rupees(a.amount), style = MaterialTheme.typography.titleSmall.merge(MoneyStyle), color = c.ink)
+                    Text("  ›", color = c.inkFaint)
+                }
+                Spacer(Modifier.height(6.dp))
+                Box(Modifier.fillMaxWidth().height(4.dp).background(c.track)) {
+                    Box(Modifier.fillMaxWidth((a.amount / top).toFloat().coerceIn(0.02f, 1f)).height(4.dp).background(categoryColor(a.label)))
+                }
             }
         }
-        Spacer(Modifier.height(14.dp))
-        PaceChart(thisMonth, lastMonth, m.lengthOfMonth(), forecast?.projected)
     }
 }
 
@@ -159,55 +193,6 @@ private fun Greeting(name: String, onAvatar: () -> Unit) {
             Text(name.ifBlank { "there" }, style = MaterialTheme.typography.headlineMedium, color = Fin.colors.ink)
         }
         Column(Modifier.clip(CircleShape).clickable(onClick = onAvatar)) { Avatar(name, size = 44.dp, gradient = true) }
-    }
-}
-
-/**
- * The money-flow statement for the month, read like a spreadsheet: money in, minus what was
- * spent, invested and sent to people, equals what's left. Tapping a line lists its transactions.
- */
-@Composable
-private fun MoneyFlowHero(s: MonthSummary, open: (Flow) -> Unit) {
-    val white = Color.White
-    val change = if (s.prevMonthSpent > 0) (s.spent - s.prevMonthSpent) / s.prevMonthSpent else null
-    HeroTile(Modifier.fillMaxWidth()) {
-        Text("LEFT OVER IN ${s.month.name().uppercase()}", style = CapsLabel, color = white.copy(alpha = 0.8f))
-        AnimatedRupees(s.net, MaterialTheme.typography.displaySmall, white, Modifier.padding(top = 4.dp))
-        Spacer(Modifier.height(16.dp))
-        FlowLine("Money in", s.received, "") { open(Flow.INCOME) }
-        FlowLine("Spent", s.spent, "−", note = change?.let { "${if (it >= 0) "▲" else "▼"} ${"%.0f".format(abs(it * 100))}% vs ${s.month.minusMonths(1).name()}" }) { open(Flow.SPEND) }
-        s.byFlow[Flow.INVESTED]?.takeIf { it > 0 }?.let { FlowLine("Invested / saved", it, "−") { open(Flow.INVESTED) } }
-        s.byFlow[Flow.TO_PEOPLE]?.takeIf { it > 0 }?.let { FlowLine("Sent to people", it, "−") { open(Flow.TO_PEOPLE) } }
-        HorizontalDivider(color = white.copy(alpha = 0.35f), modifier = Modifier.padding(vertical = 6.dp))
-        FlowLine("Left over", s.net, "=", bold = true) {}
-        val own = s.byFlow[Flow.OWN_TRANSFER] ?: 0.0
-        val dup = s.byFlow[Flow.DUPLICATE] ?: 0.0
-        val ignored = s.byFlow[Flow.IGNORED] ?: 0.0
-        if (own > 0 || dup > 0 || ignored > 0) {
-            Spacer(Modifier.height(10.dp))
-            Text(
-                "Not counted: " + listOfNotNull(
-                    own.takeIf { it > 0 }?.let { "between your accounts ${rupees(it / 2)}" },
-                    dup.takeIf { it > 0 }?.let { "duplicates ${rupees(it)}" },
-                    ignored.takeIf { it > 0 }?.let { "excluded by you ${rupees(it)}" },
-                ).joinToString("  ·  "),
-                style = MaterialTheme.typography.bodySmall, color = white.copy(alpha = 0.8f),
-                modifier = Modifier.clickable { open(if (own > 0) Flow.OWN_TRANSFER else if (dup > 0) Flow.DUPLICATE else Flow.IGNORED) },
-            )
-        }
-    }
-}
-
-@Composable
-private fun FlowLine(label: String, amount: Double, sign: String, note: String? = null, bold: Boolean = false, onClick: () -> Unit) {
-    val white = Color.White
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(sign, style = MaterialTheme.typography.titleMedium, color = white, modifier = Modifier.width(18.dp))
-        Column(Modifier.weight(1f)) {
-            Text(label, style = if (bold) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge, color = white)
-            if (note != null) Text(note, style = MaterialTheme.typography.labelSmall, color = white.copy(alpha = 0.75f))
-        }
-        Text(rupees(amount), style = (if (bold) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge).merge(MoneyStyle), color = white)
     }
 }
 
@@ -233,6 +218,19 @@ private fun ReviewCard(vm: FinTrackViewModel) {
                         PopChip("Person", selected = false) { vm.answerShopOrPerson(item, isShop = false) }
                     }
                 }
+                is ReviewItem.PossibleOwnTransfer -> {
+                    Text(
+                        "${rupees(item.out.amount)} left${item.out.account?.let { " ••$it" } ?: ""} on ${item.out.date.short()} and the same arrived" +
+                            "${item.into.account?.let { " in ••$it" } ?: ""} on ${item.into.date.short()}. Moved between your own accounts?",
+                        style = MaterialTheme.typography.bodyLarge, color = c.ink,
+                    )
+                    Faint("If yes, neither counts as spending or income.", Modifier.padding(top = 4.dp))
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        PopChip("Yes · my accounts", selected = true) { vm.answerOwnTransfer(item, isOwn = true) }
+                        PopChip("No", selected = false) { vm.answerOwnTransfer(item, isOwn = false) }
+                    }
+                }
                 is ReviewItem.PossibleDuplicate -> {
                     Text(
                         "Same payment reported twice? ${rupees(item.keep.amount)} · ${item.keep.merchant} on ${item.keep.date.short()}" +
@@ -247,14 +245,6 @@ private fun ReviewCard(vm: FinTrackViewModel) {
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun MiniStat(label: String, value: Double, modifier: Modifier) {
-    Tile(modifier) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = Fin.colors.inkSoft)
-        AnimatedRupees(value, MaterialTheme.typography.titleLarge, Fin.colors.ink, Modifier.padding(top = 4.dp))
     }
 }
 
