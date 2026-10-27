@@ -5,6 +5,7 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import com.fintrack.app.data.TxnStore
 import com.fintrack.core.Categorizer
+import com.fintrack.core.StatementCover
 import com.fintrack.core.StatementParser
 import com.fintrack.core.StatementResult
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
@@ -39,20 +40,19 @@ object StatementImporter {
         val name = displayName(context, uri)
         val result = StatementParser.parse(readText(context, uri, name, password))
         val rules = store.rules()
+        val account = result.accountLast4
         var added = 0
         var known = 0
-        val matched = HashSet<Long>()
+        // The statement is the bank's own record: every row goes in. SMS for the same account and
+        // dates are set aside when totals are worked out (see StatementLedger), not matched row by row.
         store.transaction {
             for (row in result.rows) {
-                val match = store.findMatch(row.date, row.amount, row.direction, row.ref, matched)
-                if (match != null) {
-                    matched += match
-                    known++
-                    continue
-                }
                 val (category, source) = Categorizer.categorizeWithSource(row.merchant, row.direction, rules, row.narration)
-                if (store.insertStatementRow(row, category, source)) added++ else known++
+                if (store.insertStatementRow(row, category, source, account)) added++ else known++
             }
+            val start = result.start
+            val end = result.end
+            if (account != null && start != null && end != null) store.addCover(StatementCover(account, start, end))
         }
         return ImportOutcome(name, result, added, known)
     }

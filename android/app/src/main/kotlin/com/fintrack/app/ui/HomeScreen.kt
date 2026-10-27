@@ -38,6 +38,7 @@ import com.fintrack.core.CategorySource
 import com.fintrack.core.Flow
 import com.fintrack.core.MonthSummary
 import com.fintrack.core.ReviewItem
+import com.fintrack.core.StatementLedger
 import com.fintrack.core.Txn
 import java.time.LocalTime
 import java.time.YearMonth
@@ -63,6 +64,7 @@ fun HomeScreen(vm: FinTrackViewModel, openActivity: () -> Unit, openProfile: () 
         if (s == null) return@LazyColumn
 
         item { MonthHero(s, show) }
+        vm.tallies.forEach { tally -> item { StatementTallyCard(tally, vm) { f -> show(Kind.All, f) } } }
         if (vm.review.isNotEmpty()) item { ReviewCard(vm) }
         item { WhereItWent(s, openCategory) { flow -> show(Kind.All, TxnFilter.OfFlow(flow)) } }
     }
@@ -207,6 +209,49 @@ private fun Greeting(name: String, onAvatar: () -> Unit) {
             Text(name.ifBlank { "there" }, style = MaterialTheme.typography.headlineMedium, color = Fin.colors.ink)
         }
         Column(Modifier.clip(CircleShape).clickable(onClick = onAvatar)) { Avatar(name, size = 44.dp, gradient = true) }
+    }
+}
+
+/**
+ * "Does it tally?": an imported statement's money in and out for the month, and where FinTrack
+ * put every rupee of it (spent, people, invested, your own accounts, not counted). The lines add up
+ * to the statement's own totals, so the two can be checked side by side.
+ */
+@Composable
+private fun StatementTallyCard(t: StatementLedger.Tally, vm: FinTrackViewModel, show: (TxnFilter) -> Unit) {
+    val c = Fin.colors
+    val name = vm.accounts.firstOrNull { it.key == "acct:${t.account}" }?.label ?: "Account ••${t.account}"
+    val outLabels = listOf(
+        Flow.SPEND to "Spent", Flow.TO_PEOPLE to "Gave to people", Flow.INVESTED to "Investments / savings",
+        Flow.OWN_TRANSFER to "Moved to your other accounts", Flow.IGNORED to "Left out by you", Flow.DUPLICATE to "Duplicates",
+    )
+    val inLabels = listOf(
+        Flow.INCOME to "Income", Flow.FROM_PEOPLE to "From people", Flow.REFUND to "Refunds",
+        Flow.OWN_TRANSFER to "From your other accounts", Flow.IGNORED to "Left out by you", Flow.DUPLICATE to "Duplicates",
+    )
+    Tile(Modifier.fillMaxWidth()) {
+        SectionTitle("Bank statement · $name")
+        Spacer(Modifier.height(4.dp))
+        Faint("${t.rows} transactions from your statement this month. Every rupee is accounted for below.")
+        Spacer(Modifier.height(12.dp))
+        TallyBlock("Money out (statement)", t.moneyOut, outLabels.mapNotNull { (f, l) -> t.outBy[f]?.let { Triple(l, it, f) } }, show)
+        Spacer(Modifier.height(12.dp))
+        TallyBlock("Money in (statement)", t.moneyIn, inLabels.mapNotNull { (f, l) -> t.inBy[f]?.let { Triple(l, it, f) } }, show)
+    }
+}
+
+@Composable
+private fun TallyBlock(title: String, total: Double, parts: List<Triple<String, Double, Flow>>, show: (TxnFilter) -> Unit) {
+    val c = Fin.colors
+    Row(Modifier.fillMaxWidth()) {
+        Text(title, style = MaterialTheme.typography.titleSmall, color = c.ink, modifier = Modifier.weight(1f))
+        Text(rupees(total), style = MaterialTheme.typography.titleSmall.merge(MoneyStyle), color = c.ink)
+    }
+    parts.forEach { (label, amount, flow) ->
+        Row(Modifier.fillMaxWidth().clickable { show(TxnFilter.OfFlow(flow)) }.padding(start = 12.dp, top = 4.dp, bottom = 4.dp)) {
+            Text("$label  ›", style = MaterialTheme.typography.bodyMedium, color = c.inkSoft, modifier = Modifier.weight(1f))
+            Text(rupees(amount), style = MaterialTheme.typography.bodyMedium.merge(MoneyStyle), color = c.inkSoft)
+        }
     }
 }
 

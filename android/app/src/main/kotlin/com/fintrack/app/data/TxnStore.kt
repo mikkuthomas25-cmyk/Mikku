@@ -9,13 +9,14 @@ import com.fintrack.core.Direction
 import com.fintrack.core.Flow
 import com.fintrack.core.FlowAnalyzer
 import com.fintrack.core.ParsedTxn
+import com.fintrack.core.StatementCover
 import com.fintrack.core.StatementRow
 import com.fintrack.core.Txn
 import java.time.LocalDate
 import java.time.YearMonth
 
 /** On-device SQLite storage. One database file per signed-in account. */
-class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbName, null, 4) {
+class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbName, null, 5) {
 
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
@@ -49,6 +50,8 @@ class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbN
         db.execSQL("CREATE TABLE IF NOT EXISTS review_done (key TEXT PRIMARY KEY)")
         // v4: messages and statement rows the user deleted, so a rescan doesn't bring them back.
         db.execSQL("CREATE TABLE IF NOT EXISTS deleted (hash TEXT PRIMARY KEY)")
+        // v5: which account and dates each imported statement covers (the statement is the record there).
+        db.execSQL("CREATE TABLE IF NOT EXISTS statement_cover (account TEXT NOT NULL, start TEXT NOT NULL, finish TEXT NOT NULL, PRIMARY KEY (account, start, finish))")
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -62,7 +65,7 @@ class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbN
             db.execSQL("ALTER TABLE transactions ADD COLUMN user_flow TEXT")
             createV3Tables(db)
         }
-        if (oldVersion < 4) createV3Tables(db)
+        if (oldVersion < 5) createV3Tables(db)
     }
 
     /** Returns the new row id, or null if this transaction is already stored. */
@@ -127,31 +130,11 @@ class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbN
         db.execSQL("UPDATE transactions SET category=?, cat_source='user' WHERE id=?", arrayOf(category, txn.id))
     }
 
-    /**
-     * The existing transaction this statement row corresponds to, if any: same UPI/IMPS reference,
-     * or the same amount and direction within a day either side (SMS and statement dates can differ
-     * by a day), closest date first. [exclude] holds ids already matched in this import, so one SMS
-     * transaction can't stand in for two separate statement rows.
-     */
-    fun findMatch(date: LocalDate, amount: Double, direction: Direction, ref: String?, exclude: Set<Long>): Long? {
-        val notIn = if (exclude.isEmpty()) "" else " AND id NOT IN (${exclude.joinToString(",")})"
-        if (ref != null) {
-            readableDatabase.rawQuery(
-                "SELECT id FROM transactions WHERE (ref=? OR raw LIKE ?) AND direction=?$notIn LIMIT 1",
-                arrayOf(ref, "%$ref%", direction.name),
-            ).use { if (it.moveToFirst()) return it.getLong(0) }
-        }
-        return readableDatabase.rawQuery(
-            "SELECT id FROM transactions WHERE direction=? AND abs(amount-?)<0.005 AND txn_date BETWEEN ? AND ?$notIn " +
-                "ORDER BY abs(julianday(txn_date)-julianday(?)) LIMIT 1",
-            arrayOf(direction.name, amount.toString(), date.minusDays(1).toString(), date.plusDays(1).toString(), date.toString()),
-        ).use { if (it.moveToFirst()) it.getLong(0) else null }
-    }
-
-    /** Adds a statement row; false if this exact row was imported before. */
-    fun insertStatementRow(row: StatementRow, category: String, catSource: String): Boolean {
+    /** Adds a statement row for [account] (last 4 digits); false if it was imported before (its account is filled in if missing). */
+    fun insertStatementRow(row: StatementRow, category: String, catSource: String, account: String?): Boolean {
         if (wasDeleted(row.key)) return false
         val values = ContentValues().apply {
+            put("account", account)
             put("sms_hash", row.key)
             put("txn_date", row.date.toString())
             put("amount", row.amount)
@@ -163,7 +146,32 @@ class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbN
             put("raw", row.narration)
             put("cat_source", catSource)
         }
-        return writableDatabase.insertWithOnConflict("transactions", null, values, SQLiteDatabase.CONFLICT_IGNORE) != -1L
+        val added = writableDatabase.insertWithOnConflict("transactions", null, values, SQLiteDatabase.CONFLICT_IGNORE) != -1L
+        if (!added && account != null) {
+            writableDatabase.execSQL("UPDATE transactions SET account=? WHERE sms_hash=? AND account IS NULL", arrayOf(account, row.key))
+        }
+        return added
+    }
+
+    fun addCover(cover: StatementCover) {
+        writableDatabase.insertWithOnConflict("statement_cover", null, ContentValues().apply {
+            put("account", cover.account)
+            put("start", cover.start.toString())
+            put("finish", cover.end.toString())
+        }, SQLiteDatabase.CONFLICT_IGNORE)
+    }
+
+    fun covers(): List<StatementCover> = readableDatabase.rawQuery("SELECT account, start, finish FROM statement_cover", null).use { c ->
+        buildList { while (c.moveToNext()) add(StatementCover(c.getString(0), LocalDate.parse(c.getString(1)), LocalDate.parse(c.getString(2)))) }
+    }
+
+    /** A statement whose header had no account number: the user said which account it is. */
+    fun assignStatementAccount(cover: StatementCover) {
+        writableDatabase.execSQL(
+            "UPDATE transactions SET account=? WHERE source='statement' AND account IS NULL AND txn_date BETWEEN ? AND ?",
+            arrayOf(cover.account, cover.start.toString(), cover.end.toString()),
+        )
+        addCover(cover)
     }
 
     /** Replaces a placeholder name from an older parser; names the user typed are left alone. */

@@ -351,4 +351,32 @@ class FlowTest {
         val kept = Accounts.tracked(all, untracked = setOf("acct:7788"))
         assertEquals(listOf(sbi, sbiNoNumber, slice, cash).map { it.id }, kept.map { it.id })
     }
+
+    @Test fun aStatementIsTheRecordForItsAccountAndDates() {
+        val smsInRange = t(5, 640.0, account = "4321", raw = "Rs 640 debited from A/c XX4321 -SBI")
+        val smsAfter = t(28, 90.0, account = "4321", raw = "Rs 90 debited from A/c XX4321 -SBI")
+        val otherAccount = t(6, 300.0, account = "9999", raw = "Rs 300 debited from A/c XX9999")
+        val row = t(5, 640.0, account = "4321", raw = "UPI/DR/UBER", source = "statement")
+        val cash = t(6, 50.0, account = null, raw = null, source = "manual")
+        val cover = StatementCover("4321", oct.atDay(1), oct.atDay(25))
+        val kept = StatementLedger.apply(listOf(smsInRange, smsAfter, otherAccount, row, cash), listOf(cover))
+        assertEquals(listOf(smsAfter, otherAccount, row, cash).map { it.id }, kept.map { it.id })
+
+        val analysed = listOf(
+            row.copy(flow = Flow.SPEND),
+            t(7, 5000.0, account = "4321", source = "statement").copy(flow = Flow.OWN_TRANSFER),
+            t(8, 44400.0, Direction.CREDIT, account = "4321", source = "statement").copy(flow = Flow.INCOME),
+        )
+        val tally = assertNotNull(StatementLedger.tally(analysed, "4321"))
+        assertEquals(5640.0, tally.moneyOut)
+        assertEquals(44400.0, tally.moneyIn)
+        assertEquals(5000.0, tally.outBy[Flow.OWN_TRANSFER])
+        assertEquals(tally.moneyOut, tally.outBy.values.sum())
+    }
+
+    @Test fun statementHeaderGivesTheAccount() {
+        assertEquals("8901", StatementParser.accountOf(listOf("STATE BANK OF INDIA", "Account Number : 00000012345678901")))
+        assertEquals("1234", StatementParser.accountOf(listOf("A/c No. XXXXXXX1234", "01-10-2026 UPI 100.00 900.00")))
+        assertNull(StatementParser.accountOf(listOf("Statement of account", "Period 01-10-2026 to 31-10-2026")))
+    }
 }

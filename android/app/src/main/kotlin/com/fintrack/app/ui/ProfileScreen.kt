@@ -216,14 +216,14 @@ private fun ImportSheet(vm: FinTrackViewModel, onDismiss: () -> Unit) {
                     },
                 )
             }
-            items(vm.importReports) { r -> StatementReportTile(r) }
+            items(vm.importReports) { r -> StatementReportTile(r, vm) }
         }
     }
 }
 
 /** One file's outcome: how many rows, what was new, and the mass-balance check. */
 @Composable
-private fun StatementReportTile(r: ImportReport) {
+private fun StatementReportTile(r: ImportReport, vm: FinTrackViewModel) {
     val c = Fin.colors
     Tile(Modifier.fillMaxWidth(), padding = 16.dp) {
         Text(r.fileName, style = MaterialTheme.typography.titleSmall, color = c.ink, maxLines = 1)
@@ -236,7 +236,26 @@ private fun StatementReportTile(r: ImportReport) {
                     "download the statement again from net banking as a regular PDF or CSV.",
             )
             else -> {
-                Faint("${result.rows.size} transactions  ·  ${r.added} new  ·  ${r.alreadyKnown} already in FinTrack")
+                val period = listOfNotNull(result.start?.short(), result.end?.short()).joinToString(" – ")
+                if (r.account != null) {
+                    Text(
+                        listOfNotNull(result.bank, "••${r.account}").joinToString(" ") + "  ·  $period",
+                        style = MaterialTheme.typography.bodyLarge, color = c.ink,
+                    )
+                    Faint(
+                        "All ${result.rows.size} transactions are in FinTrack. For these dates, this statement replaces " +
+                            "the SMS for this account, so nothing is counted twice.",
+                    )
+                } else {
+                    Faint("${result.rows.size} transactions  ·  $period")
+                    Spacer(Modifier.height(8.dp))
+                    val numbered = vm.accounts.filter { it.last4 != null }
+                    PopDropdown(
+                        "Choose the account", numbered, { it.label }, { vm.assignStatement(r, it.key) },
+                        label = "Which account is this statement for?",
+                    )
+                    Faint("The statement didn't show its account number. Once you choose, it replaces the SMS for that account and these dates.")
+                }
                 Spacer(Modifier.height(12.dp))
                 val check = result.check
                 Text(

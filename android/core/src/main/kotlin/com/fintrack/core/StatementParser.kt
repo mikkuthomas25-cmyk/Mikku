@@ -37,7 +37,16 @@ data class BalanceCheck(
     val balanced: Boolean get() = brokenRows.isEmpty() && (difference?.let { abs(it) < 0.01 } ?: true)
 }
 
-data class StatementResult(val rows: List<StatementRow>, val check: BalanceCheck) {
+data class StatementResult(
+    val rows: List<StatementRow>,
+    val check: BalanceCheck,
+    /** Last 4 digits of the account the statement is for, read from its header (null if not found). */
+    val accountLast4: String? = null,
+    val bank: String? = null,
+) {
+    val start get() = rows.minOfOrNull { it.date }
+    val end get() = rows.maxOfOrNull { it.date }
+
     /** No transaction rows at all: usually a scanned (image) PDF or an unsupported layout. */
     val empty get() = rows.isEmpty()
 }
@@ -113,7 +122,18 @@ object StatementParser {
                 totalOut = rows.filter { it.direction == Direction.DEBIT }.sumOf { it.amount },
                 brokenRows = broken,
             ),
+            accountLast4 = accountOf(lines),
+            bank = lines.take(HEADER_LINES).firstNotNullOfOrNull(Accounts::bankName),
         )
+    }
+
+    private const val HEADER_LINES = 60
+    // "Account Number : 00000012345678901", "A/c No. XXXXXXX1234", "Account No: 1234 5678 9012"
+    private val ACCOUNT_HEADER = Regex("""(?:account|a/c)\s*(?:no\.?|number|num)?\s*[:.\-]?\s*([x*\d][x*\d\s\-]{3,24}\d)""", I)
+
+    /** The account number in the statement's header: its last 4 digits. */
+    internal fun accountOf(lines: List<String>): String? = lines.take(HEADER_LINES).firstNotNullOfOrNull { line ->
+        ACCOUNT_HEADER.find(line)?.groupValues?.get(1)?.filter(Char::isDigit)?.takeIf { it.length >= 4 }?.takeLast(4)
     }
 
     private fun chain(raws: List<Raw>, opening: Double?): Pair<List<StatementRow>, List<StatementRow>> {

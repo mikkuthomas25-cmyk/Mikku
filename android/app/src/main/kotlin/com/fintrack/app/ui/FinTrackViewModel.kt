@@ -32,6 +32,8 @@ import com.fintrack.core.Salary
 import com.fintrack.core.MissedSms
 import com.fintrack.core.MonthSummary
 import com.fintrack.core.SmsParser
+import com.fintrack.core.StatementCover
+import com.fintrack.core.StatementLedger
 import com.fintrack.core.StatementResult
 import com.fintrack.core.Summaries
 import com.fintrack.core.Txn
@@ -44,7 +46,15 @@ import kotlinx.coroutines.withContext
 enum class Kind(val label: String) { All("All"), Spent("Money out"), Received("Money in") }
 
 /** Result of importing one statement file; [result] is null when the file couldn't be read. */
-data class ImportReport(val fileName: String, val result: StatementResult?, val added: Int, val alreadyKnown: Int, val error: String?)
+data class ImportReport(
+    val fileName: String,
+    val result: StatementResult?,
+    val added: Int,
+    val alreadyKnown: Int,
+    val error: String?,
+    /** Last 4 digits of the statement's account: from its header, or chosen by the user. */
+    val account: String? = result?.accountLast4,
+)
 
 data class PasswordAsk(val fileName: String, val wrongPassword: Boolean)
 
@@ -103,6 +113,8 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
     var untracked by mutableStateOf<Set<String>>(emptySet()); private set
     /** False until the user has said which accounts to track (asked once there are two or more). */
     var accountsChosen by mutableStateOf(true); private set
+    /** For each imported statement with rows this month: its totals and how each rupee was counted. */
+    var tallies by mutableStateOf<List<StatementLedger.Tally>>(emptyList()); private set
     /** Bank-looking SMS the parser couldn't read; null until loaded. */
     var missed by mutableStateOf<List<MissedSms>?>(null); private set
 
@@ -243,8 +255,10 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
                 skip = s.getMeta(UNTRACKED)?.split(",")?.filter { it.isNotBlank() }?.toSet().orEmpty()
                 found = Accounts.list(everything)
                 chosen = s.getMeta(ACCOUNTS_CHOSEN) != null || found.size < 2
-                // Only the accounts the user tracks: a friend's account on this phone isn't their money.
-                val raw = Accounts.tracked(everything, skip)
+                // Where a statement was imported, it's the record for its account and dates; then only
+                // the accounts the user tracks (a friend's account on this phone isn't their money).
+                val resolver = Accounts.Resolver(everything)
+                val raw = Accounts.tracked(StatementLedger.apply(everything, s.covers(), resolver), skip, resolver)
                 val a = FlowAnalyzer.analyze(raw, s.userFlows(), s.payeeFlows(), s.reviewDone())
                 raw.map { t ->
                     val d = a.decisions[t.id]
@@ -254,6 +268,10 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
             accounts = found
             untracked = skip
             accountsChosen = chosen
+            tallies = all.filter { YearMonth.from(it.date) == m && it.source == "statement" }
+                .mapNotNull { it.account }.distinct()
+                .filter { "acct:$it" !in skip }
+                .mapNotNull { acct -> StatementLedger.tally(all.filter { YearMonth.from(it.date) == m }, acct) }
             // Late-month salary counts toward the month it pays for (see Salary).
             val salary = Salary.ids(all)
             val current = all.filter { Salary.monthOf(it, salary) == m }
@@ -422,6 +440,20 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
         importQueue.addAll(uris)
         importReports = emptyList()
         processImports(password = null)
+    }
+
+    /** The user said which account a statement is for (its header didn't say). */
+    fun assignStatement(report: ImportReport, accountKey: String) {
+        val s = store ?: return
+        val result = report.result ?: return
+        val start = result.start ?: return
+        val end = result.end ?: return
+        val last4 = accountKey.removePrefix("acct:")
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { s.assignStatementAccount(StatementCover(last4, start, end)) }
+            importReports = importReports.map { if (it === report) it.copy(account = last4) else it }
+            refresh()
+        }
     }
 
     fun submitPassword(password: String) {

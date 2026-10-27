@@ -47,10 +47,9 @@ object Accounts {
         "Airtel Payments Bank" to Regex("""\bairtel payments bank\b""", I),
     )
 
-    fun bankOf(t: Txn): String? {
-        val text = t.raw ?: return null
-        return BANKS.firstOrNull { it.second.containsMatchIn(text) }?.first
-    }
+    fun bankOf(t: Txn): String? = t.raw?.let(::bankName)
+
+    fun bankName(text: String): String? = BANKS.firstOrNull { it.second.containsMatchIn(text) }?.first
 
     /**
      * Which account each transaction belongs to: by account number when the message has one;

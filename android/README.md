@@ -172,9 +172,14 @@ net banking. Everything is read on the phone (`core/.../StatementParser.kt`, Pdf
   settles whether it's money in or out. The whole statement must satisfy
   opening + money in − money out = closing. The report shows **✓ Balanced** or **⚠ Off by ₹X**,
   plus the rows that broke the chain (those are the ones to check).
-- **No double counting:** a row that matches a transaction already captured from SMS (same UPI
-  reference, or same amount and direction within a day) is counted as already known. Each SMS
-  transaction can match only one row. Re-importing the same file adds nothing.
+- **The statement is the record:** every row is imported, tagged with the account read from the
+  statement's header (or chosen by you when the header has no account number). For that account and
+  the statement's dates, SMS are set aside, so nothing is counted twice and SMS misreads don't matter
+  (`core/.../StatementLedger.kt`). Outside those dates, SMS fill in as usual. Re-importing the same
+  file adds nothing.
+- **Does it tally? (Home):** for each statement with rows in the month: its money out and money in,
+  and where FinTrack put every rupee (spent, gave to people, investments, moved to your other
+  accounts, left out by you). The lines add up to the statement's totals.
 - **Learning:** categories are re-learned after every import, and corrections on statement rows
   teach the model like any other. The model never trains on its own guesses.
 - **Not yet supported:** scanned (photo/image) PDFs and Excel files. The app says so instead of
