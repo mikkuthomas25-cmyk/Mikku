@@ -129,6 +129,7 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
     private fun openSession(acc: Account?) {
         val dbName = acc?.let { Prefs.dbFor(it.uid) } ?: Prefs.LOCAL_DB
         store?.close()
+        if (acc != null) adoptLocalData(dbName)
         store = TxnStore(app, dbName)
         prefs.activeDb = dbName
         prefs.activeUserName = acc?.name ?: "there"
@@ -137,6 +138,20 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
         accountEmail = prefs.activeUserEmail ?: ""
         onResume()
         pendingShared?.let { pendingShared = null; addShared(it) }
+    }
+
+    /**
+     * First sign-in on a phone that was used without an account: the transactions, rules and
+     * answers already here become the account's, instead of starting empty.
+     */
+    private fun adoptLocalData(dbName: String) {
+        val target = app.getDatabasePath(dbName)
+        val local = app.getDatabasePath(Prefs.LOCAL_DB)
+        if (target.exists() || !local.exists()) return
+        for (suffix in listOf("", "-journal", "-wal", "-shm")) {
+            val from = java.io.File(local.path + suffix)
+            if (from.exists()) from.renameTo(java.io.File(target.path + suffix))
+        }
     }
 
     fun continueWithoutAccount() = openSession(null)
