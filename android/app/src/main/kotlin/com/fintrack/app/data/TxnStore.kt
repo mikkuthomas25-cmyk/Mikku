@@ -81,7 +81,8 @@ class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbN
         return id.takeIf { it != -1L }
     }
 
-    fun addManual(date: LocalDate, amount: Double, direction: Direction, merchant: String, category: String, catSource: String) {
+    /** Adds a transaction the user entered; returns its id. */
+    fun addManual(date: LocalDate, amount: Double, direction: Direction, merchant: String, category: String, catSource: String): Long =
         writableDatabase.insert("transactions", null, ContentValues().apply {
             put("txn_date", date.toString())
             put("amount", amount)
@@ -91,7 +92,6 @@ class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbN
             put("source", "manual")
             put("cat_source", catSource)
         })
-    }
 
     fun month(month: YearMonth): List<Txn> = readableDatabase.rawQuery(
         "SELECT * FROM transactions WHERE txn_date BETWEEN ? AND ? ORDER BY txn_date DESC, id DESC",

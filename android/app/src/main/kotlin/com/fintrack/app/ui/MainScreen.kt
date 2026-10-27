@@ -38,7 +38,7 @@ import androidx.compose.ui.unit.dp
 
 private val NAV = listOf(
     NavItem("Home", Icons.Filled.Home),
-    NavItem("Activity", Icons.AutoMirrored.Filled.List),
+    NavItem("Transactions", Icons.AutoMirrored.Filled.List),
     NavItem("Insights", Icons.Filled.Star),
     NavItem("Profile", Icons.Filled.Person),
 )

@@ -26,6 +26,13 @@ data class Txn(
         Flow.REFUND -> -amount
         else -> 0.0
     }
+
+    /** What this transaction does to "money out": spending, money given to people and investments, less refunds. */
+    val outValue: Double get() = when (effectiveFlow) {
+        Flow.SPEND, Flow.TO_PEOPLE, Flow.INVESTED -> amount
+        Flow.REFUND -> -amount
+        else -> 0.0
+    }
 }
 
 data class Amount(val label: String, val amount: Double, val count: Int = 0)
@@ -49,7 +56,10 @@ data class MonthSummary(
     val byFlow: Map<Flow, Double> = emptyMap(),
 ) {
     /** Left over = money in − spent − invested − sent to people. Own transfers and duplicates don't count. */
-    val net get() = received - spent - (byFlow[Flow.INVESTED] ?: 0.0) - (byFlow[Flow.TO_PEOPLE] ?: 0.0)
+    val net get() = received - moneyOut
+
+    /** Everything that left: spending (net of refunds), money given to people, investments. */
+    val moneyOut get() = spent + (byFlow[Flow.INVESTED] ?: 0.0) + (byFlow[Flow.TO_PEOPLE] ?: 0.0)
 }
 
 object Summaries {

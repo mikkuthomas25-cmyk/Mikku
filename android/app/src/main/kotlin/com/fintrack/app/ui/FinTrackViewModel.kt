@@ -40,7 +40,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-enum class Kind { All, Spent, Received }
+enum class Kind(val label: String) { All("All"), Spent("Money out"), Received("Money in") }
 
 /** Result of importing one statement file; [result] is null when the file couldn't be read. */
 data class ImportReport(val fileName: String, val result: StatementResult?, val added: Int, val alreadyKnown: Int, val error: String?)
@@ -109,7 +109,7 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
                 }
                 val byKind = when (kind) {
                     Kind.All -> true
-                    Kind.Spent -> t.effectiveFlow == Flow.SPEND
+                    Kind.Spent -> t.outValue > 0
                     Kind.Received -> t.effectiveFlow.countsAsMoneyIn
                 }
                 byFilter && byKind && (q.isEmpty() || q in t.merchant.lowercase() || q in t.category.lowercase())
@@ -279,9 +279,19 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun addManual(date: LocalDate, amount: Double, direction: Direction, merchant: String) = io {
-        val (category, source) = Categorizer.categorizeWithSource(merchant.trim(), direction, it.rules())
-        it.addManual(date, amount, direction, merchant.trim(), category, source)
+    /** A cash (or any missed) transaction, with what it is: shows up in its category like any other. */
+    fun addManual(date: LocalDate, amount: Double, direction: Direction, merchant: String, choice: Choice) = io {
+        val category = when (choice) {
+            is Choice.Category -> choice.name
+            is Choice.Kind -> when (choice.flow) {
+                Flow.INVESTED -> "Investments"
+                Flow.TO_PEOPLE, Flow.FROM_PEOPLE -> "Transfers"
+                Flow.OWN_TRANSFER -> "Self Transfer"
+                else -> if (direction == Direction.CREDIT) "Income" else "Other"
+            }
+        }
+        val id = it.addManual(date, amount, direction, merchant.trim(), category, CategorySource.USER)
+        it.setUserFlow(id, (choice as? Choice.Kind)?.flow ?: Flow.SPEND)
     }
 
     /** Runs a change, lets the model learn from it, then redraws. */
@@ -297,27 +307,6 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
     }
 
     // ------------------------------------------------------------------ money flows
-
-    /** Sets what a transaction is (spending, own transfer, duplicate, …); null returns it to automatic. */
-    fun setFlow(txn: Txn, flow: Flow?, forPayee: Boolean) = io {
-        it.setUserFlow(txn.id, flow)
-        if (forPayee && flow != null && flow in PAYEE_FLOWS) it.setPayeeFlow(txn.merchant, flow)
-    }
-
-    /**
-     * The one-tap fix: take a transaction out of the totals, or put it back. Remembers what it was,
-     * so the snackbar can undo it.
-     */
-    fun toggleCounted(t: Txn) {
-        val s = store ?: return
-        val next = if (t.effectiveFlow.counted) Flow.IGNORED else if (t.direction == Direction.DEBIT) Flow.SPEND else Flow.INCOME
-        viewModelScope.launch {
-            val previous = withContext(Dispatchers.IO) { s.userFlows()[t.id].also { s.setUserFlow(t.id, next) } }
-            refresh()
-            message = if (next == Flow.IGNORED) "Not counted: ${t.merchant} ${rupees(t.amount)}" else "Counted again: ${t.merchant}"
-            undo = { io { it.setUserFlow(t.id, previous) } }
-        }
-    }
 
     /** Fixes an amount or name the reader got wrong. */
     fun editDetails(t: Txn, merchant: String, amount: Double) = io {
@@ -339,30 +328,32 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
         it.markReviewDone(item.key)
     }
 
-    /** The one-tap category fix from a list row: applies to this payee from now on, and teaches the model. */
-    fun quickCategory(txn: Txn, category: String) {
-        val s = store ?: return
-        viewModelScope.launch {
-            // A payee answered "person" earlier, or a payment marked "sent to people", becomes spending now.
-            withContext(Dispatchers.IO) {
-                if (txn.effectiveFlow == Flow.TO_PEOPLE) {
-                    s.setUserFlow(txn.id, null)
-                    s.clearPayeeFlow(txn.merchant)
-                }
-            }
-            setCategory(txn, category, applyToMerchant = txn.merchant != "Unknown")
-        }
-        message = "${txn.merchant} → $category" + if (txn.merchant != "Unknown") " (and from now on)" else ""
-    }
-
     /** Why an automatic category was chosen ("You put Manoop V U in Rent"), for the picker. */
     fun categoryReason(t: Txn): String? =
         if (t.categorySource == CategorySource.MEMORY) PayeeMemory(history).match(t)?.reason else null
 
-    /** "Just a person": money given, not spent; remembered for this payee. */
-    fun markPerson(t: Txn) {
-        setFlow(t, Flow.TO_PEOPLE, forPayee = true)
-        message = "${t.merchant}: a person, not spending (from now on)"
+    /**
+     * The answer to "What is this?". A category makes it spending in that category; a kind (a person,
+     * my own account, investment, don't count…) says what money it is. Either way it's remembered for
+     * the payee, so the next payment to them is sorted the same, and both models learn from it.
+     */
+    fun classify(t: Txn, choice: Choice) {
+        val payee = t.merchant != "Unknown"
+        io { s ->
+            when (choice) {
+                is Choice.Category -> {
+                    s.setUserFlow(t.id, Flow.SPEND)
+                    if (payee) s.clearPayeeFlow(t.merchant)
+                    s.setCategory(t, choice.name, applyToMerchant = payee)
+                }
+                is Choice.Kind -> {
+                    s.setUserFlow(t.id, choice.flow)
+                    if (payee && choice.flow in PAYEE_FLOWS) s.setPayeeFlow(t.merchant, choice.flow)
+                    if (choice.flow == Flow.INVESTED) s.setCategory(t, "Investments", applyToMerchant = payee)
+                }
+            }
+        }
+        message = "${t.merchant} → ${choice.label}" + if (payee) " (and from now on)" else ""
     }
 
     /** The month's transactions with how each was treated, as text to share for a check (numbers hidden). */

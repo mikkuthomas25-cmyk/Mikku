@@ -44,8 +44,7 @@ import kotlin.math.abs
 @Composable
 fun HomeScreen(vm: FinTrackViewModel, openActivity: () -> Unit, openProfile: () -> Unit, openCategory: (String) -> Unit) {
     val s = vm.summary
-    var editing by remember { mutableStateOf<Txn?>(null) }
-    var picking by remember { mutableStateOf<Txn?>(null) }
+    var open by remember { mutableStateOf<Txn?>(null) }
     val show: (Kind, TxnFilter?) -> Unit = { k, f -> vm.kind = k; vm.filter = f; openActivity() }
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -61,76 +60,44 @@ fun HomeScreen(vm: FinTrackViewModel, openActivity: () -> Unit, openProfile: () 
 
         item { MonthHero(s, show) }
         if (vm.review.isNotEmpty()) item { ReviewCard(vm) }
-        item { CategoryBreakdown(s, openCategory) }
+        item { WhereItWent(s, openCategory) { flow -> show(Kind.All, TxnFilter.OfFlow(flow)) } }
         val unsorted = vm.txns.filter { it.effectiveFlow == Flow.SPEND && it.category == "Other" }
-        if (unsorted.isNotEmpty()) item { SortOtherCard(unsorted) { picking = it } }
-        val latest = vm.txns.filter { it.effectiveFlow == Flow.SPEND }.sortedByDescending { it.date }.take(5)
-        if (latest.isNotEmpty()) {
-            item {
-                Tile(Modifier.fillMaxWidth(), padding = 6.dp) {
-                    SectionTitle("Latest spends", Modifier.padding(start = 12.dp, end = 12.dp, top = 12.dp), action = "All", onAction = { show(Kind.Spent, null) })
-                    Faint("Wrong category? Tap it. FinTrack learns it for next time.", Modifier.padding(horizontal = 12.dp, vertical = 4.dp))
-                    latest.forEach { t -> TxnRow(t, onCategory = { picking = t }) { editing = t } }
-                }
-            }
-        }
+        if (unsorted.isNotEmpty()) item { SortOtherCard(unsorted) { open = it } }
     }
-    editing?.let { t -> EditSheet(t, onDismiss = { editing = null }, vm = vm) }
-    picking?.let { t ->
-        CategoryPickerSheet(
-            t, onDismiss = { picking = null }, why = vm.categoryReason(t),
-            onPerson = { vm.markPerson(t); picking = null }.takeIf { t.direction == com.fintrack.core.Direction.DEBIT },
-        ) { vm.quickCategory(t, it); picking = null }
-    }
+    open?.let { t -> TxnSheet(t, vm) { open = null } }
 }
 
 /**
- * The month in three numbers: money in, spent, left. Only real income and spending count;
- * money moved between your accounts and duplicates are listed separately, not added.
+ * The month as a three-line statement: money in − money out = left. Money out is everything that
+ * left (spending, people, investments), so it always equals the "Where your money went" list.
+ * Money moved between your own accounts and duplicates are shown apart, not added.
  */
 @Composable
 private fun MonthHero(s: MonthSummary, show: (Kind, TxnFilter?) -> Unit) {
     val white = Color.White
-    val change = if (s.prevMonthSpent > 0) (s.spent - s.prevMonthSpent) / s.prevMonthSpent else null
     HeroTile(Modifier.fillMaxWidth()) {
-        Column(Modifier.fillMaxWidth().clickable { show(Kind.Spent, null) }) {
-            Text("SPENT IN ${s.month.name().uppercase()}", style = CapsLabel, color = white.copy(alpha = 0.8f))
-            AnimatedRupees(s.spent, MaterialTheme.typography.displaySmall, white, Modifier.padding(top = 4.dp))
-            change?.let {
-                Text(
-                    "${if (it >= 0) "▲" else "▼"} ${"%.0f".format(abs(it * 100))}% vs ${s.month.minusMonths(1).name()}",
-                    style = MaterialTheme.typography.labelLarge, color = white.copy(alpha = 0.85f),
-                )
-            }
-        }
-        Spacer(Modifier.height(18.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            HeroNumber("Money in", s.received, Modifier.weight(1f)) { show(Kind.Received, null) }
-            HeroNumber("Left", s.net, Modifier.weight(1f)) { show(Kind.All, null) }
-        }
-        val invested = s.byFlow[Flow.INVESTED] ?: 0.0
-        val toPeople = s.byFlow[Flow.TO_PEOPLE] ?: 0.0
-        if (invested > 0 || toPeople > 0) {
-            Spacer(Modifier.height(8.dp))
+        Text(s.month.name().uppercase(), style = CapsLabel, color = white.copy(alpha = 0.8f))
+        Spacer(Modifier.height(10.dp))
+        StatementLine("Money in", s.received, "+") { show(Kind.Received, null) }
+        StatementLine("Money out", s.moneyOut, "−") { show(Kind.Spent, null) }
+        Box(Modifier.fillMaxWidth().padding(vertical = 8.dp).height(1.dp).background(white.copy(alpha = 0.35f)))
+        Row(Modifier.fillMaxWidth().clickable { show(Kind.All, null) }, verticalAlignment = Alignment.CenterVertically) {
+            Text("Left", style = MaterialTheme.typography.titleLarge, color = white, modifier = Modifier.weight(1f))
             Text(
-                "Left = money in − spent" + listOfNotNull(
-                    invested.takeIf { it > 0 }?.let { " − invested ${rupees(it)}" },
-                    toPeople.takeIf { it > 0 }?.let { " − sent to people ${rupees(it)}" },
-                ).joinToString(""),
-                style = MaterialTheme.typography.bodySmall, color = white.copy(alpha = 0.8f),
-                modifier = Modifier.clickable { show(Kind.All, TxnFilter.OfFlow(if (toPeople > 0) Flow.TO_PEOPLE else Flow.INVESTED)) },
+                (if (s.net < 0) "−" else "") + rupees(abs(s.net)),
+                style = MaterialTheme.typography.headlineMedium.merge(MoneyStyle), color = white,
             )
         }
         val own = s.byFlow[Flow.OWN_TRANSFER] ?: 0.0
         val dup = s.byFlow[Flow.DUPLICATE] ?: 0.0
         val ignored = s.byFlow[Flow.IGNORED] ?: 0.0
         if (own > 0 || dup > 0 || ignored > 0) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(10.dp))
             Text(
                 "Not counted: " + listOfNotNull(
-                    own.takeIf { it > 0 }?.let { "moved between your accounts ${rupees(it)}" },
+                    own.takeIf { it > 0 }?.let { "between your accounts ${rupees(it)}" },
                     dup.takeIf { it > 0 }?.let { "duplicates ${rupees(it)}" },
-                    ignored.takeIf { it > 0 }?.let { "excluded by you ${rupees(it)}" },
+                    ignored.takeIf { it > 0 }?.let { "excluded ${rupees(it)}" },
                 ).joinToString("  ·  ") + "  ›",
                 style = MaterialTheme.typography.bodySmall, color = white.copy(alpha = 0.8f),
                 modifier = Modifier.clickable {
@@ -142,15 +109,11 @@ private fun MonthHero(s: MonthSummary, show: (Kind, TxnFilter?) -> Unit) {
 }
 
 @Composable
-private fun HeroNumber(label: String, amount: Double, modifier: Modifier, onClick: () -> Unit) {
+private fun StatementLine(label: String, amount: Double, sign: String, onClick: () -> Unit) {
     val white = Color.White
-    Column(modifier.clip(TileShape).background(white.copy(alpha = 0.14f)).clickable(onClick = onClick).padding(12.dp)) {
-        Text(label.uppercase(), style = CapsLabel, color = white.copy(alpha = 0.8f))
-        Text(
-            (if (amount < 0) "−" else "") + rupees(abs(amount)),
-            style = MaterialTheme.typography.titleLarge.merge(MoneyStyle), color = white, maxLines = 1,
-            modifier = Modifier.padding(top = 2.dp),
-        )
+    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, style = MaterialTheme.typography.bodyLarge, color = white, modifier = Modifier.weight(1f))
+        Text("$sign ${rupees(amount)}  ›", style = MaterialTheme.typography.titleMedium.merge(MoneyStyle), color = white)
     }
 }
 
@@ -183,34 +146,48 @@ private fun SortOtherCard(unsorted: List<Txn>, pick: (Txn) -> Unit) {
     }
 }
 
-/** Spending split into Food, Rent, Bills…: amount, share and number of payments. Tap to open one. */
+/**
+ * Every rupee of money out, by category (Food, Rent, Bills…) plus money given to people and
+ * investments, so the list adds up to Money out. Tap a line to see its payments.
+ */
 @Composable
-private fun CategoryBreakdown(s: MonthSummary, openCategory: (String) -> Unit) {
+private fun WhereItWent(s: MonthSummary, openCategory: (String) -> Unit, openFlow: (Flow) -> Unit) {
     val c = Fin.colors
+    data class Line(val label: String, val amount: Double, val count: Int, val color: Color, val open: () -> Unit)
+    val lines = buildList {
+        s.byCategory.forEach { a -> add(Line(a.label, a.amount, a.count, categoryColor(a.label)) { openCategory(a.label) }) }
+        s.byFlow[Flow.TO_PEOPLE]?.takeIf { it > 0 }?.let { add(Line("Gave to people", it, 0, c.inkSoft) { openFlow(Flow.TO_PEOPLE) }) }
+        s.byFlow[Flow.INVESTED]?.takeIf { it > 0 }?.let { add(Line("Investments / savings", it, 0, c.gain) { openFlow(Flow.INVESTED) }) }
+    }.sortedByDescending { it.amount }
     Tile(Modifier.fillMaxWidth()) {
-        SectionTitle("Spending by category")
+        SectionTitle("Where your money went")
         Spacer(Modifier.height(4.dp))
-        if (s.byCategory.isEmpty()) {
-            Faint("No spending this month yet.")
+        if (lines.isEmpty()) {
+            Faint("Nothing has gone out this month yet.")
             return@Tile
         }
-        Faint("Tap a category to see its payments")
-        val top = s.byCategory.first().amount
-        s.byCategory.forEach { a ->
-            Column(Modifier.fillMaxWidth().clip(TileShape).clickable { openCategory(a.label) }.padding(vertical = 10.dp)) {
+        Faint("Adds up to your money out, ${rupees(s.moneyOut)}. Tap a line to see its payments.")
+        val top = lines.first().amount
+        lines.forEach { l ->
+            Column(Modifier.fillMaxWidth().clip(TileShape).clickable(onClick = l.open).padding(vertical = 10.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(10.dp).clip(CircleShape).background(categoryColor(a.label)))
+                    Box(Modifier.size(10.dp).clip(CircleShape).background(l.color))
                     Spacer(Modifier.width(10.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(a.label, style = MaterialTheme.typography.bodyLarge, color = c.ink, maxLines = 1)
-                        Faint("${a.count} payment${if (a.count == 1) "" else "s"}  ·  ${"%.0f".format(a.amount / s.spent * 100)}%")
+                        Text(l.label, style = MaterialTheme.typography.bodyLarge, color = c.ink, maxLines = 1)
+                        Faint(
+                            listOfNotNull(
+                                l.count.takeIf { it > 0 }?.let { "$it payment${if (it == 1) "" else "s"}" },
+                                "${"%.0f".format(l.amount / s.moneyOut * 100)}%",
+                            ).joinToString("  ·  "),
+                        )
                     }
-                    Text(rupees(a.amount), style = MaterialTheme.typography.titleSmall.merge(MoneyStyle), color = c.ink)
+                    Text(rupees(l.amount), style = MaterialTheme.typography.titleSmall.merge(MoneyStyle), color = c.ink)
                     Text("  ›", color = c.inkFaint)
                 }
                 Spacer(Modifier.height(6.dp))
                 Box(Modifier.fillMaxWidth().height(4.dp).background(c.track)) {
-                    Box(Modifier.fillMaxWidth((a.amount / top).toFloat().coerceIn(0.02f, 1f)).height(4.dp).background(categoryColor(a.label)))
+                    Box(Modifier.fillMaxWidth((l.amount / top).toFloat().coerceIn(0.02f, 1f)).height(4.dp).background(l.color))
                 }
             }
         }

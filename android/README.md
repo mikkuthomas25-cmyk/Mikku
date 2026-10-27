@@ -39,7 +39,7 @@ the Home screen switches to a guide with buttons that open the right settings pa
   **Permissions → SMS → Allow**.
 
 Without SMS access the app still works: open any bank SMS → **Share → FinTrack**, and the
-transaction is added. Cash spends can be added with the **+** button in Activity.
+transaction is added. Cash spends can be added with the **+** button in Transactions.
 
 On Google Play the sideloading restriction doesn't apply. Play allows SMS access for
 *SMS-based money management* apps after its Permissions Declaration review (see below).
@@ -81,7 +81,7 @@ Categories are learned on the phone. Nothing is sent anywhere, and no API key is
   wrong guess can't reinforce itself.
 - **Who wins:** your "always use this for X" rules → the built-in brand list → the model
   (only when it's at least 60% sure *and* the name looks like something it learned) → Other.
-  Learned categories show a ✦ in Activity.
+  Learned categories show a ✦ in Transactions.
 - **Daily small spends:** unknown payees of ₹500 or less (tea, snacks, the local shop over UPI) go here
   automatically instead of "Other". The model can still learn better categories for them.
 - **Sort "Other" on Home:** payments FinTrack couldn't place are grouped by payee, biggest first; one tap
@@ -91,8 +91,8 @@ Categories are learned on the phone. Nothing is sent anywhere, and no API key is
   same amount (±1%) around the same day in a later month, from ₹500 up (e.g. ₹3,200 rent on the 2nd).
   These show ✦ and say why in the picker. Payments to people can be sorted too ("What for?"); sorting
   one as Rent, Fees… makes it spending, and "Just a person" keeps it as money given.
-- **Changing a category is one tap:** every spend shows its category as a label (Home, Activity, category
-  pages). Tap it and pick the right one. It applies to that payee from now on and trains the model.
+- **Changing a category is one tap:** every transaction shows what it is as a label. Tap the
+  transaction and answer "What is this?". It applies to that payee from now on and trains the model.
 - **When it retrains:** after every SMS scan and every correction (milliseconds).
 - **Insights → Smart categories** shows how many categories you've taught, how many it
   sorted itself, and its accuracy on your own corrections (5-fold cross-validation, once
@@ -120,12 +120,14 @@ How the type is decided, strongest evidence first:
 4. **The flow model:** a second on-device Naive Bayes model learns types from your answers. It only acts when confident, and never guesses own transfers or duplicates.
 5. **Questions instead of guesses:** uncertain duplicates, the same amount leaving and arriving when one SMS doesn't name its account ("moved between your own accounts?"), and payees you pay often via personal UPI IDs ("shop or person?") appear in **Needs your input** on Home. One tap answers, fixes the totals and teaches the model.
 
-**You decide, in one tap.** Every transaction in Activity, and in every section opened from
-the money-flow statement, has a ✓ box: untick it and it leaves your totals (with Undo); tick
-it to bring it back. Opening a transaction asks one question, *Count this as*:
-**Spending** (or **Income**) · **Don't count** · **More…** (invested, to people, refund,
-between my accounts, duplicate). Wrong amount or name? *Fix amount or name*. Your choices
-override the automatic analysis and teach both models.
+**One question per transaction: "What is this?"** Tap any transaction (or add one with **+**) and
+pick from one list: a category (Food, Rent, Bills…) or what kind of money it is (*Gave to a person ·
+Investment / savings · My own account · Duplicate · Don't count*; for money in: *Salary / income ·
+Refund · From a person · My own account*). It's remembered for the payee. Manual entries ask the same
+question, so they appear in their category.
+
+Home reads like a statement: **Money in − Money out = Left**. Money out is everything that left
+(spending, people, investments); **Where your money went** lists all of it, so it adds up to Money out.
 
 **Check my numbers (Profile):** totals still look wrong? This shares the month as text: every
 transaction, where it came from (SMS, statement, added by hand), what it was counted as and why.
@@ -214,7 +216,7 @@ Jetpack Compose (`app/ui/Pop.kt`); no CRED code or brand assets are used. It has
 - bold uppercase captions and heavy numbers;
 - white primary buttons and one violet accent for the screen's key tile;
 - **plunk** buttons and tiles with hard 3D edges that press flat when tapped;
-- a full-width bottom bar with four destinations (Home, Activity, Insights, Profile);
+- a full-width bottom bar with four destinations (Home, Transactions, Insights, Profile);
 - always dark, with light system-bar icons.
 
 Category colours are fixed and checked for colour-blind separation on the dark surface.

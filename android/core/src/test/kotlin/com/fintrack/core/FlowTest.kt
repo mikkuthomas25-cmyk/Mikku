@@ -318,4 +318,22 @@ class FlowTest {
         val shop = t(25, 400.0, merchant = "Some Shop", raw = "Rs 400 debited to shop.razorpay@icici")
         assertNull(PayeeMemory(listOf(fees)).match(shop))
     }
+
+    @Test fun whereItWentAddsUpToMoneyOut() {
+        val txns = listOf(
+            t(1, 50000.0, Direction.CREDIT, category = "Income").copy(flow = Flow.INCOME),
+            t(2, 3200.0, category = "Rent").copy(flow = Flow.SPEND),
+            t(3, 900.0, category = "Food & Dining").copy(flow = Flow.SPEND),
+            t(4, 300.0, Direction.CREDIT, category = "Food & Dining").copy(flow = Flow.REFUND),
+            t(5, 1000.0, category = "Transfers").copy(flow = Flow.TO_PEOPLE),
+            t(6, 2500.0, category = "Investments").copy(flow = Flow.INVESTED),
+            t(7, 7000.0, category = "Self Transfer").copy(flow = Flow.OWN_TRANSFER),
+        )
+        val s = Summaries.build(oct, txns, emptyList(), oct.atDay(26))
+        val lines = s.byCategory.sumOf { it.amount } + (s.byFlow[Flow.TO_PEOPLE] ?: 0.0) + (s.byFlow[Flow.INVESTED] ?: 0.0)
+        assertEquals(7300.0, s.moneyOut)
+        assertEquals(s.moneyOut, lines)
+        assertEquals(s.moneyOut, txns.sumOf { it.outValue })
+        assertEquals(50000.0 - 7300.0, s.net)
+    }
 }
