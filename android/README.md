@@ -74,9 +74,16 @@ link.
 Before reading any SMS, FinTrack asks for last month's bank statement (`ui/SetupScreen.kt`):
 
 1. **Add a statement** (PDF or CSV). It becomes the record for its account and dates.
-2. **Sort your spending, payee by payee**, biggest first: accept the suggestion (✓), pick from the
-   dropdown, or skip. Each answer covers every payment to that payee (same UPI ID or name), now and
-   later (`core/.../Onboarding.kt`).
+2. **Sort your spending, with as little remembering as possible** (`core/.../Onboarding.kt`):
+   - payees whose name, narration or UPI ID names a brand (`flipkart.rzp@axisbank`, `swiggy@icici`)
+     are sorted without asking;
+   - payees under ₹500 in all become one question ("daily small spends?");
+   - people (personal UPI IDs: a phone number or a name at okaxis/oksbi/ybl…) are asked *who* they are:
+     landlord (Rent), friend or family, your own account;
+   - shops (QR-code merchant IDs: paytmqr, bharatpe, PhonePe "Q…", okbiz…) get shop categories;
+   - the same amount every month is pointed out (rent, fees, an EMI or a bill);
+   - a progress bar shows the share of spending sorted; at 90% you can finish.
+   Each answer covers every payment to that payee (same UPI ID or name), now and later.
 3. **One more month helps:** with fewer than two months, FinTrack recommends adding another month so
    it learns regular payments (rent, bills, salary). Optional.
 4. **Allow SMS reading**: new payments are then sorted the way you taught it.

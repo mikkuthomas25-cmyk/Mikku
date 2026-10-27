@@ -88,34 +88,121 @@ private fun StatementStep(vm: FinTrackViewModel, upload: () -> Unit) {
 @Composable
 private fun SortStep(vm: FinTrackViewModel) {
     val c = Fin.colors
-    val payee = vm.toSort.getOrNull(vm.sortIndex) ?: return
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Text("Sort your spending", style = MaterialTheme.typography.headlineSmall, color = c.ink)
-        Faint("Payee ${vm.sortIndex + 1} of ${vm.toSort.size}. Each answer covers every payment to them, now and later.")
-        LinearProgressIndicator(
-            progress = { vm.sortIndex.toFloat() / vm.toSort.size },
-            modifier = Modifier.fillMaxWidth(), color = c.accent, trackColor = c.track,
-        )
-        Tile(Modifier.fillMaxWidth()) {
-            Text(payee.name, style = MaterialTheme.typography.titleLarge, color = c.ink, maxLines = 2)
-            Text(
-                "${payee.txns.size} payment${if (payee.txns.size == 1) "" else "s"}  ·  ${rupees(payee.total)}",
-                style = MaterialTheme.typography.titleMedium.merge(MoneyStyle), color = c.ink, modifier = Modifier.padding(top = 4.dp),
-            )
-            Spacer(Modifier.height(8.dp))
-            payee.txns.take(4).forEach { t -> Faint("${t.date.short()}  ·  ${rupees(t.amount)}", maxLines = 1) }
-            if (payee.txns.size > 4) Faint("+ ${payee.txns.size - 4} more", maxLines = 1)
+    val plan = vm.plan ?: return
+    val share = vm.sortedShare
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        item { Text("Sort your spending", style = MaterialTheme.typography.headlineSmall, color = c.ink) }
+        if (plan.auto.isNotEmpty()) {
+            item {
+                Faint(
+                    "FinTrack already sorted ${plan.auto.size} payee${if (plan.auto.size == 1) "" else "s"} " +
+                        "(${rupees(plan.auto.sumOf { it.total })}) from shop names and UPI IDs. You only need to help with the rest.",
+                )
+            }
         }
-        payee.suggestion?.let { guess ->
-            PopButton("✓  $guess", onClick = { vm.sortAnswer(Choice.Category(guess)) }, Modifier.fillMaxWidth())
+        item {
+            Column {
+                LinearProgressIndicator(progress = { share.toFloat().coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth(), color = c.accent, trackColor = c.track)
+                Spacer(Modifier.height(6.dp))
+                Faint("${"%.0f".format(share * 100)}% of your spending is sorted")
+            }
         }
-        WhatDropdown(Direction.DEBIT, current = null) { vm.sortAnswer(it) }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Skip this one", style = MaterialTheme.typography.labelLarge, color = c.inkSoft,
-                modifier = Modifier.clickable { vm.sortAnswer(null) }.padding(vertical = 10.dp))
+        if (share >= com.fintrack.core.Onboarding.ENOUGH) {
+            item { PopButton("That's enough, finish", onClick = vm::finishSorting, Modifier.fillMaxWidth()) }
+        }
+        if (!vm.smallDecided) {
+            item { SmallPaymentsCard(plan.small, vm) }
+        } else {
+            vm.toSort.getOrNull(vm.sortIndex)?.let { payee -> item { PayeeCard(payee, vm) } }
+        }
+        item {
             Text("Finish later  →", style = MaterialTheme.typography.labelLarge, color = c.inkSoft,
                 modifier = Modifier.clickable { vm.finishSorting() }.padding(vertical = 10.dp))
         }
+    }
+}
+
+/** All the small payees in one question, instead of one each. */
+@Composable
+private fun SmallPaymentsCard(small: List<com.fintrack.core.Onboarding.Payee>, vm: FinTrackViewModel) {
+    val c = Fin.colors
+    val count = small.sumOf { it.txns.size }
+    Tile(Modifier.fillMaxWidth()) {
+        Text("$count small payments", style = MaterialTheme.typography.titleLarge, color = c.ink)
+        Text(
+            "${rupees(small.sumOf { it.total })} to ${small.size} payees, each under ${rupees(com.fintrack.core.Onboarding.SMALL_PAYEE)}",
+            style = MaterialTheme.typography.bodyMedium, color = c.inkSoft, modifier = Modifier.padding(top = 4.dp),
+        )
+        Spacer(Modifier.height(6.dp))
+        Faint(small.take(6).joinToString(", ") { it.name } + if (small.size > 6) "…" else "")
+        Spacer(Modifier.height(12.dp))
+        Text("Tea, snacks, local shops?", style = MaterialTheme.typography.bodyLarge, color = c.ink)
+        Spacer(Modifier.height(10.dp))
+        PopButton("Yes, daily small spends", onClick = { vm.answerSmall(dailySpends = true) }, Modifier.fillMaxWidth())
+        Spacer(Modifier.height(8.dp))
+        PopOutlineButton("Let me sort them one by one", { vm.answerSmall(dailySpends = false) }, Modifier.fillMaxWidth())
+    }
+}
+
+/**
+ * One payee, with everything the statement says about them, and quick answers that fit: "who is
+ * this?" for a person, shop categories for a shop, and a nudge when it's the same amount monthly.
+ */
+@Composable
+private fun PayeeCard(payee: com.fintrack.core.Onboarding.Payee, vm: FinTrackViewModel) {
+    val c = Fin.colors
+    val kind = payee.kind
+    val quick: List<Choice> = buildList {
+        payee.suggestion?.let { add(Choice.Category(it)) }
+        when (kind) {
+            com.fintrack.core.Onboarding.Kind.PERSON -> {
+                add(Choice.Category("Rent"))
+                if (payee.monthly) add(Choice.Category("Education"))
+                add(Choice.Kind(com.fintrack.core.Flow.TO_PEOPLE, "Friend / family"))
+                add(Choice.Kind(com.fintrack.core.Flow.OWN_TRANSFER, "My own account"))
+                add(Choice.Category("Food & Dining"))
+            }
+            else -> {
+                if (payee.monthly) add(Choice.Category("Bills & Utilities"))
+                add(Choice.Category("Food & Dining"))
+                add(Choice.Category("Groceries"))
+                add(Choice.Category("Shopping"))
+                add(Choice.Category(com.fintrack.core.Categorizer.SMALL))
+            }
+        }
+    }.distinctBy { it.label }
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Faint("Payee ${vm.sortIndex + 1} of ${vm.toSort.size}")
+        Tile(Modifier.fillMaxWidth()) {
+            Text(payee.name, style = MaterialTheme.typography.titleLarge, color = c.ink, maxLines = 2)
+            payee.upi?.let { Faint("UPI ID: $it", maxLines = 1) }
+            Text(
+                "${payee.txns.size} payment${if (payee.txns.size == 1) "" else "s"}  ·  ${rupees(payee.total)}",
+                style = MaterialTheme.typography.titleMedium.merge(MoneyStyle), color = c.ink, modifier = Modifier.padding(top = 6.dp),
+            )
+            Spacer(Modifier.height(6.dp))
+            payee.txns.take(4).forEach { t -> Faint("${t.date.short()}  ·  ${rupees(t.amount)}", maxLines = 1) }
+            if (payee.txns.size > 4) Faint("+ ${payee.txns.size - 4} more", maxLines = 1)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                when {
+                    payee.monthly -> "Same amount every month: rent, fees, an EMI or a bill?"
+                    kind == com.fintrack.core.Onboarding.Kind.PERSON -> "A person (personal UPI ID). Who is this?"
+                    kind == com.fintrack.core.Onboarding.Kind.SHOP -> "A shop (QR code payment). What kind of shop?"
+                    else -> "What was this for?"
+                },
+                style = MaterialTheme.typography.bodyLarge, color = c.ink,
+            )
+        }
+        quick.forEach { ch ->
+            PopOutlineButton(
+                if (ch is Choice.Category && ch.name == "Rent") "Rent (my landlord)" else ch.label,
+                { vm.sortAnswer(ch) }, Modifier.fillMaxWidth(),
+            )
+        }
+        WhatDropdown(Direction.DEBIT, current = "Something else") { vm.sortAnswer(it) }
+        Text("Skip this one", style = MaterialTheme.typography.labelLarge, color = c.inkSoft,
+            modifier = Modifier.clickable { vm.sortAnswer(null) }.padding(vertical = 10.dp))
     }
 }
 

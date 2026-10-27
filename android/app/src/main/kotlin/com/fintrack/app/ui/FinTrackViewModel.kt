@@ -121,9 +121,24 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
     var tallies by mutableStateOf<List<StatementLedger.Tally>>(emptyList()); private set
     /** Where the user is in first-run setup; Done once finished or skipped. */
     var setup by mutableStateOf(SetupStep.Done); private set
-    /** Statement payees still to sort during setup, and which one is showing. */
+    /** Setup's plan for the statement: sorted from brands, small payees asked together, the rest one by one. */
+    var plan by mutableStateOf<Onboarding.Plan?>(null); private set
+    /** Payees asked one by one, and which one is showing. */
     var toSort by mutableStateOf<List<Onboarding.Payee>>(emptyList()); private set
     var sortIndex by mutableStateOf(0); private set
+    /** Whether the small-payees question has been answered. */
+    var smallDecided by mutableStateOf(false); private set
+    /** Money covered by the user's answers so far, and whether the small payees went to daily spends. */
+    private var answeredTotal by mutableStateOf(0.0)
+    private var smallAccepted by mutableStateOf(false)
+
+    /** Share of the statement's spending that's sorted (from brands, small spends, and answers). */
+    val sortedShare: Double
+        get() {
+            val p = plan ?: return 0.0
+            if (p.total <= 0) return 1.0
+            return (p.auto.sumOf { it.total } + (if (smallAccepted) p.small.sumOf { it.total } else 0.0) + answeredTotal) / p.total
+        }
     /** How many months of statements have been imported. */
     var statementMonths by mutableStateOf(0); private set
     /** Bank-looking SMS the parser couldn't read; null until loaded. */
@@ -245,19 +260,40 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
         val s = store ?: return
         viewModelScope.launch {
             val all = withContext(Dispatchers.IO) { s.all() }
-            toSort = Onboarding.toSort(all)
+            val p = Onboarding.plan(all)
+            plan = p
+            toSort = p.ask
+            smallDecided = p.small.isEmpty()
+            smallAccepted = false
+            answeredTotal = 0.0
             statementMonths = Onboarding.statementMonths(all).size
             sortIndex = 0
-            setup = if (toSort.isEmpty()) SetupStep.More else SetupStep.Sort
+            setup = if (p.ask.isEmpty() && p.small.isEmpty()) SetupStep.More else SetupStep.Sort
         }
     }
 
     /** The user's answer for the payee on screen (null = skip it); every payment to them is sorted. */
     fun sortAnswer(choice: Choice?) {
         val payee = toSort.getOrNull(sortIndex) ?: return
-        if (choice != null) payee.txns.distinctBy { it.merchant }.forEach { classify(it, choice, quiet = true) }
+        if (choice != null) {
+            payee.txns.distinctBy { it.merchant }.forEach { classify(it, choice, quiet = true) }
+            answeredTotal += payee.total
+        }
         sortIndex++
-        if (sortIndex >= toSort.size) setup = SetupStep.More
+        if (sortIndex >= toSort.size && smallDecided) setup = SetupStep.More
+    }
+
+    /** "These small payments are daily spends": one answer for all of them; or ask about them one by one. */
+    fun answerSmall(dailySpends: Boolean) {
+        val small = plan?.small.orEmpty()
+        if (dailySpends) {
+            small.forEach { p -> p.txns.distinctBy { it.merchant }.forEach { classify(it, Choice.Category(Categorizer.SMALL), quiet = true) } }
+        } else {
+            toSort = toSort + small
+        }
+        smallDecided = true
+        smallAccepted = dailySpends
+        if (dailySpends && sortIndex >= toSort.size) setup = SetupStep.More
     }
 
     fun finishSorting() { setup = SetupStep.More }

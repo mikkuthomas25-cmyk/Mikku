@@ -394,4 +394,22 @@ class FlowTest {
         assertNull(payees.first().suggestion)
         assertEquals(setOf(oct), Onboarding.statementMonths(listOf(a, sms)))
     }
+
+    @Test fun setupAsksOnlyWhatTheStatementCantTell() {
+        val flipkart = t(2, 1999.0, merchant = "Fk", raw = "UPI/DR/1/FLIPKART/flipkart.rzp@axisbank/Payment", source = "statement")
+        val landlordSep = Txn(id++, YearMonth.of(2026, 9).atDay(2), 3200.0, Direction.DEBIT, "Manoop", "Other", null, "statement", "UPI/DR/2/MANOOP/manoop@okaxis")
+        val landlordOct = t(2, 3200.0, merchant = "Manoop", raw = "UPI/DR/3/MANOOP/manoop@okaxis", source = "statement")
+        val tea = t(5, 20.0, merchant = "Shalini", raw = "UPI/DR/4/SHALINI/9876543210@ybl", source = "statement")
+        val snacks = t(6, 60.0, merchant = "Kasim", raw = "UPI/DR/5/KASIM/paytmqr2810050501@paytm", source = "statement")
+        val shop = t(7, 917.0, merchant = "Nimita", raw = "UPI/DR/6/NIMITA/q123456789@ybl", source = "statement")
+        val plan = Onboarding.plan(listOf(flipkart, landlordSep, landlordOct, tea, snacks, shop))
+        assertEquals(listOf("Fk"), plan.auto.map { it.name })
+        assertEquals("Shopping", plan.auto.single().brandCategory)
+        assertEquals(setOf("Shalini", "Kasim"), plan.small.map { it.name }.toSet())
+        assertEquals(listOf("Manoop", "Nimita"), plan.ask.map { it.name })
+        val landlord = plan.ask.first()
+        assertEquals(Onboarding.Kind.PERSON, landlord.kind)
+        assertTrue(landlord.monthly)
+        assertEquals(Onboarding.Kind.SHOP, plan.ask.last().kind)
+    }
 }
