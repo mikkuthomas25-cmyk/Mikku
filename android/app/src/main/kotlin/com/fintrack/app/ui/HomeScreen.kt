@@ -56,6 +56,7 @@ fun HomeScreen(
     val s = vm.summary
     var open by remember { mutableStateOf<Opened?>(null) }
     var choosingAccounts by remember { mutableStateOf(false) }
+    var showingBalances by remember { mutableStateOf(false) }
     val show: (Kind, TxnFilter?) -> Unit = { k, f -> vm.kind = k; vm.filter = f; openActivity() }
     val pickStatements = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         if (uris.isNotEmpty()) vm.importStatements(uris)
@@ -66,7 +67,7 @@ fun HomeScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         item { DashboardTopBar(onProfile = openProfile) }
-        if (s != null) item { Spacer(Modifier.height(6.dp)); BalanceHeader(vm, s) }
+        if (s != null) item { Spacer(Modifier.height(6.dp)); BalanceHeader(vm, s) { showingBalances = true } }
         item { Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { MonthPicker(vm, long = true) } }
         if (!vm.hasSmsPermission) item { PermissionHero(vm) }
         if (!vm.accountsChosen) item { AccountsPrompt(vm) { choosingAccounts = true } }
@@ -89,6 +90,7 @@ fun HomeScreen(
     vm.passwordFor?.let { PasswordDialog(it, vm) }
     open?.let { o -> TxnSheet(o, vm) { open = null } }
     if (choosingAccounts) AccountsSheet(vm) { choosingAccounts = false }
+    if (showingBalances) BalancesSheet(vm) { showingBalances = false }
 }
 
 /**

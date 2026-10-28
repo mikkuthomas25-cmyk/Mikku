@@ -157,8 +157,12 @@ How the type is decided, strongest evidence first:
 4. **The flow model:** a second on-device Naive Bayes model learns types from your answers. It only acts when confident, and never guesses own transfers or duplicates.
 5. **Questions instead of guesses:** uncertain duplicates, the same amount leaving and arriving when one SMS doesn't name its account ("moved between your own accounts?"), and payees you pay often via personal UPI IDs ("shop or person?") appear in **Needs your input** on Home. One tap answers, fixes the totals and teaches the model.
 
-**Bank balance (Home):** the money in each tracked account now: the newest of a statement's closing
-balance and an SMS's "Avl Bal", with its date (`core/.../Balances.kt`). This is not "Left", which is the
+**Bank balance (Home), kept up to date:** for each tracked account, the newest known balance (a
+statement's closing balance, an SMS "Avl Bal", or one you set) plus every payment in or out since,
+from SMS or app notifications; duplicates move it once and cash entries don't touch it
+(`core/.../Balances.kt`). Home says where it comes from ("From your bank SMS on 25 Oct + 3 payments
+since") and redraws the moment an SMS or payment notification arrives. Tap the balance → **Set
+balance** to enter the figure from your bank app; FinTrack carries on from there. This is not "Left", which is the
 month's money in − money out. After importing a statement, Home switches to the statement's month.
 
 **Accounts to track.** A phone often gets SMS for accounts that aren't the user's money (a friend's

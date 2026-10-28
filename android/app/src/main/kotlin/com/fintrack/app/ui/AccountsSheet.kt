@@ -27,7 +27,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 /**
  * "Which accounts are yours to track?": every account found in the messages, with a switch. Accounts
@@ -88,5 +90,65 @@ fun AccountsPrompt(vm: FinTrackViewModel, onChoose: () -> Unit) {
         )
         Spacer(Modifier.height(14.dp))
         PopButton("Choose accounts", onClick = onChoose, Modifier.fillMaxWidth())
+    }
+}
+
+/**
+ * Each tracked account's balance, where it comes from ("from SMS on 25 Oct + 3 payments since"),
+ * and "Set balance": the figure from the bank app becomes the new starting point.
+ */
+@Composable
+fun BalancesSheet(vm: FinTrackViewModel, onDismiss: () -> Unit) {
+    val c = Fin.colors
+    var editing by remember { mutableStateOf<String?>(null) }
+    var text by remember { mutableStateOf("") }
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.surface) {
+        Column(
+            Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 24.dp).padding(bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text("Your balances", style = MaterialTheme.typography.titleLarge, color = c.ink)
+            Faint("Kept up to date: the last known balance, plus every payment in or out since. If it doesn't match your bank app, set it once and FinTrack carries on from there.")
+            vm.balances.forEach { b ->
+                val name = vm.accounts.firstOrNull { it.key == b.accountKey }?.label ?: b.accountKey.substringAfter(':')
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(name, style = MaterialTheme.typography.titleMedium, color = c.ink, modifier = Modifier.weight(1f))
+                        Text(rupees(b.amount), style = BalanceStyle, fontSize = 22.sp, color = c.ink)
+                    }
+                    Faint(balanceSource(b))
+                    Spacer(Modifier.height(8.dp))
+                    if (editing == b.accountKey) {
+                        PopTextField(text, { v -> text = v.filter { it.isDigit() || it == '.' || it == '-' }.take(14) }, "Balance in your bank app (₹)",
+                            keyboardType = KeyboardType.Decimal)
+                        Spacer(Modifier.height(8.dp))
+                        PopButton("Save balance", onClick = {
+                            text.toDoubleOrNull()?.let { vm.setBalance(b.accountKey, it) }
+                            editing = null
+                        }, Modifier.fillMaxWidth(), enabled = text.toDoubleOrNull() != null)
+                    } else {
+                        PopChip("Set balance", selected = false) {
+                            editing = b.accountKey
+                            text = ""
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** "From your statement on 30 Sep + 3 payments since", in words. */
+fun balanceSource(b: com.fintrack.core.Balances.Balance): String {
+    val from = when (b.source) {
+        com.fintrack.core.Balances.Source.STATEMENT -> "From your statement on ${b.date.short()}"
+        com.fintrack.core.Balances.Source.SMS -> "From your bank SMS on ${b.date.short()}"
+        com.fintrack.core.Balances.Source.YOU -> "Set by you on ${b.date.short()}"
+    }
+    return from + when (b.adjustedBy) {
+        0 -> ""
+        1 -> " + 1 payment since"
+        else -> " + ${b.adjustedBy} payments since"
     }
 }

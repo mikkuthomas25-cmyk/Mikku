@@ -449,4 +449,24 @@ class FlowTest {
         assertEquals(Flow.SPEND, a.flowOf(bank))
         assertEquals(Flow.DUPLICATE, a.flowOf(app))
     }
+
+    @Test fun balanceRollsForwardFromTheLastKnownOne() {
+        val reading = t(20, 100.0, account = "4321", raw = "Rs 100 debited from A/c XX4321. Avl Bal Rs 5,000.00 -SBI")
+        val gpay = t(21, 250.0, account = null, raw = "₹250 paid to Swiggy. Paid via SBI", source = "notification:Google Pay")
+        val salary = t(22, 1000.0, Direction.CREDIT, account = "4321", raw = "Rs 1000 credited to A/c XX4321 -SBI")
+        val dupOfGpay = t(21, 250.0, account = "4321", raw = "Rs 250 debited from A/c XX4321 -SBI")
+        val cash = t(22, 80.0, account = null, raw = null, source = "manual")
+        val all = listOf(reading, gpay, salary, dupOfGpay, cash)
+        val b = Balances.current(all, emptyList(), emptyList(), isDuplicate = { it.id == gpay.id }).single()
+        assertEquals(5000.0 - 250.0 + 1000.0, b.amount)
+        assertEquals(2, b.adjustedBy)
+        assertEquals(Balances.Source.SMS, b.source)
+
+        // A balance the user entered today is the new starting point.
+        val mine = Balances.UserBalance("acct:4321", oct.atDay(22), 16.0, anchorId = cash.id)
+        val after = t(23, 6.0, account = "4321", raw = "Rs 6 debited from A/c XX4321 -SBI")
+        val b2 = Balances.current(all + after, emptyList(), listOf(mine), isDuplicate = { it.id == gpay.id }).single()
+        assertEquals(10.0, b2.amount)
+        assertEquals(Balances.Source.YOU, b2.source)
+    }
 }

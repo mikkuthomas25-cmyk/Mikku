@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.provider.Telephony
+import com.fintrack.app.data.DataEvents
 import com.fintrack.app.data.Prefs
 import com.fintrack.app.data.TxnStore
 
@@ -25,7 +26,7 @@ class SmsReceiver : BroadcastReceiver() {
         Thread {
             try {
                 TxnStore(context.applicationContext, dbName).use { store ->
-                    SmsImporter.ingest(store, body, millis, "sms")
+                    if (SmsImporter.ingest(store, body, millis, "sms")) DataEvents.notifyChanged()
                 }
             } catch (_: Exception) {
                 // Never crash the system broadcast; the next inbox scan retries.

@@ -10,6 +10,7 @@ import android.app.Application
 import android.net.Uri
 import com.fintrack.app.auth.Account
 import com.fintrack.app.auth.AuthManager
+import com.fintrack.app.data.DataEvents
 import com.fintrack.app.data.Prefs
 import com.fintrack.app.data.TxnStore
 import com.fintrack.app.sms.PermissionHelper
@@ -177,6 +178,8 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
         (CategorySource.isAutomatic(t.categorySource) || t.categorySource == CategorySource.KEYWORD)
 
     init {
+        // An SMS or payment notification stored while the app is open: redraw straight away.
+        viewModelScope.launch { DataEvents.changed.collect { refresh() } }
         when {
             auth.configured -> auth.current()?.let { openSession(it) }
             // No login available in this build: reopen the local session if one was started.
@@ -348,9 +351,16 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
                 // Where a statement was imported, it's the record for its account and dates; then only
                 // the accounts the user tracks (a friend's account on this phone isn't their money).
                 val resolver = Accounts.Resolver(everything)
-                // Bank balances are "now", whatever month is shown: from recent messages and statements.
-                val recent = s.range(LocalDate.now().minusDays(120), LocalDate.now())
-                latestBalances = Balances.latest(recent, s.closings()).filter { it.accountKey !in skip }
+                // Bank balances are "now", whatever month is shown: the newest known balance per account
+                // (statement, SMS or the user's own figure), plus every payment since. Duplicates (an
+                // app notification and the SMS for one payment) move it once.
+                val recentAll = s.range(LocalDate.now().minusDays(120), LocalDate.now())
+                val recentResolver = Accounts.Resolver(recentAll)
+                val recent = Accounts.tracked(StatementLedger.apply(recentAll, s.covers(), recentResolver), skip, recentResolver)
+                val dupes = FlowAnalyzer.analyze(recent, s.userFlows(), s.payeeFlows(), s.reviewDone()).decisions
+                    .filterValues { it.flow == Flow.DUPLICATE }.keys
+                latestBalances = Balances.current(recent, s.closings(), s.userBalances(), { it.id in dupes }, recentResolver)
+                    .filter { it.accountKey !in skip }
                 val raw = Accounts.tracked(StatementLedger.apply(everything, s.covers(), resolver), skip, resolver)
                 val a = FlowAnalyzer.analyze(raw, s.userFlows(), s.payeeFlows(), s.reviewDone())
                 raw.map { t ->
@@ -376,6 +386,11 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
             accountChecks = Reconciliation.byAccount(all)
             summary = Summaries.build(m, current, all.filter { Salary.monthOf(it, salary) == m.minusMonths(1) })
         }
+    }
+
+    /** "My bank app says ₹16": the user's figure becomes the starting point; later payments move it. */
+    fun setBalance(accountKey: String, amount: Double) = io {
+        it.setUserBalance(accountKey, amount)
     }
 
     /** Saves which accounts to leave out; everything is recalculated from the tracked ones. */

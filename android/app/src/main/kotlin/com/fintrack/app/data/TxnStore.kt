@@ -17,7 +17,7 @@ import java.time.LocalDate
 import java.time.YearMonth
 
 /** On-device SQLite storage. One database file per signed-in account. */
-class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbName, null, 6) {
+class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbName, null, 7) {
 
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
@@ -55,6 +55,8 @@ class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbN
         db.execSQL("CREATE TABLE IF NOT EXISTS statement_cover (account TEXT NOT NULL, start TEXT NOT NULL, finish TEXT NOT NULL, PRIMARY KEY (account, start, finish))")
         // v6: each statement's closing balance, for the bank balance on Home.
         db.execSQL("CREATE TABLE IF NOT EXISTS statement_balance (account TEXT NOT NULL, day TEXT NOT NULL, amount REAL NOT NULL, PRIMARY KEY (account, day))")
+        // v7: a balance the user entered ("my bank app says ₹16"), the starting point for later payments.
+        db.execSQL("CREATE TABLE IF NOT EXISTS user_balance (account TEXT PRIMARY KEY, day TEXT NOT NULL, amount REAL NOT NULL, anchor INTEGER NOT NULL)")
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -68,7 +70,7 @@ class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbN
             db.execSQL("ALTER TABLE transactions ADD COLUMN user_flow TEXT")
             createV3Tables(db)
         }
-        if (oldVersion < 6) createV3Tables(db)
+        if (oldVersion < 7) createV3Tables(db)
     }
 
     /** Returns the new row id, or null if this transaction is already stored. */
@@ -174,6 +176,21 @@ class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbN
 
     fun closings(): List<Balances.Closing> = readableDatabase.rawQuery("SELECT account, day, amount FROM statement_balance", null).use { c ->
         buildList { while (c.moveToNext()) add(Balances.Closing(c.getString(0), LocalDate.parse(c.getString(1)), c.getDouble(2))) }
+    }
+
+    /** The user's own figure for an account today; transactions stored so far are already in it. */
+    fun setUserBalance(accountKey: String, amount: Double) {
+        val anchor = readableDatabase.rawQuery("SELECT COALESCE(MAX(id), 0) FROM transactions", null).use { it.moveToFirst(); it.getLong(0) }
+        writableDatabase.insertWithOnConflict("user_balance", null, ContentValues().apply {
+            put("account", accountKey)
+            put("day", LocalDate.now().toString())
+            put("amount", amount)
+            put("anchor", anchor)
+        }, SQLiteDatabase.CONFLICT_REPLACE)
+    }
+
+    fun userBalances(): List<Balances.UserBalance> = readableDatabase.rawQuery("SELECT account, day, amount, anchor FROM user_balance", null).use { c ->
+        buildList { while (c.moveToNext()) add(Balances.UserBalance(c.getString(0), LocalDate.parse(c.getString(1)), c.getDouble(2), c.getLong(3))) }
     }
 
     fun covers(): List<StatementCover> = readableDatabase.rawQuery("SELECT account, start, finish FROM statement_cover", null).use { c ->

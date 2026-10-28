@@ -102,19 +102,28 @@ private fun EyeToggle() {
  * month" is the headline.
  */
 @Composable
-fun BalanceHeader(vm: FinTrackViewModel, s: MonthSummary) {
+fun BalanceHeader(vm: FinTrackViewModel, s: MonthSummary, onBalances: () -> Unit = {}) {
     val c = Fin.colors
     val total = vm.balances.takeIf { it.isNotEmpty() }?.sumOf { it.amount }
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         Text(if (total != null) "TOTAL BALANCE" else "LEFT IN ${s.month.name().uppercase()}", style = CapsLabel, color = c.inkSoft)
         Spacer(Modifier.height(6.dp))
         val (whole, paise) = rupeesSplit(abs(total ?: s.net))
-        Row(verticalAlignment = Alignment.Bottom) {
+        Row(Modifier.clickable(enabled = total != null, onClick = onBalances), verticalAlignment = Alignment.Bottom) {
             if ((total ?: s.net) < 0) Text("−", style = BalanceStyle, fontSize = 44.sp, color = c.ink)
             Text(whole, style = BalanceStyle, fontSize = 46.sp, color = c.ink, maxLines = 1)
             Text(paise, style = BalanceStyle, fontSize = 24.sp, color = c.inkFaint, modifier = Modifier.padding(bottom = 7.dp))
         }
-        Spacer(Modifier.height(8.dp))
+        if (total != null) {
+            val freshest = vm.balances.maxByOrNull { it.date }
+            Text(
+                (freshest?.let { balanceSource(it) } ?: "") + "  ·  Update ›",
+                style = MaterialTheme.typography.labelSmall, color = c.inkFaint, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.clickable(onClick = onBalances).padding(top = 2.dp, bottom = 8.dp),
+            )
+        } else {
+            Spacer(Modifier.height(8.dp))
+        }
         if (total != null) {
             // What went out this month, next to what's in the account now. (Not "in − out": money moved
             // to your other accounts isn't spending, so in − out can be far from the balance.)

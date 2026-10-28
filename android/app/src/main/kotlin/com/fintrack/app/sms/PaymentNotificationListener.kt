@@ -3,6 +3,7 @@ package com.fintrack.app.sms
 import android.app.Notification
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import com.fintrack.app.data.DataEvents
 import com.fintrack.app.data.Prefs
 import com.fintrack.app.data.TxnStore
 import com.fintrack.core.Categorizer
@@ -29,7 +30,8 @@ class PaymentNotificationListener : NotificationListenerService() {
             try {
                 TxnStore(applicationContext, dbName).use { store ->
                     val (category, source) = Categorizer.categorizeWithSource(parsed.merchant, parsed.direction, store.rules())
-                    store.insert(parsed, category, source, Notifications.source(pkg), listOfNotNull(title, text).joinToString(". "))
+                    val added = store.insert(parsed, category, source, Notifications.source(pkg), listOfNotNull(title, text).joinToString(". "))
+                    if (added != null) DataEvents.notifyChanged()
                 }
             } catch (_: Exception) {
                 // Never crash the listener; a missed notification is still covered by SMS or a statement.
