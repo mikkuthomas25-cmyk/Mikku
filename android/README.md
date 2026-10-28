@@ -38,6 +38,13 @@ FinTrack reads those apps' payment notifications (`sms/PaymentNotificationListen
 - an app notification and the bank SMS for the same payment count once (the SMS is kept, it names the
   account); a Truecaller copy of an SMS is the same message; a statement still wins for its dates.
 
+**Not seen by FinTrack (Home):** the catch-all for payments with no SMS and no notification (or a
+notification swiped away while FinTrack wasn't running). Between two known balances of an account
+(SMS "Avl Bal", a statement's closing balance, or one you set), the balance must have moved by exactly
+the payments seen; any difference is shown as "₹500 came into SBI between 25 and 27 Oct" with **Add
+it** (who and what, then it counts like any payment) or **Ignore** (`core/.../MissingMoney.kt`).
+When Android reconnects the listener, notifications still in the shade are read again.
+
 On sideloaded installs, Android may block Notification access like SMS: App info → ⋮ → Allow
 restricted settings, then try again.
 

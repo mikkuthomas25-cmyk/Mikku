@@ -6,6 +6,8 @@ import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import com.fintrack.core.Balances
+import com.fintrack.core.CategorySource
+import com.fintrack.core.MissingMoney
 import com.fintrack.core.Direction
 import com.fintrack.core.Flow
 import com.fintrack.core.FlowAnalyzer
@@ -92,6 +94,20 @@ class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbN
         val id = writableDatabase.insertWithOnConflict("transactions", null, values, SQLiteDatabase.CONFLICT_IGNORE)
         return id.takeIf { it != -1L }
     }
+
+    /** A payment found from a balance difference (no SMS or notification came); it moves the bank balance. */
+    fun addFound(date: LocalDate, amount: Double, direction: Direction, merchant: String, category: String, account: String?, raw: String): Long =
+        writableDatabase.insert("transactions", null, ContentValues().apply {
+            put("txn_date", date.toString())
+            put("amount", amount)
+            put("direction", direction.name)
+            put("merchant", merchant)
+            put("category", category)
+            put("account", account)
+            put("source", MissingMoney.SOURCE)
+            put("raw", raw)
+            put("cat_source", CategorySource.USER)
+        })
 
     /** Adds a transaction the user entered; returns its id. */
     fun addManual(date: LocalDate, amount: Double, direction: Direction, merchant: String, category: String, catSource: String): Long =

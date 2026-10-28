@@ -55,7 +55,7 @@ object Balances {
             val r = list.maxWith(compareBy<Reading>({ it.date }, { it.seq }))
             val later = txns.filter { t ->
                 t.source != "manual" && !isDuplicate(t) && resolver.keyOf(t) == key &&
-                    (t.date > r.date || (t.date == r.date && t.id > r.seq))
+                    (t.date > r.date || (t.date == r.date && MissingMoney.seq(t) > r.seq))
             }
             val moved = later.sumOf { if (it.direction == Direction.CREDIT) it.amount else -it.amount }
             Balance(key, r.amount + moved, r.date, r.source, later.size)

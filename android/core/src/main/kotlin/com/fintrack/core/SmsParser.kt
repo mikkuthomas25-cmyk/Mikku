@@ -38,7 +38,8 @@ object SmsParser {
 
     private const val DEBIT_WORDS = "debited|spent|sent|paid|withdrawn|withdrawal|purchase|debit(?:ed)?|txn of|transferred to"
     // SBI: "Your A/C XX1234 has a credit by NEFT of Rs 44,400.00"
-    private const val CREDIT_WORDS = "credited|received|deposited|refund(?:ed)?|reversed|cashback of|has a credit|credit of"
+    // "Rahul paid you ₹500" (Google Pay, PhonePe) is money in, though it starts with "paid".
+    private const val CREDIT_WORDS = "paid you|sent you|transferred to you|credited|received|deposited|refund(?:ed)?|reversed|cashback of|has a credit|credit of"
     private val DEBIT = Regex("""\b(?:$DEBIT_WORDS)\b""", I)
     private val CREDIT = Regex("""\b(?:$CREDIT_WORDS)\b""", I)
 
@@ -62,6 +63,8 @@ object SmsParser {
     private const val NAME = """([A-Za-z0-9][\w .&'*/@\-]{1,40}?)"""
     private val ATM = Regex("""\batm\b.{0,30}?(?:wdl|withdrawa?l|cash)|(?:cash\s+)?withdrawn\s+at\s+atm|\bat\s+atm\b""", I)
     private val MERCHANT_PATTERNS = listOf(
+        // Google Pay / PhonePe: "Rahul Kumar paid you ₹500", "Rahul sent you ₹500"
+        Regex("""(?:^|[.!]\s*)([A-Za-z][\w .&'\-]{1,40}?)\s+(?:paid|sent)\s+you\b""", I),
         // SBI: "credited by Rs.44400 on 01Oct26 transfer from ACME PVT LTD Ref No …"
         Regex("""\btransfer\s+from\s+$NAME$STOP""", I),
         // SBI IMPS: "by a/c linked to mobile 9XXXXXX999-ACME LTD (IMPS Ref …)"

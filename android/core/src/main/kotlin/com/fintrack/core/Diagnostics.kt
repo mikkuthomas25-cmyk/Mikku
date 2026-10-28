@@ -12,6 +12,7 @@ object Diagnostics {
         "statement" -> "statement"
         "manual" -> "added by hand"
         "shared" -> "shared SMS"
+        MissingMoney.SOURCE -> "balance check"
         else -> if (Notifications.isNotification(t.source)) t.source.removePrefix("notification:") + " notification" else "SMS"
     }
 

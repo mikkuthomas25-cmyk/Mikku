@@ -34,6 +34,7 @@ import com.fintrack.core.PayeeMemory
 import com.fintrack.core.ReviewItem
 import com.fintrack.core.Salary
 import com.fintrack.core.MissedSms
+import com.fintrack.core.MissingMoney
 import com.fintrack.core.MonthSummary
 import com.fintrack.core.SmsParser
 import com.fintrack.core.StatementCover
@@ -122,6 +123,8 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
     var untracked by mutableStateOf<Set<String>>(emptySet()); private set
     /** False until the user has said which accounts to track (asked once there are two or more). */
     var accountsChosen by mutableStateOf(true); private set
+    /** Money a tracked account's balance moved by that no SMS or notification explained. */
+    var gaps by mutableStateOf<List<MissingMoney.Gap>>(emptyList()); private set
     /** Latest known balance of each tracked account (statement closing or SMS "Avl Bal"). */
     var balances by mutableStateOf<List<Balances.Balance>>(emptyList()); private set
     /** For each imported statement with rows this month: its totals and how each rupee was counted. */
@@ -342,6 +345,7 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
             var skip = emptySet<String>()
             var chosen = true
             var latestBalances = emptyList<Balances.Balance>()
+            var unseen = emptyList<MissingMoney.Gap>()
             val (all, analysis) = withContext(Dispatchers.IO) {
                 // A few days past month-end so a transfer or duplicate straddling it is still paired.
                 val everything = s.range(m.minusMonths(HISTORY_MONTHS).atDay(1), m.atEndOfMonth().plusDays(3))
@@ -361,6 +365,9 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
                     .filterValues { it.flow == Flow.DUPLICATE }.keys
                 latestBalances = Balances.current(recent, s.closings(), s.userBalances(), { it.id in dupes }, recentResolver)
                     .filter { it.accountKey !in skip }
+                // Payments that came with no SMS or notification show up as balance differences.
+                unseen = MissingMoney.find(recent, s.closings(), s.userBalances(), { it.id in dupes }, s.reviewDone(), recentResolver)
+                    .filter { it.accountKey !in skip }
                 val raw = Accounts.tracked(StatementLedger.apply(everything, s.covers(), resolver), skip, resolver)
                 val a = FlowAnalyzer.analyze(raw, s.userFlows(), s.payeeFlows(), s.reviewDone())
                 raw.map { t ->
@@ -370,6 +377,7 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
             }
             accounts = found
             balances = latestBalances
+            gaps = unseen
             untracked = skip
             accountsChosen = chosen
             tallies = all.filter { YearMonth.from(it.date) == m && it.source == "statement" }
@@ -392,6 +400,33 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
     fun setBalance(accountKey: String, amount: Double) = io {
         it.setUserBalance(accountKey, amount)
     }
+
+    /** Records money a balance check found: dated within the gap, it moves the balance and closes the gap. */
+    fun recordGap(gap: MissingMoney.Gap, name: String, choice: Choice) {
+        val direction = if (gap.incoming) Direction.CREDIT else Direction.DEBIT
+        val label = accounts.firstOrNull { it.key == gap.accountKey }?.label ?: gap.accountKey.substringAfter(':')
+        io {
+            val category = when (choice) {
+                is Choice.Category -> choice.name
+                is Choice.Kind -> when (choice.flow) {
+                    Flow.INVESTED -> "Investments"
+                    Flow.TO_PEOPLE, Flow.FROM_PEOPLE -> "Transfers"
+                    Flow.OWN_TRANSFER -> "Self Transfer"
+                    else -> if (direction == Direction.CREDIT) "Income" else "Other"
+                }
+            }
+            val id = it.addFound(
+                gap.to, kotlin.math.abs(gap.amount), direction, name.trim().ifBlank { choice.label }, category,
+                gap.accountKey.takeIf { k -> k.startsWith("acct:") }?.removePrefix("acct:"),
+                "Found by balance check · $label",
+            )
+            it.setUserFlow(id, (choice as? Choice.Kind)?.flow ?: Flow.SPEND)
+            it.markReviewDone(gap.key)
+        }
+        message = "Recorded ${rupees(kotlin.math.abs(gap.amount))}"
+    }
+
+    fun ignoreGap(gap: MissingMoney.Gap) = io { it.markReviewDone(gap.key) }
 
     /** Saves which accounts to leave out; everything is recalculated from the tracked ones. */
     fun chooseAccounts(skip: Set<String>) {

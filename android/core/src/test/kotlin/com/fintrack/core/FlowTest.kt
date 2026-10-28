@@ -469,4 +469,34 @@ class FlowTest {
         assertEquals(10.0, b2.amount)
         assertEquals(Balances.Source.YOU, b2.source)
     }
+
+    @Test fun googlePayPaidYouIsMoneyIn() {
+        val p = assertNotNull(Notifications.parse("com.google.android.apps.nbu.paisa.user", "k9", "Rahul Kumar paid you ₹500.00", null, oct.atDay(26)))
+        assertEquals(Direction.CREDIT, p.direction)
+        assertEquals(500.0, p.amount)
+        assertEquals("Rahul Kumar", p.merchant)
+    }
+
+    @Test fun aBalanceFindsMoneyThatCameWithoutAnySmsOrNotification() {
+        val before = t(25, 100.0, account = "4321", raw = "Rs 100 debited from A/c XX4321. Avl Bal Rs 16.00 -SBI")
+        val coffee = t(26, 40.0, account = null, raw = "₹40 paid to Cafe. Paid via SBI", source = "notification:Google Pay")
+        // ₹500 arrived by Google Pay; its notification was swiped away before FinTrack saw it.
+        val after = t(27, 76.0, account = "4321", raw = "Rs 76 debited from A/c XX4321. Avl Bal Rs 400.00 -SBI")
+        val gaps = MissingMoney.find(listOf(before, coffee, after), emptyList(), emptyList(), { false })
+        val gap = gaps.single()
+        assertEquals(500.0, gap.amount)
+        assertTrue(gap.incoming)
+        assertEquals(oct.atDay(25), gap.from)
+        assertEquals(oct.atDay(27), gap.to)
+        // Recorded (dated within the gap): the gap closes, and the live balance doesn't count it twice.
+        val found = t(27, 500.0, Direction.CREDIT, account = "4321", raw = "Found by balance check", source = MissingMoney.SOURCE)
+        val all = listOf(before, coffee, after, found)
+        assertTrue(MissingMoney.find(all, emptyList(), emptyList(), { false }).isEmpty())
+        assertEquals(400.0, Balances.current(all, emptyList(), emptyList(), { false }).single().amount)
+        // A balance the user sets is checked the same way; a dismissed gap stays dismissed.
+        val mine = Balances.UserBalance("acct:4321", oct.atDay(28), 1400.0, anchorId = found.id)
+        val withMine = MissingMoney.find(all, emptyList(), listOf(mine), { false })
+        assertEquals(1000.0, withMine.single().amount)
+        assertTrue(MissingMoney.find(all, emptyList(), listOf(mine), { false }, dismissed = setOf(withMine.single().key)).isEmpty())
+    }
 }

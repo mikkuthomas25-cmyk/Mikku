@@ -82,6 +82,7 @@ fun HomeScreen(
                 onCharts = openCharts, openCategory = openCategory,
             )
         }
+        if (vm.gaps.isNotEmpty()) item { MissingMoneyCard(vm) }
         if (vm.review.isNotEmpty()) item { ReviewCard(vm) }
         item { RecentActivity(vm.txns, onOpen = { open = Opened(it, SheetMode.Category) }, onSeeAll = { show(Kind.All, null) }) }
         item { WhereItWent(s, openCategory) { flow -> show(Kind.All, TxnFilter.OfFlow(flow)) } }

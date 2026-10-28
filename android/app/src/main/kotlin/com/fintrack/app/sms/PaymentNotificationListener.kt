@@ -17,6 +17,18 @@ import java.time.ZoneId
  * Every other app's notifications are ignored without being read.
  */
 class PaymentNotificationListener : NotificationListenerService() {
+    /**
+     * Connected (again): the phone may have stopped FinTrack in the background for a while. Payment
+     * notifications still in the shade are read now; ones already stored are recognised and skipped.
+     */
+    override fun onListenerConnected() {
+        try {
+            activeNotifications?.forEach(::onNotificationPosted)
+        } catch (_: Exception) {
+            // Some phones refuse this right after connecting; new notifications still arrive.
+        }
+    }
+
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         val pkg = sbn.packageName ?: return
         if (!Notifications.isWatched(pkg)) return
