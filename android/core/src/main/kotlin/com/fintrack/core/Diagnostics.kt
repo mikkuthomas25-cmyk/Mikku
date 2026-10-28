@@ -12,7 +12,7 @@ object Diagnostics {
         "statement" -> "statement"
         "manual" -> "added by hand"
         "shared" -> "shared SMS"
-        else -> "SMS"
+        else -> if (Notifications.isNotification(t.source)) t.source.removePrefix("notification:") + " notification" else "SMS"
     }
 
     fun report(month: YearMonth, txns: List<Txn>, decisions: Map<Long, FlowDecision>, summary: MonthSummary?): String = buildString {

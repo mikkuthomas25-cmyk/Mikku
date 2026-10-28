@@ -25,6 +25,22 @@ a GitHub Release.
 Every build is signed with the same key (`app/fintrack-debug.keystore`), so a new APK
 installs over the old one and keeps your data.
 
+## Payment app notifications
+
+Payments made in Google Pay, PhonePe, Paytm, BHIM, CRED, Amazon Pay, slice or a bank app (YONO, HDFC,
+ICICI, Axis, Kotak, IOB, Canara, Federal, bob, IDFC, Jupiter, Fi…) sometimes come without an SMS.
+With **Notification access** turned on (Settings → Payment app notifications, or the last setup step),
+FinTrack reads those apps' payment notifications (`sms/PaymentNotificationListener.kt`,
+`core/.../Notifications.kt`):
+
+- only the listed payment and bank apps, plus Truecaller (which shows bank SMS); chats are never read;
+- offers, cashback, rewards and bill reminders are ignored;
+- an app notification and the bank SMS for the same payment count once (the SMS is kept, it names the
+  account); a Truecaller copy of an SMS is the same message; a statement still wins for its dates.
+
+On sideloaded installs, Android may block Notification access like SMS: App info → ⋮ → Allow
+restricted settings, then try again.
+
 ## If the phone blocks SMS access
 
 Android protects SMS for apps installed outside a store (Android 15+ "restricted settings";

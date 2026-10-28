@@ -31,6 +31,18 @@
             </intent-filter>
         </activity>
 
+        <!-- Payment-app notifications (Google Pay, PhonePe, bank apps…): only after the user turns on
+             Notification access for FinTrack in Settings. -->
+        <service
+            android:name=".sms.PaymentNotificationListener"
+            android:exported="true"
+            android:label="FinTrack payments"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
         <receiver
             android:name=".sms.SmsReceiver"
             android:exported="true"

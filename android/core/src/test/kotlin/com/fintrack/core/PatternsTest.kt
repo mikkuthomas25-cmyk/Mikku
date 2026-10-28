@@ -66,4 +66,15 @@ class PatternsTest {
         val h = listOf(spend(oct.atDay(1), 100.0), spend(oct.atDay(3), 50.0), spend(oct.atDay(3), 25.0))
         assertEquals(listOf(100.0, 100.0, 175.0, 175.0), Patterns.cumulative(h, oct, untilDay = 4))
     }
+
+    @Test fun monthsWithBarelyAnyDataDontSetTheUsualMonth() {
+        val oct = YearMonth.of(2026, 10)
+        var n = 1000L
+        fun spend(m: YearMonth, day: Int, amount: Double) =
+            Txn(n++, m.atDay(day), amount, Direction.DEBIT, "Shop", "Other", null, "sms", null, flow = Flow.SPEND)
+        // Two SMS a month before statements were imported; then full months of 30 payments.
+        val sparse = (4L..6L).flatMap { k -> listOf(spend(oct.minusMonths(k), 3, 500.0), spend(oct.minusMonths(k), 9, 600.0)) }
+        val full = (1L..3L).flatMap { k -> (1..30).map { d -> spend(oct.minusMonths(k), d, 1000.0) } }
+        assertEquals(30000.0, Patterns.typicalMonthly(sparse + full, oct))
+    }
 }

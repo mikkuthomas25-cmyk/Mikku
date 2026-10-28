@@ -138,7 +138,11 @@ object FlowAnalyzer {
             for ((x, y, _) in pairs) {
                 if (x.id in paired || y.id in paired || x.id in out || y.id in out) continue
                 // Keep the SMS (it has the account and the payee); drop the statement or app copy.
-                val (a, b) = if (isStatement(x) && !isStatement(y)) y to x else x to y
+                val (a, b) = when {
+                    isStatement(x) && !isStatement(y) -> y to x
+                    isAppNotice(x) && !isAppNotice(y) && !isStatement(y) -> y to x
+                    else -> x to y
+                }
                 when (duplicateConfidence(a, b)) {
                     Confidence.CERTAIN, Confidence.HIGH -> {
                         out[b.id] = FlowDecision(Flow.DUPLICATE, "Same payment as ${a.merchant} on ${a.date}", linkedId = a.id)
@@ -305,8 +309,9 @@ object FlowAnalyzer {
     private fun duplicateConfidence(a: Txn, b: Txn): Confidence {
         if (a.ref != null && a.ref == b.ref) return Confidence.CERTAIN
         // A statement row and an SMS: statements don't name the account, and their reference
-        // numbers often differ from the SMS's, so go by amount and date.
-        if (isStatement(a) != isStatement(b)) {
+        // numbers often differ from the SMS's, so go by amount and date. The same goes for a payment
+        // app's notification and the bank's SMS (or statement row) for the same payment.
+        if (isStatement(a) != isStatement(b) || isAppNotice(a) != isAppNotice(b)) {
             return if (abs(a.date.toEpochDay() - b.date.toEpochDay()) <= 1) Confidence.HIGH else Confidence.MEDIUM
         }
         if (a.ref != null && b.ref != null) return Confidence.NONE
@@ -344,6 +349,8 @@ object FlowAnalyzer {
             txns.filter { payeeFlows[norm(it.merchant)] == Flow.OWN_TRANSFER }.map { it.merchant }
         return own.distinctBy(::norm).flatMap(::nameTokens).groupingBy { it }.eachCount().filterValues { it >= 2 }.keys
     }
+
+    private fun isAppNotice(t: Txn) = Notifications.isNotification(t.source)
 
     private fun isStatement(t: Txn) = t.source == "statement"
 

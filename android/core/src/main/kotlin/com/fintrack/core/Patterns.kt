@@ -27,10 +27,23 @@ object Patterns {
         return months.map { m -> m to (byMonth[m]?.sumOf { it.spendValue } ?: 0.0).coerceAtLeast(0.0) }
     }
 
-    /** Months before [current] that have any transactions at all (so a quiet month counts as 0, a missing one doesn't). */
+    /** Months before [current] with enough data to count (a quiet month counts as 0, a missing or barely-captured one doesn't). */
     private fun pastMonthsWithData(history: List<Txn>, current: YearMonth, lookback: Int): List<YearMonth> {
-        val present = history.map { YearMonth.from(it.date) }.toSet()
-        return (1..lookback).map { current.minusMonths(it.toLong()) }.filter { it in present }
+        val window = (0..lookback).map { current.minusMonths(it.toLong()) }
+        val covered = wellCovered(history, window)
+        return (1..lookback).map { current.minusMonths(it.toLong()) }.filter { it in covered }
+    }
+
+    /**
+     * Of [months], those whose data looks complete: at least 40% as many transactions as the busiest
+     * of them. Months from before statements were imported, with a handful of SMS, would otherwise
+     * make "your usual month" look tiny.
+     */
+    fun wellCovered(history: List<Txn>, months: List<YearMonth>): Set<YearMonth> {
+        val counts = history.groupingBy { YearMonth.from(it.date) }.eachCount()
+        val busiest = months.maxOfOrNull { counts[it] ?: 0 } ?: 0
+        if (busiest == 0) return emptySet()
+        return months.filter { (counts[it] ?: 0) >= busiest * 0.4 }.toSet()
     }
 
     /** Median monthly spend over past months; null with fewer than [minMonths] months of history. */

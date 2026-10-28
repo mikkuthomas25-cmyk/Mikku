@@ -75,6 +75,12 @@ fun ProfileScreen(vm: FinTrackViewModel, openInsights: () -> Unit, openTransacti
                     else "Blocked · tap to allow it in Settings",
                     danger = !vm.hasSmsPermission,
                 ) { PermissionHelper.openSmsSettings(context) }
+                SettingRow(
+                    "Payment app notifications",
+                    if (vm.hasNotificationAccess) "On · Google Pay, PhonePe, Paytm and bank app payments are added as they happen"
+                    else "Off · tap to turn on Notification access, so app payments without an SMS aren't missed",
+                    danger = !vm.hasNotificationAccess,
+                ) { PermissionHelper.openNotificationAccess(context) }
                 if (PermissionHelper.isXiaomi) {
                     SettingRow(
                         "Autostart",

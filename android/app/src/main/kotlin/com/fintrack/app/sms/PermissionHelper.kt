@@ -10,6 +10,7 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationManagerCompat
 
 /**
  * Helps the user grant SMS access on phones that block it for apps installed outside a store
@@ -47,6 +48,23 @@ object PermissionHelper {
                 ComponentName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity"),
             ))
         ) return
+        openAppInfo(context)
+    }
+
+    /** Whether the user has turned on Notification access for FinTrack (payment-app notifications). */
+    fun hasNotificationAccess(context: Context): Boolean =
+        NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
+
+    /** Opens Notification access: FinTrack's own switch where the phone supports it, else the list. */
+    fun openNotificationAccess(context: Context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && tryStart(context, Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS).apply {
+                putExtra(
+                    Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME,
+                    ComponentName(context, PaymentNotificationListener::class.java).flattenToString(),
+                )
+            })
+        ) return
+        if (tryStart(context, Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))) return
         openAppInfo(context)
     }
 

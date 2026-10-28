@@ -254,6 +254,11 @@ private fun SmsStep(vm: FinTrackViewModel) {
             onClick = { if (vm.hasSmsPermission) vm.finishSetup() else launcher.launch(PermissionHelper.SMS_PERMISSIONS) },
             Modifier.fillMaxWidth(),
         )
+        val context = androidx.compose.ui.platform.LocalContext.current
+        if (!vm.hasNotificationAccess) {
+            Faint("Payments made in Google Pay, PhonePe, Paytm or a bank app sometimes come without an SMS. Turn on Notification access so FinTrack catches those too (only payment and bank apps are read).")
+            PopOutlineButton("Also read payment app notifications", { PermissionHelper.openNotificationAccess(context) }, Modifier.fillMaxWidth())
+        }
         PopOutlineButton("Not now", vm::finishSetup, Modifier.fillMaxWidth())
     }
 }

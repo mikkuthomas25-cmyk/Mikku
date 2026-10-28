@@ -116,13 +116,13 @@ fun BalanceHeader(vm: FinTrackViewModel, s: MonthSummary) {
         }
         Spacer(Modifier.height(8.dp))
         if (total != null) {
-            val up = s.net >= 0
-            val col = if (up) c.gain else c.loss
+            // What went out this month, next to what's in the account now. (Not "in − out": money moved
+            // to your other accounts isn't spending, so in − out can be far from the balance.)
             Text(
-                (if (up) "+" else "−") + rupees(abs(s.net)) + " this month",
-                style = MaterialTheme.typography.labelMedium.merge(MoneyStyle), color = col,
-                modifier = Modifier.glow(col, 8.dp).clip(PillShape).background(col.copy(alpha = 0.12f))
-                    .border(0.5.dp, col.copy(alpha = 0.45f), PillShape).padding(horizontal = 12.dp, vertical = 5.dp),
+                "${rupees(s.moneyOut)} spent in ${s.month.name()}",
+                style = MaterialTheme.typography.labelMedium.merge(MoneyStyle), color = c.accent,
+                modifier = Modifier.glow(c.accent, 8.dp).clip(PillShape).background(c.accent.copy(alpha = 0.12f))
+                    .border(0.5.dp, c.accent.copy(alpha = 0.45f), PillShape).padding(horizontal = 12.dp, vertical = 5.dp),
             )
         } else {
             Text("Add a bank statement to see your balance", style = MaterialTheme.typography.labelMedium, color = c.inkFaint)
@@ -185,7 +185,10 @@ fun PacingCard(vm: FinTrackViewModel, s: MonthSummary) {
 @Composable
 fun CashFlowCard(vm: FinTrackViewModel) {
     val c = Fin.colors
-    val months = (5 downTo 0).map { vm.month.minusMonths(it.toLong()) }
+    // From the first month with real data: months with a handful of SMS would make a misleading dip.
+    val window = (5 downTo 0).map { vm.month.minusMonths(it.toLong()) }
+    val covered = Patterns.wellCovered(vm.history, window)
+    val months = window.dropWhile { it !in covered && it != vm.month }.let { if (it.size < 2) window.takeLast(2) else it }
     val income = months.map { ym -> vm.history.filter { YearMonth.from(it.date) == ym && it.effectiveFlow.countsAsMoneyIn }.sumOf { it.amount } }
     val spent = months.map { ym -> vm.history.filter { YearMonth.from(it.date) == ym }.sumOf { it.outValue }.coerceAtLeast(0.0) }
     val top = (income + spent).maxOrNull()?.takeIf { it > 0 } ?: return

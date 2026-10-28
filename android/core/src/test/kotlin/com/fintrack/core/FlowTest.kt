@@ -424,4 +424,29 @@ class FlowTest {
         assertEquals(9100.0, onlyStatement.single().amount)
         assertTrue(onlyStatement.single().fromStatement)
     }
+
+    @Test fun paymentAppNotificationsBecomeTransactionsOnce() {
+        val day = oct.atDay(9)
+        val gpay = assertNotNull(Notifications.parse("com.google.android.apps.nbu.paisa.user", "k1", "₹250 paid to Swiggy", "Paid via SBI ••4321", day))
+        assertEquals(250.0, gpay.amount)
+        assertEquals(Direction.DEBIT, gpay.direction)
+        assertEquals("Swiggy", gpay.merchant)
+        val received = assertNotNull(Notifications.parse("com.phonepe.app", "k2", "Received ₹500", "Rahul Kumar sent you ₹500", day))
+        assertEquals(Direction.CREDIT, received.direction)
+        // Chats, offers and reminders are never transactions.
+        assertNull(Notifications.parse("com.whatsapp", "k3", "Rahul", "I paid Rs 500 for dinner", day))
+        assertNull(Notifications.parse("com.phonepe.app", "k4", "You've won ₹25 cashback!", "Scratch card waiting", day))
+        assertNull(Notifications.parse("com.google.android.apps.nbu.paisa.user", "k5", "Electricity bill due", "Pay ₹1,240 now", day))
+        // The same notification updated keeps its identity; a Truecaller copy of an SMS matches the SMS.
+        assertEquals(gpay.smsHash, Notifications.parse("com.google.android.apps.nbu.paisa.user", "k1", "₹250 paid to Swiggy", "Paid via SBI ••4321", day)!!.smsHash)
+        val sms = "Rs 640.00 debited from a/c XX1234 to VPA uber@axis. Avl Bal Rs 9,000"
+        assertEquals(SmsParser.parse(sms, day)!!.smsHash, Notifications.parse("com.truecaller", "t1", null, sms, day)!!.smsHash)
+
+        // Bank SMS + GPay notification for one payment: counted once, the SMS kept.
+        val bank = t(9, 250.0, merchant = "SWIGGY LIMITED", raw = "Rs 250 debited from a/c XX4321 to VPA swiggy@icici -SBI")
+        val app = t(9, 250.0, merchant = "Swiggy", account = null, raw = "₹250 paid to Swiggy. Paid via SBI", source = "notification:Google Pay")
+        val a = FlowAnalyzer.analyze(listOf(app, bank))
+        assertEquals(Flow.SPEND, a.flowOf(bank))
+        assertEquals(Flow.DUPLICATE, a.flowOf(app))
+    }
 }

@@ -22,6 +22,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import java.time.YearMonth
@@ -48,7 +50,8 @@ fun <T> PopDropdown(
         }
         Box {
             Row(
-                Modifier.fillMaxWidth().border(1.dp, c.border).background(c.surface).clickable { open = true }
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).border(0.5.dp, c.border, RoundedCornerShape(14.dp))
+                    .background(c.surface).clickable { open = true }
                     .padding(horizontal = 14.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -78,7 +81,7 @@ fun MonthPicker(vm: FinTrackViewModel, long: Boolean = false) {
     val c = Fin.colors
     val now = YearMonth.now()
     var open by remember { mutableStateOf(false) }
-    Row(Modifier.border(1.dp, c.border).background(c.surface), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.clip(PillShape).border(0.5.dp, c.border, PillShape).background(c.surface), verticalAlignment = Alignment.CenterVertically) {
         Text("‹", style = MaterialTheme.typography.titleLarge, color = c.ink,
             modifier = Modifier.clickable { vm.changeMonth(-1) }.padding(horizontal = 12.dp, vertical = 6.dp))
         Box {

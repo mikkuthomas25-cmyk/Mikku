@@ -12,6 +12,7 @@ import com.fintrack.app.auth.Account
 import com.fintrack.app.auth.AuthManager
 import com.fintrack.app.data.Prefs
 import com.fintrack.app.data.TxnStore
+import com.fintrack.app.sms.PermissionHelper
 import com.fintrack.app.sms.SmsImporter
 import com.fintrack.app.statement.PasswordRequired
 import com.fintrack.app.statement.StatementImporter
@@ -97,6 +98,8 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
     var query by mutableStateOf("")
     var kind by mutableStateOf(Kind.All)
     var hasSmsPermission by mutableStateOf(SmsImporter.hasPermission(app)); private set
+    /** Notification access for payment-app notifications (Google Pay, PhonePe, bank apps…). */
+    var hasNotificationAccess by mutableStateOf(PermissionHelper.hasNotificationAccess(app)); private set
     var busy by mutableStateOf(false); private set
     var message by mutableStateOf<String?>(null)
     /** Set together with [message] when the change can be undone from the snackbar. */
@@ -252,6 +255,7 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
     /** Called whenever the app comes to the foreground: pick up new SMS, then redraw. */
     fun onResume() {
         hasSmsPermission = SmsImporter.hasPermission(app)
+        hasNotificationAccess = PermissionHelper.hasNotificationAccess(app)
         // During setup the statement comes first; messages are read once it's done.
         if (hasSmsPermission && setup == SetupStep.Done) scan(full = false) else refresh()
     }
