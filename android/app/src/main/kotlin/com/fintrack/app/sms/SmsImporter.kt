@@ -8,6 +8,7 @@ import androidx.core.content.ContextCompat
 import com.fintrack.app.data.TxnStore
 import com.fintrack.core.Categorizer
 import com.fintrack.core.MissedSms
+import com.fintrack.core.ScanResult
 import com.fintrack.core.SmsParser
 import java.time.Instant
 import java.time.ZoneId
@@ -26,14 +27,19 @@ object SmsImporter {
      * when [full] is set) and stores the transactions. Returns how many were added.
      * Safe to call repeatedly: duplicates are ignored.
      */
-    fun scanInbox(context: Context, store: TxnStore, full: Boolean = false): Int {
-        if (!hasPermission(context)) return 0
+    fun scanInbox(context: Context, store: TxnStore, full: Boolean = false): ScanResult {
+        if (!hasPermission(context)) return ScanResult()
         // A newer parser can read messages the old one skipped: re-read history once.
         val reparse = store.getMeta(PARSER_VERSION) != SmsParser.VERSION.toString()
         val defaultSince = Instant.now().minus(FIRST_SCAN_DAYS, ChronoUnit.DAYS).toEpochMilli()
         val since = if (full || reparse) defaultSince else store.getMeta(LAST_SCAN)?.toLongOrNull() ?: defaultSince
         val rules = store.rules()
+        val covers = store.covers()
+        var messages = 0
+        var payments = 0
         var added = 0
+        var unreadable = 0
+        var covered = 0
         var newest = since
         context.contentResolver.query(
             Telephony.Sms.Inbox.CONTENT_URI,
@@ -45,18 +51,27 @@ object SmsImporter {
             while (c.moveToNext()) {
                 val body = c.getString(0) ?: continue
                 val millis = c.getLong(1)
+                messages++
                 newest = maxOf(newest, millis)
+                val received = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
+                val parsed = SmsParser.parse(body, received)
+                if (parsed == null) {
+                    if (SmsParser.looksFinancial(body)) unreadable++
+                    continue
+                }
+                payments++
+                if (covers.any { cv -> parsed.account?.takeLast(4) == cv.account && parsed.date in cv }) covered++
                 if (ingest(store, body, millis, "sms", rules)) {
                     added++
                 } else if (reparse) {
                     // Already stored: pick up a name the old parser got wrong ("Rs", "Unknown").
-                    SmsParser.parse(body)?.let { store.repairMerchant(it.smsHash, it.merchant) }
+                    store.repairMerchant(parsed.smsHash, parsed.merchant)
                 }
             }
         }
         store.setMeta(LAST_SCAN, newest.toString())
         store.setMeta(PARSER_VERSION, SmsParser.VERSION.toString())
-        return added
+        return ScanResult(messages, payments, added, unreadable, covered)
     }
 
     /**

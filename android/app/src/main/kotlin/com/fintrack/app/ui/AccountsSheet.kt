@@ -102,6 +102,8 @@ fun BalancesSheet(vm: FinTrackViewModel, onDismiss: () -> Unit) {
     val c = Fin.colors
     var editing by remember { mutableStateOf<String?>(null) }
     var text by remember { mutableStateOf("") }
+    // A typed balance far from what the SMS/statement say: asked once before saving.
+    var confirming by remember { mutableStateOf<Pair<String, Double>?>(null) }
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = MaterialTheme.colorScheme.surface) {
         Column(
@@ -109,33 +111,75 @@ fun BalancesSheet(vm: FinTrackViewModel, onDismiss: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text("Your balances", style = MaterialTheme.typography.titleLarge, color = c.ink)
-            Faint("Kept up to date: the last known balance, plus every payment in or out since. If it doesn't match your bank app, set it once and FinTrack carries on from there.")
+            Faint(
+                "FinTrack can't read your bank directly. It uses the balance in your bank SMS or statement, then adds and " +
+                    "subtracts every payment since. If that doesn't match your bank app, set the figure from your bank app once.",
+            )
             vm.balances.forEach { b ->
                 val name = vm.accounts.firstOrNull { it.key == b.accountKey }?.label ?: b.accountKey.substringAfter(':')
+                val auto = vm.automaticBalances[b.accountKey]
                 Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(name, style = MaterialTheme.typography.titleMedium, color = c.ink, modifier = Modifier.weight(1f))
                         Text(rupees(b.amount), style = BalanceStyle, fontSize = 22.sp, color = c.ink)
                     }
                     Faint(balanceSource(b))
+                    if (b.source == com.fintrack.core.Balances.Source.YOU && auto != null) {
+                        Faint("Your SMS and statements say ${rupees(auto.amount)} (${balanceSource(auto).replaceFirstChar(Char::lowercase)})")
+                    }
                     Spacer(Modifier.height(8.dp))
                     if (editing == b.accountKey) {
-                        PopTextField(text, { v -> text = v.filter { it.isDigit() || it == '.' || it == '-' }.take(14) }, "Balance in your bank app (₹)",
+                        PopTextField(text, { v -> text = v.filter { it.isDigit() || it == '.' }.take(14) }, "Balance shown in your bank app (₹)",
                             keyboardType = KeyboardType.Decimal)
                         Spacer(Modifier.height(8.dp))
                         PopButton("Save balance", onClick = {
-                            text.toDoubleOrNull()?.let { vm.setBalance(b.accountKey, it) }
-                            editing = null
+                            val value = text.toDoubleOrNull() ?: return@PopButton
+                            val check = auto?.amount ?: b.amount
+                            if (kotlin.math.abs(value - check) > maxOf(500.0, kotlin.math.abs(check) * 0.2)) {
+                                confirming = b.accountKey to value
+                            } else {
+                                vm.setBalance(b.accountKey, value)
+                                editing = null
+                            }
                         }, Modifier.fillMaxWidth(), enabled = text.toDoubleOrNull() != null)
                     } else {
-                        PopChip("Set balance", selected = false) {
-                            editing = b.accountKey
-                            text = ""
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            PopChip("Set balance", selected = false) {
+                                editing = b.accountKey
+                                // Start from FinTrack's figure, so only a real difference gets typed.
+                                text = "%.2f".format(b.amount)
+                            }
+                            if (b.source == com.fintrack.core.Balances.Source.YOU) {
+                                PopChip("Use automatic balance", selected = false) { vm.useAutomaticBalance(b.accountKey) }
+                            }
                         }
                     }
                 }
             }
         }
+    }
+    confirming?.let { (key, value) ->
+        val auto = vm.automaticBalances[key] ?: vm.balances.firstOrNull { it.accountKey == key }
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { confirming = null },
+            title = { Text("Set ${rupees(value)}?") },
+            text = {
+                Text(
+                    "That's very different from ${rupees(auto?.amount ?: 0.0)}, which is what your " +
+                        "${if (auto?.fromStatement == true) "statement" else "bank SMS"} and the payments since suggest. " +
+                        "Only set it if your bank app shows ${rupees(value)} right now.",
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    vm.setBalance(key, value)
+                    confirming = null
+                    editing = null
+                }) { Text("Yes, my bank shows ${rupees(value)}") }
+            },
+            dismissButton = { androidx.compose.material3.TextButton(onClick = { confirming = null }) { Text("Cancel") } },
+            containerColor = c.surface,
+        )
     }
 }
 

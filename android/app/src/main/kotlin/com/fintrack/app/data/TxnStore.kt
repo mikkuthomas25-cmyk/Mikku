@@ -205,6 +205,11 @@ class TxnStore(context: Context, dbName: String) : SQLiteOpenHelper(context, dbN
         }, SQLiteDatabase.CONFLICT_REPLACE)
     }
 
+    /** Back to the automatic balance (statement and SMS) for this account. */
+    fun clearUserBalance(accountKey: String) {
+        writableDatabase.delete("user_balance", "account=?", arrayOf(accountKey))
+    }
+
     fun userBalances(): List<Balances.UserBalance> = readableDatabase.rawQuery("SELECT account, day, amount, anchor FROM user_balance", null).use { c ->
         buildList { while (c.moveToNext()) add(Balances.UserBalance(c.getString(0), LocalDate.parse(c.getString(1)), c.getDouble(2), c.getLong(3))) }
     }

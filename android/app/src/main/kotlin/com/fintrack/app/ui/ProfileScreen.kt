@@ -72,7 +72,8 @@ fun ProfileScreen(vm: FinTrackViewModel, openInsights: () -> Unit, openTransacti
                 SettingRow(
                     "SMS access",
                     if (vm.hasSmsPermission) "Allowed · new bank SMS are added automatically" +
-                        (vm.lastChecked?.let { " · last checked ${it.format(java.time.format.DateTimeFormatter.ofPattern("h:mm a"))}" } ?: "")
+                        (vm.lastChecked?.let { " · last checked ${it.format(java.time.format.DateTimeFormatter.ofPattern("h:mm a"))}" } ?: "") +
+                        (vm.lastScan?.let { "\n" + it.summary(full = false) } ?: "")
                     else "Blocked · tap to allow it in Settings",
                     danger = !vm.hasSmsPermission,
                 ) { PermissionHelper.openSmsSettings(context) }

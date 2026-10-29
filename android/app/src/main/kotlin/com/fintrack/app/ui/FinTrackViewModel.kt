@@ -123,6 +123,8 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
     var untracked by mutableStateOf<Set<String>>(emptySet()); private set
     /** False until the user has said which accounts to track (asked once there are two or more). */
     var accountsChosen by mutableStateOf(true); private set
+    /** Each account's balance from statements and SMS alone (ignoring one the user set): the check for "Set balance". */
+    var automaticBalances by mutableStateOf<Map<String, Balances.Balance>>(emptyMap()); private set
     /** Money a tracked account's balance moved by that no SMS or notification explained. */
     var gaps by mutableStateOf<List<MissingMoney.Gap>>(emptyList()); private set
     /** Latest known balance of each tracked account (statement closing or SMS "Avl Bal"). */
@@ -151,6 +153,8 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
         }
     /** How many months of statements have been imported. */
     var statementMonths by mutableStateOf(0); private set
+    /** What the last read of the inbox saw (messages, payments, new, unreadable), shown in Settings. */
+    var lastScan by mutableStateOf<com.fintrack.core.ScanResult?>(null); private set
     /** When messages were last checked (this session), shown in Settings. */
     var lastChecked by mutableStateOf<java.time.LocalTime?>(null); private set
     /** When a month other than this one was chosen; after a while away, Home returns to this month. */
@@ -339,15 +343,11 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
         val s = store ?: return
         viewModelScope.launch {
             busy = true
-            val (added, stats) = withContext(Dispatchers.IO) { SmsImporter.scanInbox(app, s, full) to relearn(s) }
+            val (result, stats) = withContext(Dispatchers.IO) { SmsImporter.scanInbox(app, s, full) to relearn(s) }
             learning = stats
             lastChecked = java.time.LocalTime.now()
-            if (report) message = when {
-                full -> "Found $added transactions in your messages."
-                added == 0 -> "Checked your messages: no new bank SMS"
-                added == 1 -> "Checked your messages: 1 new payment"
-                else -> "Checked your messages: $added new payments"
-            }
+            lastScan = result
+            if (report) message = result.summary(full)
             refresh()
             busy = false
         }
@@ -373,6 +373,7 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
             var chosen = true
             var latestBalances = emptyList<Balances.Balance>()
             var unseen = emptyList<MissingMoney.Gap>()
+            var automatic = emptyMap<String, Balances.Balance>()
             val (all, analysis) = withContext(Dispatchers.IO) {
                 // A few days past month-end so a transfer or duplicate straddling it is still paired.
                 val everything = s.range(m.minusMonths(HISTORY_MONTHS).atDay(1), m.atEndOfMonth().plusDays(3))
@@ -392,6 +393,7 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
                     .filterValues { it.flow == Flow.DUPLICATE }.keys
                 latestBalances = Balances.current(recent, s.closings(), s.userBalances(), { it.id in dupes }, recentResolver)
                     .filter { it.accountKey !in skip }
+                automatic = Balances.current(recent, s.closings(), emptyList(), { it.id in dupes }, recentResolver).associateBy { it.accountKey }
                 // Payments that came with no SMS or notification show up as balance differences.
                 unseen = MissingMoney.find(recent, s.closings(), s.userBalances(), { it.id in dupes }, s.reviewDone(), recentResolver)
                     .filter { it.accountKey !in skip }
@@ -405,6 +407,7 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
             accounts = found
             balances = latestBalances
             gaps = unseen
+            automaticBalances = automatic
             untracked = skip
             accountsChosen = chosen
             tallies = all.filter { YearMonth.from(it.date) == m && it.source == "statement" }
@@ -426,6 +429,12 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
     /** "My bank app says ₹16": the user's figure becomes the starting point; later payments move it. */
     fun setBalance(accountKey: String, amount: Double) = io {
         it.setUserBalance(accountKey, amount)
+    }
+
+    /** Forget the balance the user typed; statements and SMS decide again. */
+    fun useAutomaticBalance(accountKey: String) {
+        io { it.clearUserBalance(accountKey) }
+        message = "Back to the balance from your SMS and statements"
     }
 
     /** Records money a balance check found: dated within the gap, it moves the balance and closes the gap. */

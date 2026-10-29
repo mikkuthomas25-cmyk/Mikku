@@ -499,4 +499,13 @@ class FlowTest {
         assertEquals(1000.0, withMine.single().amount)
         assertTrue(MissingMoney.find(all, emptyList(), listOf(mine), { false }, dismissed = setOf(withMine.single().key)).isEmpty())
     }
+
+    @Test fun aRescanSaysWhyNothingChanged() {
+        assertTrue("no messages" in ScanResult().summary(full = true))
+        assertTrue("none were bank payments" in ScanResult(messages = 900).summary(full = true))
+        val known = ScanResult(messages = 1240, payments = 81, added = 0, unreadable = 4, coveredByStatement = 30).summary(full = true)
+        assertTrue("81 payments, all already in FinTrack" in known, known)
+        assertTrue("30 fall in dates your statement covers" in known, known)
+        assertTrue("4 bank messages couldn't be read" in known, known)
+    }
 }
