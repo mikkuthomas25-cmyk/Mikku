@@ -151,6 +151,10 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
         }
     /** How many months of statements have been imported. */
     var statementMonths by mutableStateOf(0); private set
+    /** When messages were last checked (this session), shown in Settings. */
+    var lastChecked by mutableStateOf<java.time.LocalTime?>(null); private set
+    /** When a month other than this one was chosen; after a while away, Home returns to this month. */
+    private var monthPickedAt = 0L
     /** Bank-looking SMS the parser couldn't read; null until loaded. */
     var missed by mutableStateOf<List<MissedSms>?>(null); private set
 
@@ -260,6 +264,12 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
 
     /** Called whenever the app comes to the foreground: pick up new SMS, then redraw. */
     fun onResume() {
+        // Back to this month after a while away (e.g. Home was left on an imported statement's month),
+        // so new payments are on screen.
+        if (month != YearMonth.now() && System.currentTimeMillis() - monthPickedAt > MONTH_STICKS_MS) {
+            month = YearMonth.now()
+            filter = null
+        }
         hasSmsPermission = SmsImporter.hasPermission(app)
         hasNotificationAccess = PermissionHelper.hasNotificationAccess(app)
         // During setup the statement comes first; messages are read once it's done.
@@ -325,15 +335,32 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
         if (hasSmsPermission) scan(full = true)
     }
 
-    fun scan(full: Boolean) {
+    fun scan(full: Boolean, report: Boolean = full) {
         val s = store ?: return
         viewModelScope.launch {
             busy = true
             val (added, stats) = withContext(Dispatchers.IO) { SmsImporter.scanInbox(app, s, full) to relearn(s) }
             learning = stats
-            if (full) message = "Found $added transactions in your messages."
+            lastChecked = java.time.LocalTime.now()
+            if (report) message = when {
+                full -> "Found $added transactions in your messages."
+                added == 0 -> "Checked your messages: no new bank SMS"
+                added == 1 -> "Checked your messages: 1 new payment"
+                else -> "Checked your messages: $added new payments"
+            }
             refresh()
             busy = false
+        }
+    }
+
+    /** The refresh button: read new messages now and say what was found. */
+    fun checkNow() {
+        hasSmsPermission = SmsImporter.hasPermission(app)
+        if (month != YearMonth.now()) pickMonth(YearMonth.now())
+        if (hasSmsPermission) scan(full = false, report = true)
+        else {
+            message = "SMS access is off: allow it in Settings to read new payments"
+            refresh()
         }
     }
 
@@ -445,6 +472,7 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
 
     fun pickMonth(m: YearMonth) {
         month = m
+        monthPickedAt = System.currentTimeMillis()
         filter = null
         query = ""
         refresh()
@@ -695,6 +723,7 @@ class FinTrackViewModel(private val app: Application) : AndroidViewModel(app) {
 
     companion object {
         const val HISTORY_MONTHS = 6L
+        private const val MONTH_STICKS_MS = 10 * 60 * 1000L
         private const val UNTRACKED = "untracked_accounts"
         private const val ACCOUNTS_CHOSEN = "accounts_chosen"
         private const val SETUP_DONE = "setup_done"

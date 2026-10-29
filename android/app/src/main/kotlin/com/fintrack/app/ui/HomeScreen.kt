@@ -66,7 +66,7 @@ fun HomeScreen(
         contentPadding = ScreenPadding,
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        item { DashboardTopBar(onProfile = openProfile) }
+        item { DashboardTopBar(onProfile = openProfile, onRefresh = vm::checkNow) }
         if (s != null) item { Spacer(Modifier.height(6.dp)); BalanceHeader(vm, s) { showingBalances = true } }
         item { Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { MonthPicker(vm, long = true) } }
         if (!vm.hasSmsPermission) item { PermissionHero(vm) }

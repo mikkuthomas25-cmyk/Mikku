@@ -75,4 +75,13 @@ class BankFormatsTest {
         val imps = assertNotNull(SmsParser.parse("Your a/c no. XXXXXXXX1234 is credited by Rs.44,400.00 on 01-10-26 by a/c linked to mobile 9XXXXXX999-ACME LTD (IMPS Ref no 123456789012). -SBI"))
         assertEquals("Acme", imps.merchant)
     }
+
+    @Test fun sbiUpiAndTransferFormats() {
+        val upi = assertNotNull(SmsParser.parse("Dear UPI user A/C X5678 debited by 20.0 on date 28Oct26 trf to SHALINI K Refno 630123456789. If not u? call 1800111109. -SBI"))
+        assertEquals(20.0, upi.amount)
+        assertEquals("5678", upi.account)
+        val transfer = assertNotNull(SmsParser.parse("Your A/C XXXXX5678 Debited INR 2,000.00 on 28/10/26 -Transferred to Mr. RAHUL KUMAR. Avl Balance INR 1,234.56-SBI"))
+        assertEquals("Rahul Kumar", transfer.merchant)
+        assertEquals(1234.56, SmsParser.balance("Your A/C XXXXX5678 Debited INR 2,000.00 on 28/10/26 -Transferred to Mr. RAHUL KUMAR. Avl Balance INR 1,234.56-SBI"))
+    }
 }

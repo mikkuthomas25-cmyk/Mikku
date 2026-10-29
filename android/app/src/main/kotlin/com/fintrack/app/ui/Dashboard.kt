@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -50,7 +51,7 @@ import kotlin.math.abs
 
 /** FinTrack mark on the left; privacy eye and profile on the right. */
 @Composable
-fun DashboardTopBar(onProfile: () -> Unit) {
+fun DashboardTopBar(onProfile: () -> Unit, onRefresh: () -> Unit = {}) {
     val c = Fin.colors
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Canvas(Modifier.size(16.dp)) {
@@ -60,6 +61,11 @@ fun DashboardTopBar(onProfile: () -> Unit) {
         Spacer(Modifier.width(8.dp))
         Text("FINTRACK", style = CapsLabel.copy(fontFamily = FontFamily.Serif, fontSize = 13.sp, letterSpacing = 3.sp), color = c.ink,
             modifier = Modifier.weight(1f))
+        Box(
+            Modifier.size(36.dp).clip(CircleShape).border(0.5.dp, c.border, CircleShape).clickable(onClick = onRefresh),
+            contentAlignment = Alignment.Center,
+        ) { Icon(Icons.Filled.Refresh, "Check messages now", tint = c.inkSoft, modifier = Modifier.size(19.dp)) }
+        Spacer(Modifier.width(6.dp))
         EyeToggle()
         Spacer(Modifier.width(6.dp))
         Box(

@@ -164,8 +164,12 @@ object SmsParser {
         return null
     }
 
-    internal fun extractMerchant(body: String): String {
-        if (ATM.containsMatchIn(body)) return "ATM Withdrawal"
+    // "Transferred to Mr. RAHUL KUMAR": the full stop after Mr would end the name at "Mr".
+    private val HONORIFIC = Regex("""\b(?:mr|mrs|ms|dr|shri|smt)\.\s*""", I)
+
+    internal fun extractMerchant(original: String): String {
+        if (ATM.containsMatchIn(original)) return "ATM Withdrawal"
+        val body = original.replace(HONORIFIC, "")
         for (pattern in MERCHANT_PATTERNS) {
             for (m in pattern.findAll(body)) {
                 val cand = m.groupValues[1].trim()
