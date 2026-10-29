@@ -24,7 +24,7 @@ data class ParsedTxn(
  */
 object SmsParser {
     /** Bump when parsing improves: the app then re-reads old SMS once to pick up what it missed. */
-    const val VERSION = 4
+    const val VERSION = 5
 
     private val I = RegexOption.IGNORE_CASE
 
@@ -43,14 +43,30 @@ object SmsParser {
     private val DEBIT = Regex("""\b(?:$DEBIT_WORDS)\b""", I)
     private val CREDIT = Regex("""\b(?:$CREDIT_WORDS)\b""", I)
 
-    private val NOISE = Regex(
-        """\botp\b|one[\s-]time password|verification code|""" +
-            """will be debited|is due|due date|due on|requested money|collect request|""" +
-            """has requested|payment request|minimum amount due|""" +
-            """\boffer\b|\bwin\b|\bcongratulations\b|pre-?approved|\bloan of\b|""" +
+    // Never a completed payment: OTP codes (not just "never share your OTP"), failed payments,
+    // payment requests, money that "will be" debited.
+    private val HARD_NOISE = Regex(
+        """\botp\s*(?:is|:|-)\s*\d|\b\d{4,8}\s+is\s+(?:the\s+|your\s+)?(?:otp|one[\s-]time password|verification code)|""" +
+            """one[\s-]time password\s+(?:is|for)|verification code\s+(?:is|:)|otp\s+for\s+(?:txn|transaction)|""" +
+            """will be debited|requested money|collect request|has requested|payment request|""" +
             """failed|declined|unsuccessful|insufficient""",
         I,
     )
+    // Offers, reminders and dues: noise only when the message doesn't also report money that moved
+    // ("A/c debited Rs 500. Your EMI is due on 5th" is a payment).
+    private val SOFT_NOISE = Regex(
+        """is due|due date|due on|minimum amount due|\boffer\b|\bwin\b|\bcongratulations\b|pre-?approved|\bloan of\b""",
+        I,
+    )
+    private val MONEY_MOVED = Regex(
+        """\b(?:debited|credited|spent|withdrawn|deducted|deposited|received|transferred|paid|sent|has a credit)\b""",
+        I,
+    )
+
+    /** Not a completed transaction (an OTP code, a failed payment, an offer or a due reminder). */
+    private fun isNoise(body: String): Boolean =
+        !REVERSAL.containsMatchIn(body) &&
+            (HARD_NOISE.containsMatchIn(body) || (SOFT_NOISE.containsMatchIn(body) && !MONEY_MOVED.containsMatchIn(body)))
 
     private val ACCOUNT = Regex(
         """(?:a/c|acct|account|card)\s*(?:no\.?)?\s*(?:(?:ending\s*(?:with|in)?\s*)[x*]*|[x*]+)\s*(\d{3,6})""", I,
@@ -74,6 +90,7 @@ object SmsParser {
         // ICICI: "...debited for Rs 20.00 on 26-Oct-26; MERCHANT credited."
         Regex(""";\s*([A-Za-z0-9][\w .&'*/@\-]{1,40}?)\s+credited\b""", I),
         Regex("""\b(?:to|from)\s+(?:vpa\s+)?([\w.\-]+@[a-z][\w\-]*)""", I),
+        Regex("""\btowards\s+(?!your\b)$NAME$STOP""", I),
         Regex("""\bat\s+$NAME$STOP""", I),
         Regex("""\bto\s+$NAME$STOP""", I),
         Regex("""\bby\s+(?:neft|imps|rtgs|upi)?\s*(?:from\s+)?$NAME$STOP""", I),
@@ -103,7 +120,7 @@ object SmsParser {
     private val LOOKS_BANKISH = Regex("""a/c|acct|account|card|upi|bank""", I)
 
     fun parse(body: String, receivedOn: LocalDate = LocalDate.now()): ParsedTxn? {
-        if (body.isBlank() || (NOISE.containsMatchIn(body) && !REVERSAL.containsMatchIn(body))) return null
+        if (body.isBlank() || isNoise(body)) return null
         val amt = AMOUNT_AFTER_VERB.find(body) ?: AMOUNT.find(body) ?: return null
         val debit = DEBIT.find(body)
         val credit = CREDIT.find(body)
@@ -131,7 +148,7 @@ object SmsParser {
     /** Loose check: is an unparsed SMS worth handing to the AI fallback? */
     fun looksFinancial(body: String): Boolean =
         (AMOUNT.containsMatchIn(body) || AMOUNT_AFTER_VERB.containsMatchIn(body)) &&
-            !NOISE.containsMatchIn(body) && LOOKS_BANKISH.containsMatchIn(body)
+            !isNoise(body) && LOOKS_BANKISH.containsMatchIn(body)
 
     /**
      * Hides account, card, reference and phone numbers and UPI IDs, so a message can be shared

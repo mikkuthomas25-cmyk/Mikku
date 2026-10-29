@@ -5,6 +5,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /** Common Indian bank UPI/card SMS layouts (modelled on real formats; numbers are made up). */
@@ -83,5 +84,26 @@ class BankFormatsTest {
         val transfer = assertNotNull(SmsParser.parse("Your A/C XXXXX5678 Debited INR 2,000.00 on 28/10/26 -Transferred to Mr. RAHUL KUMAR. Avl Balance INR 1,234.56-SBI"))
         assertEquals("Rahul Kumar", transfer.merchant)
         assertEquals(1234.56, SmsParser.balance("Your A/C XXXXX5678 Debited INR 2,000.00 on 28/10/26 -Transferred to Mr. RAHUL KUMAR. Avl Balance INR 1,234.56-SBI"))
+    }
+
+    @Test fun paymentAlertsThatMentionOtpOrDuesAreStillPayments() {
+        listOf(
+            "Rs.250.00 debited from A/c XX5678 on 29-10-26 to VPA swiggy@icici (UPI Ref No 630199887766). Never share OTP/PIN with anyone. -SBI" to 250.0,
+            "Dear Customer, INR 500.00 credited to your A/c XX5678 on 29-10-26 by UPI from RAHUL. Never share your OTP, PIN or password with anyone - SBI" to 500.0,
+            "Rs 1,200 debited from A/c XX5678. If not done by you, report fraud at 1930. Do not share OTP. -SBI" to 1200.0,
+            "Your A/c XX5678 is debited for Rs.99.00 towards NETFLIX. Avl Bal Rs.5,000. Don't share OTP with anyone" to 99.0,
+            "A/c XX5678 debited Rs.500.00 on 29Oct26. Your loan EMI is due on 5th Nov. -SBI" to 500.0,
+        ).forEach { (sms, amount) -> assertEquals(amount, assertNotNull(SmsParser.parse(sms), sms).amount, sms) }
+        assertEquals("Netflix", SmsParser.parse("Your A/c XX5678 is debited for Rs.99.00 towards NETFLIX. Avl Bal Rs.5,000.")!!.merchant)
+        // Still never payments: OTP codes, failed payments, requests, bare reminders and offers.
+        listOf(
+            "482913 is your OTP for txn of Rs 2,000 at AMAZON. Valid for 5 mins. Do not share. -SBI",
+            "OTP is 482913 for transaction of INR 2,000.00 on your SBI card ending 4321",
+            "Your transaction of Rs 499 at FLIPKART failed. Please retry.",
+            "Rahul has requested money Rs 500 from you on Google Pay",
+            "Your credit card bill of Rs 12,000 is due on 05-11-26. Pay now to avoid charges.",
+            "Congratulations! You are pre-approved for a personal loan of Rs 5,00,000.",
+        ).forEach { assertNull(SmsParser.parse(it), it) }
+        assertEquals("Daily small spends", Categorizer.keywordCategory(SmsParser.parse("Rs.2,000 debited from A/c XX5678 towards UPI Lite top-up on 29-10-26. -SBI")!!.merchant, Direction.DEBIT))
     }
 }

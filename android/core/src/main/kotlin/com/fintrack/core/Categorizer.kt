@@ -38,6 +38,8 @@ object Categorizer {
         "Travel" to listOf("makemytrip", "goibibo", "cleartrip", "indigo", "air india", "vistara", "akasa",
             "spicejet", "oyo", "airbnb", "booking.com", "yatra"),
         "Cash Withdrawal" to listOf("atm withdrawal", "atm"),
+        // UPI Lite pays small amounts from a phone wallet with no SMS: the top-up is the spending.
+        "Daily small spends" to listOf("upi lite"),
         "Investments" to listOf("zerodha", "groww", "upstox", "indmoney", "kuvera", "coin", "mutual fund",
             "sip", "nps", "ppf", "smallcase", "indstocks", "investment", "chit", "chitty", "chitti", "kuri"),
     )
